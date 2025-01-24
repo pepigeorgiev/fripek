@@ -1,0 +1,25 @@
+{
+    "name": "Фри-пек Менаџмент",
+    "short_name": "Фри-пек",
+    "start_url": "https://fripekproba.test/",
+    "scope": "/",
+    "display": "standalone",
+    "background_color": "#ffffff",
+    "theme_color": "#ffffff",
+    "description": "Фри-пек Систем за Менаџмент",
+    "orientation": "any",
+    "icons": [
+        {
+            "src": "/images/icon-192x192.png",
+            "sizes": "192x192",
+            "type": "image/png",
+            "purpose": "any maskable"
+        },
+        {
+            "src": "/images/icon-512x512.png",
+            "sizes": "512x512",
+            "type": "image/png",
+            "purpose": "any maskable"
+        }
+    ]
+} 
