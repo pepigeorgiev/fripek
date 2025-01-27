@@ -46,7 +46,7 @@
                        name="price" 
                        id="price" 
                        value="{{ old('price', 0) }}"
-                       step="0.00001"
+                       step="0.01"
                        min="0"
                        required
                        class="w-full px-3 py-2 border rounded-lg @error('price') border-red-500 @enderror">
@@ -58,7 +58,7 @@
                        name="old_price" 
                        id="old_price" 
                        value="{{ old('old_price', 0) }}"
-                       step="0.00001"
+                       step="0.01"
                        min="0"
                        required
                        class="w-full px-3 py-2 border rounded-lg @error('old_price') border-red-500 @enderror">

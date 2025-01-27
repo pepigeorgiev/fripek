@@ -11,6 +11,7 @@ use PhpOffice\PhpSpreadsheet\Cell\Cell;
 use PhpOffice\PhpSpreadsheet\Cell\DataType;
 use PhpOffice\PhpSpreadsheet\Style\NumberFormat;
 use PhpOffice\PhpSpreadsheet\Cell\DefaultValueBinder;
+use PhpOffice\PhpSpreadsheet\Shared\Date;
 use Carbon\Carbon;
 
 class InvoiceExport extends DefaultValueBinder implements FromCollection, WithHeadings, WithColumnFormatting, WithCustomValueBinder
@@ -28,7 +29,7 @@ class InvoiceExport extends DefaultValueBinder implements FromCollection, WithHe
     {
         if ($cell->getColumn() === 'G' && is_numeric($value)) {
             $cell->setValueExplicit(
-                number_format((float)$value, 5, '.', ''),
+                number_format((float)$value, 2, '.', ''),
                 DataType::TYPE_NUMERIC
             );
             return true;
@@ -94,7 +95,7 @@ class InvoiceExport extends DefaultValueBinder implements FromCollection, WithHe
 
         foreach ($transactions as $transaction) {
             $result->push([
-                Carbon::parse($this->endDate)->format('d/m/y'), // Always use end date
+                Date::dateTimeToExcel(Carbon::parse($this->endDate)),
                 $transaction->company_code,
                 $transaction->company_name,
                 $transaction->bread_code,
@@ -123,7 +124,8 @@ class InvoiceExport extends DefaultValueBinder implements FromCollection, WithHe
     public function columnFormats(): array
     {
         return [
-            'G' => '#,##0.00000'  // This is the correct format string for 5 decimal places
+            'A' => NumberFormat::FORMAT_DATE_DMYSLASH,
+            'G' => '#,##0.00'
         ];
     }
 }

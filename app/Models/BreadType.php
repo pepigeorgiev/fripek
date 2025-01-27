@@ -17,8 +17,8 @@ class BreadType extends Model
     ];
 
     protected $casts = [
-        'price' => 'decimal:5',
-        'old_price' => 'decimal:5',
+        'price' => 'decimal:2',
+        'old_price' => 'decimal:2',
         'is_active' => 'boolean',
         'available_for_daily' => 'boolean',
     ];
@@ -28,8 +28,8 @@ class BreadType extends Model
         return $this->belongsToMany(Company::class, 'bread_type_company')
             ->withPivot('price', 'old_price', 'valid_from', 'created_by')
             ->withCasts([
-                'price' => 'decimal:5',
-                'old_price' => 'decimal:5',
+                'price' => 'decimal:2',
+                'old_price' => 'decimal:2',
                 'valid_from' => 'date'
             ])
             ->withTimestamps();

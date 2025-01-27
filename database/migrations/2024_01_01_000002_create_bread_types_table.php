@@ -12,8 +12,8 @@ return new class extends Migration
             $table->id();
             $table->string('code');
             $table->string('name');
-            $table->decimal('price', 10, 5)->default(0);
-            $table->decimal('old_price', 10, 5)->default(0);
+            $table->decimal('price', 10, 2)->default(0);
+            $table->decimal('old_price', 10, 2)->default(0);
             $table->boolean('is_active')->default(true);
             $table->boolean('available_for_daily')->default(true);
             $table->timestamps();

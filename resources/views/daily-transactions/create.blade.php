@@ -63,17 +63,6 @@
 </div>
 
 
-
-            <!-- <div>
-                <label for="company_id" class="block text-sm font-medium text-gray-700">Компанија</label>
-                <select id="company_id" name="company_id" class="mt-1 block w-full text-sm md:text-base rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
-                    @foreach($companies as $company)
-                        <option value="{{ $company->id }}" {{ $selectedCompanyId == $company->id ? 'selected' : '' }}>
-                            {{ $company->name }}
-                        </option>
-                    @endforeach
-                </select>
-            </div> -->
             <div>
                 <label for="transaction_date" class="block text-sm font-medium text-gray-700">Дата</label>
                 <input type="date" id="transaction_date" name="transaction_date" 
@@ -178,9 +167,7 @@ $(document).ready(function() {
                     updateMonthlySummary(response.monthlyTransactions);
                 }
             },
-            // error: function(xhr, status, error) {
-            //     alert('An error occurred while updating the transactions. Please try again.');
-            // }
+           
         });
     });
 

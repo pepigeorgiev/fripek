@@ -89,8 +89,8 @@ class BreadTypeController extends Controller
             $validated = $request->validate([
                 'name' => 'required|string|max:255|unique:bread_types,name,' . $breadType->id,
                 'code' => 'required|string|max:50|unique:bread_types,code,' . $breadType->id,
-                'price' => 'required|numeric|min:0|decimal:0,5',
-                'old_price' => 'required|numeric|min:0|decimal:0,5',
+                'price' => 'required|numeric|min:0|decimal:0,2',
+                'old_price' => 'required|numeric|min:0|decimal:0,2',
                 'is_active' => 'sometimes|boolean',
                 'available_for_daily' => 'sometimes|boolean',
                 'valid_from' => 'required|date|after_or_equal:today'
@@ -140,7 +140,7 @@ class BreadTypeController extends Controller
             return redirect()
                 ->route('bread-types.index')
                  ->with('success', 'Успешно ажурирање на лебот. ' . 
-                    ($pricesChanged ? 'New prices will be effective from ' . $validated['valid_from'] : ''));
+                    ($pricesChanged ? 'Новата цена ќе важи од ' . $validated['valid_from'] : ''));
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error('Error updating bread type: ' . $e->getMessage());

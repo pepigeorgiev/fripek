@@ -11,8 +11,8 @@ return new class extends Migration
         Schema::create('bread_price_history', function (Blueprint $table) {
             $table->id();
             $table->foreignId('bread_type_id')->constrained()->onDelete('cascade');
-            $table->decimal('price', 10, 5);
-            $table->decimal('old_price', 10, 5);
+            $table->decimal('price', 10, 2);
+            $table->decimal('old_price', 10, 2);
             $table->date('valid_from');
             $table->foreignId('created_by')->constrained('users')->onDelete('cascade');
             $table->timestamps();

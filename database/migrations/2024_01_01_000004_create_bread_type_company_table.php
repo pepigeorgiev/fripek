@@ -12,8 +12,8 @@ return new class extends Migration
             $table->id();
             $table->foreignId('bread_type_id')->constrained()->onDelete('cascade');
             $table->foreignId('company_id')->constrained()->onDelete('cascade');
-            $table->decimal('price', 10, 5);
-            $table->decimal('old_price', 10, 5);
+            $table->decimal('price', 10, 2);
+            $table->decimal('old_price', 10, 2);
             $table->datetime('valid_from');
             $table->foreignId('created_by')->constrained('users')->onDelete('cascade');
             $table->timestamps();

@@ -62,12 +62,7 @@
             </div>
 
             <div class="mt-4 flex items-center">
-                <!-- <label class="inline-flex items-center">
-                    <input type="checkbox" name="past_date_changes" value="1" 
-                           {{ request('past_date_changes') ? 'checked' : '' }}
-                           class="rounded border-gray-300 text-blue-600 shadow-sm">
-                    <span class="ml-2">Промени на минати датуми</span>
-                </label> -->
+              
             </div>
         </form>
     </div>

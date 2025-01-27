@@ -41,7 +41,7 @@
                             <input type="number" 
                                    name="companies[{{ $loop->index }}][price]" 
                                    value="{{ old("companies.{$loop->index}.price", $company->pivot->price ?? $breadType->price) }}"
-                                   step="0.00001"
+                                   step="0.01"
                                    min="0"
                                    required
                                    class="w-full px-3 py-2 border rounded-lg">
@@ -52,7 +52,7 @@
                             <input type="number" 
                                    name="companies[{{ $loop->index }}][old_price]" 
                                    value="{{ old("companies.{$loop->index}.old_price", $company->pivot->old_price ?? $breadType->old_price) }}"
-                                   step="0.00001"
+                                   step="0.01"
                                    min="0"
                                    required
                                    class="w-full px-3 py-2 border rounded-lg">

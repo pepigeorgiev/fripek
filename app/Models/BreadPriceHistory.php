@@ -17,8 +17,8 @@ class BreadPriceHistory extends Model
     ];
 
     protected $casts = [
-        'price' => 'decimal:5',
-        'old_price' => 'decimal:5',
+        'price' => 'decimal:2',
+        'old_price' => 'decimal:2',
         'valid_from' => 'date'
     ];
 
