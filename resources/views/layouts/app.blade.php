@@ -186,9 +186,18 @@
     <link rel="manifest" href="/manifest.json">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="application-name" content="Фри-пек">
+    <meta name="apple-mobile-web-app-title" content="Фри-пек">
     <meta name="theme-color" content="#ffffff">
+    <meta name="msapplication-navbutton-color" content="#ffffff">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="msapplication-starturl" content="/install-app">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+
     <link rel="icon" type="image/png" sizes="192x192" href="/images/icon-192x192.png">
-    <link rel="apple-touch-icon" href="/images/icon-192x192.png">
+    <link rel="apple-touch-icon" type="image/png" sizes="192x192" href="/images/icon-192x192.png">
+    <link rel="icon" type="image/png" sizes="512x512" href="/images/icon-512x512.png">
+    <link rel="apple-touch-icon" type="image/png" sizes="512x512" href="/images/icon-512x512.png">
 
     <!-- iOS specific tags -->
     <link rel="apple-touch-icon" href="/images/icon-192x192.png">
