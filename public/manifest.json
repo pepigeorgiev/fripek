@@ -1,8 +1,8 @@
 {
-    "id": "/install-app",
+    "id": "/",
     "name": "Фри-пек Менаџмент",
     "short_name": "Фри-пек",
-    "start_url": "/install-app",
+    "start_url": "/",
     "scope": "/",
     "display": "standalone",
     "background_color": "#ffffff",
@@ -14,13 +14,26 @@
             "src": "/images/icon-192x192.png",
             "sizes": "192x192",
             "type": "image/png",
-            "purpose": "any maskable"
+            "purpose": "any"
         },
         {
             "src": "/images/icon-512x512.png",
             "sizes": "512x512",
             "type": "image/png",
-            "purpose": "any maskable"
+            "purpose": "any"
+        }
+    ],
+    "screenshots": [
+        {
+            "src": "/images/screenshot-desktop.png",
+            "sizes": "1920x1080",
+            "type": "image/png",
+            "form_factor": "wide"
+        },
+        {
+            "src": "/images/screenshot-mobile.png",
+            "sizes": "1080x1920",
+            "type": "image/png"
         }
     ]
 } 

@@ -42,78 +42,50 @@
     </div>
 
     <script>
-        document.addEventListener('DOMContentLoaded', function() {
+        let deferredPrompt;
+
+        window.addEventListener('load', async () => {
             const installButton = document.getElementById('pwa-install');
             const statusDiv = document.getElementById('install-status');
-            let deferredPrompt;
 
-            // Log initial state
-            console.log('PWA Install Script Started');
+            // Hide install button initially
+            installButton.style.display = 'none';
 
-            // Check if manifest icons exist
-            fetch('/images/icon-192x192.png')
-                .then(response => {
-                    if (!response.ok) {
-                        console.error('Icon 192x192 not found');
-                        statusDiv.textContent = 'Missing required icons';
-                    }
-                })
-                .catch(error => console.error('Icon check failed:', error));
+            // Check if app is already installed
+            if (window.matchMedia('(display-mode: standalone)').matches) {
+                statusDiv.textContent = 'App is already installed';
+                return;
+            }
 
             window.addEventListener('beforeinstallprompt', (e) => {
-                console.log('Install prompt detected');
-                
                 e.preventDefault();
                 deferredPrompt = e;
-                installButton.classList.remove('hidden');
-                statusDiv.textContent = 'Installation available';
+                installButton.style.display = 'block';
+                statusDiv.textContent = 'App is ready to install!';
             });
 
             installButton.addEventListener('click', async () => {
-                console.log('Install button clicked');
-                
-                if (deferredPrompt) {
-                    try {
-                        console.log('Showing install prompt');
-                        
-                        deferredPrompt.prompt();
-                        const { outcome } = await deferredPrompt.userChoice;
-                        
-                        console.log(`User response: ${outcome}`);
-                        
-                        if (outcome === 'accepted') {
-                            statusDiv.textContent = 'Installation successful!';
-                        } else {
-                            statusDiv.textContent = 'Installation cancelled';
-                        }
-                        
-                        deferredPrompt = null;
-                    } catch (error) {
-                        console.error('Installation error:', error);
-                        statusDiv.textContent = `Installation error: ${error.message}`;
+                if (!deferredPrompt) {
+                    statusDiv.textContent = 'Installation not available. Please use Chrome or Edge browser.';
+                    return;
+                }
+
+                try {
+                    const result = await deferredPrompt.prompt();
+                    const choice = await deferredPrompt.userChoice;
+                    
+                    if (choice.outcome === 'accepted') {
+                        statusDiv.textContent = 'Installing...';
+                    } else {
+                        statusDiv.textContent = 'Installation cancelled';
                     }
-                } else {
-                    console.log('No installation prompt available');
-                    statusDiv.textContent = 'Installation not available. Make sure you\'re using a supported browser and have required icons.';
+                    
+                    deferredPrompt = null;
+                } catch (error) {
+                    console.error('Installation error:', error);
+                    statusDiv.textContent = 'Installation failed. Please try again.';
                 }
             });
-
-            // Check if already installed
-            if (window.matchMedia('(display-mode: standalone)').matches) {
-                console.log('App is already installed');
-                statusDiv.textContent = 'App is already installed';
-            }
-
-            // Check service worker registration
-            if ('serviceWorker' in navigator) {
-                navigator.serviceWorker.register('/sw.js')
-                    .then(registration => {
-                        console.log('ServiceWorker registration successful:', registration);
-                    })
-                    .catch(error => {
-                        console.error('ServiceWorker registration failed:', error);
-                    });
-            }
         });
     </script>
 @endsection 
