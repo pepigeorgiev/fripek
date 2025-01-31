@@ -153,61 +153,111 @@
 $(document).ready(function() {
     $('#transactionForm').on('submit', function(e) {
         e.preventDefault();
+        
+        const selectedCompanyId = $('#company_id').val();
+        const selectedDate = $('#transaction_date').val();
+        
+        if (!selectedCompanyId) {
+            alert('Ве молиме изберете компанија');
+            return false;
+        }
 
-        const formData = $(this).serialize();
-        const url = $(this).attr('action');
+        const $form = $(this);
+        const formData = new FormData($form[0]);
+        const url = $form.attr('action');
 
-        $.ajax({
-            url: url,
-            type: 'POST',
-            data: formData,
-            success: function(response) {
-                if (response.success) {
-                    updateDashboard(response.todaySummary);
-                    updateMonthlySummary(response.monthlyTransactions);
+        $form.find('button[type="submit"]').prop('disabled', true);
+
+        // Check if we're online
+        if (navigator.onLine) {
+            // Online submission
+            fetch(url, {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
                 }
-            },
-           
-        });
+            })
+            .then(response => response.json())
+            .then(response => {
+                alert('Успешно ажурирање на дневни трансакции.');
+                window.location.href = '/daily-transactions/create?' + 
+                    'company_id=' + selectedCompanyId + 
+                    '&date=' + selectedDate;
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Грешка при зачувување. Проверете ја вашата интернет конекција.');
+            })
+            .finally(() => {
+                $form.find('button[type="submit"]').prop('disabled', false);
+            });
+        } else {
+            // Offline storage
+            const transaction = {
+                url: url,
+                method: 'POST',
+                data: Object.fromEntries(formData),
+                timestamp: new Date().getTime()
+            };
+
+            // Open IndexedDB
+            const request = indexedDB.open('FripekOfflineDB', 1);
+
+            request.onerror = function(event) {
+                console.error('IndexedDB error:', event.target.error);
+                alert('Грешка при зачувување офлајн.');
+                $form.find('button[type="submit"]').prop('disabled', false);
+            };
+
+            request.onsuccess = function(event) {
+                const db = event.target.result;
+                const tx = db.transaction(['offline-transactions'], 'readwrite');
+                const store = tx.objectStore('offline-transactions');
+
+                const addRequest = store.add(transaction);
+
+                addRequest.onsuccess = function() {
+                    alert('Трансакцијата е зачувана офлајн и ќе се синхронизира кога ќе има интернет.');
+                    // Reset form
+                    $form[0].reset();
+                    $form.find('button[type="submit"]').prop('disabled', false);
+                };
+
+                addRequest.onerror = function() {
+                    alert('Грешка при зачувување офлајн.');
+                    $form.find('button[type="submit"]').prop('disabled', false);
+                };
+            };
+
+            request.onupgradeneeded = function(event) {
+                const db = event.target.result;
+                if (!db.objectStoreNames.contains('offline-transactions')) {
+                    db.createObjectStore('offline-transactions', { keyPath: 'timestamp' });
+                }
+            };
+        }
     });
 
-    function updateDashboard(todaySummary) {
-        $('#dashboard-summary tbody').empty();
-
-        todaySummary.forEach(function(transaction) {
-            const row = `
-                <tr>
-                    <td>${transaction.bread_type.name}</td>
-                    <td>${transaction.delivered}</td>
-                    <td>${transaction.returned}</td>
-                    <td>${transaction.gratis}</td>
-                    <td>${transaction.delivered - transaction.returned - transaction.gratis}</td>
-                </tr>
-            `;
-            $('#dashboard-summary tbody').append(row);
-        });
-    }
-
-    function updateMonthlySummary(monthlyTransactions) {
-        $('#monthly-summary tbody').empty();
-
-        Object.keys(monthlyTransactions).forEach(function(date) {
-            const transactions = monthlyTransactions[date];
-
-            transactions.forEach(function(transaction) {
-                const row = `
-                    <tr>
-                        <td>${transaction.bread_type.name}</td>
-                        <td>${transaction.delivered}</td>
-                        <td>${transaction.returned}</td>
-                        <td>${transaction.gratis}</td>
-                        <td>${transaction.delivered - transaction.returned - transaction.gratis}</td>
-                    </tr>
-                `;
-                $('#monthly-summary tbody').append(row);
+    // Add online/offline event listeners
+    window.addEventListener('online', function() {
+        console.log('Back online, attempting sync...');
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.ready.then(registration => {
+                registration.sync.register('sync-transactions')
+                    .then(() => {
+                        console.log('Sync registered');
+                    })
+                    .catch(error => {
+                        console.error('Sync registration failed:', error);
+                    });
             });
-        });
-    }
+        }
+    });
+
+    window.addEventListener('offline', function() {
+        console.log('Gone offline');
+    });
 });
 </script>
 
@@ -293,44 +343,86 @@ $(document).ready(function() {
         const selectedCompanyId = $('#company_id').val();
         const selectedDate = $('#transaction_date').val();
         
-        $('#form_company_id').val(selectedCompanyId);
-        $('#form_transaction_date').val(selectedDate);
-
         if (!selectedCompanyId) {
             alert('Ве молиме изберете компанија');
             return false;
         }
 
         const $form = $(this);
-        const formData = $form.serialize();
+        const formData = new FormData($form[0]);
         const url = $form.attr('action');
 
         $form.find('button[type="submit"]').prop('disabled', true);
 
-        $.ajax({
-            url: url,
-            type: 'POST',
-            data: formData,
-            dataType: 'json',
-            headers: {
-                'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
-            },
-            success: function(response) {
+        // Check if we're online
+        if (navigator.onLine) {
+            // Online submission
+            fetch(url, {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
+                }
+            })
+            .then(response => response.json())
+            .then(response => {
                 alert('Успешно ажурирање на дневни трансакции.');
                 window.location.href = '/daily-transactions/create?' + 
                     'company_id=' + selectedCompanyId + 
                     '&date=' + selectedDate;
-            },
-            error: function(xhr) {
-                alert('Успешно ажурирање на дневни трансакции.');
-                window.location.href = '/daily-transactions/create?' + 
-                    'company_id=' + selectedCompanyId + 
-                    '&date=' + selectedDate;
-            },
-            complete: function() {
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Грешка при зачувување. Проверете ја вашата интернет конекција.');
+            })
+            .finally(() => {
                 $form.find('button[type="submit"]').prop('disabled', false);
-            }
-        });
+            });
+        } else {
+            // Offline storage
+            const transaction = {
+                url: url,
+                method: 'POST',
+                data: Object.fromEntries(formData),
+                timestamp: new Date().getTime()
+            };
+
+            // Open IndexedDB
+            const request = indexedDB.open('FripekOfflineDB', 1);
+
+            request.onerror = function(event) {
+                console.error('IndexedDB error:', event.target.error);
+                alert('Грешка при зачувување офлајн.');
+                $form.find('button[type="submit"]').prop('disabled', false);
+            };
+
+            request.onsuccess = function(event) {
+                const db = event.target.result;
+                const tx = db.transaction(['offline-transactions'], 'readwrite');
+                const store = tx.objectStore('offline-transactions');
+
+                const addRequest = store.add(transaction);
+
+                addRequest.onsuccess = function() {
+                    alert('Трансакцијата е зачувана офлајн и ќе се синхронизира кога ќе има интернет.');
+                    // Reset form
+                    $form[0].reset();
+                    $form.find('button[type="submit"]').prop('disabled', false);
+                };
+
+                addRequest.onerror = function() {
+                    alert('Грешка при зачувување офлајн.');
+                    $form.find('button[type="submit"]').prop('disabled', false);
+                };
+            };
+
+            request.onupgradeneeded = function(event) {
+                const db = event.target.result;
+                if (!db.objectStoreNames.contains('offline-transactions')) {
+                    db.createObjectStore('offline-transactions', { keyPath: 'timestamp' });
+                }
+            };
+        }
     });
 });
 </script>
