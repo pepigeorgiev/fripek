@@ -163,37 +163,21 @@ $(document).ready(function() {
         }
 
         const $form = $(this);
-        const formData = new FormData($form[0]);
         const url = $form.attr('action');
 
         $form.find('button[type="submit"]').prop('disabled', true);
 
-        // Function to handle successful submission
-        function handleSuccess() {
-            alert('Успешно ажурирање на дневни трансакции.');
-            window.location.href = '/daily-transactions/create?' + 
-                'company_id=' + selectedCompanyId + 
-                '&date=' + selectedDate;
-        }
-
         if (navigator.onLine) {
-            // Online submission
+            // Online submission - using the original working code
             $.ajax({
                 url: url,
                 type: 'POST',
-                data: $form.serialize(), // Changed to serialize() for proper form submission
-                headers: {
-                    'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
-                },
+                data: $form.serialize(),
                 success: function(response) {
-                    handleSuccess();
-                },
-                error: function(xhr) {
-                    if (xhr.status === 422) {
-                        alert('Грешка во внесените податоци. Проверете ги вредностите.');
-                    } else {
-                        alert('Грешка при зачувување. Ве молиме обидете се повторно.');
-                    }
+                    alert('Успешно ажурирање на дневни трансакции.');
+                    window.location.href = '/daily-transactions/create?' + 
+                        'company_id=' + selectedCompanyId + 
+                        '&date=' + selectedDate;
                 },
                 complete: function() {
                     $form.find('button[type="submit"]').prop('disabled', false);
@@ -210,7 +194,6 @@ $(document).ready(function() {
                 timestamp: new Date().getTime()
             };
 
-            // Store in localStorage for immediate access
             let offlineTransactions = JSON.parse(localStorage.getItem('offlineTransactions') || '[]');
             offlineTransactions.push(offlineData);
             localStorage.setItem('offlineTransactions', JSON.stringify(offlineTransactions));
@@ -222,7 +205,6 @@ $(document).ready(function() {
 
     // Handle online/offline status
     window.addEventListener('online', function() {
-        console.log('Back online, syncing...');
         syncOfflineData();
     });
 
@@ -247,9 +229,7 @@ $(document).ready(function() {
 
         Promise.all(syncPromises)
             .then(() => {
-                // Clear offline storage after successful sync
                 localStorage.removeItem('offlineTransactions');
-                // Refresh the page to show updated data
                 window.location.reload();
             })
             .catch(error => {
