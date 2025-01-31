@@ -42,50 +42,62 @@
     </div>
 
     <script>
-        let deferredPrompt;
+        let deferredPrompt = null;
 
-        window.addEventListener('load', async () => {
+        window.addEventListener('beforeinstallprompt', (e) => {
+            console.log('Install prompt detected');
+            // Prevent Chrome 67 and earlier from automatically showing the prompt
+            e.preventDefault();
+            // Stash the event so it can be triggered later
+            deferredPrompt = e;
+            
+            // Show the install button
             const installButton = document.getElementById('pwa-install');
             const statusDiv = document.getElementById('install-status');
+            
+            installButton.style.display = 'inline-block';
+            statusDiv.textContent = 'Апликацијата е подготвена за инсталација';
+            
+            console.log('Install button should be visible now');
+        });
 
-            // Hide install button initially
-            installButton.style.display = 'none';
-
-            // Check if app is already installed
-            if (window.matchMedia('(display-mode: standalone)').matches) {
-                statusDiv.textContent = 'App is already installed';
+        document.getElementById('pwa-install').addEventListener('click', async () => {
+            console.log('Install button clicked');
+            const statusDiv = document.getElementById('install-status');
+            
+            if (!deferredPrompt) {
+                console.log('No installation prompt available');
+                statusDiv.textContent = 'Инсталацијата не е достапна. Користете Chrome или Safari.';
                 return;
             }
 
-            window.addEventListener('beforeinstallprompt', (e) => {
-                e.preventDefault();
-                deferredPrompt = e;
-                installButton.style.display = 'block';
-                statusDiv.textContent = 'App is ready to install!';
-            });
-
-            installButton.addEventListener('click', async () => {
-                if (!deferredPrompt) {
-                    statusDiv.textContent = 'Installation not available. Please use Chrome or Edge browser.';
-                    return;
+            try {
+                // Show the install prompt
+                await deferredPrompt.prompt();
+                // Wait for the user to respond to the prompt
+                const choiceResult = await deferredPrompt.userChoice;
+                
+                if (choiceResult.outcome === 'accepted') {
+                    statusDiv.textContent = 'Апликацијата се инсталира...';
+                } else {
+                    statusDiv.textContent = 'Инсталацијата е откажана';
                 }
-
-                try {
-                    const result = await deferredPrompt.prompt();
-                    const choice = await deferredPrompt.userChoice;
-                    
-                    if (choice.outcome === 'accepted') {
-                        statusDiv.textContent = 'Installing...';
-                    } else {
-                        statusDiv.textContent = 'Installation cancelled';
-                    }
-                    
-                    deferredPrompt = null;
-                } catch (error) {
-                    console.error('Installation error:', error);
-                    statusDiv.textContent = 'Installation failed. Please try again.';
-                }
-            });
+                
+                // Clear the deferredPrompt so it can be garbage collected
+                deferredPrompt = null;
+            } catch (error) {
+                console.error('Installation error:', error);
+                statusDiv.textContent = 'Грешка при инсталација. Обидете се повторно.';
+            }
         });
+
+        // Check if already installed
+        if (window.matchMedia('(display-mode: standalone)').matches) {
+            const statusDiv = document.getElementById('install-status');
+            const installButton = document.getElementById('pwa-install');
+            
+            statusDiv.textContent = 'Апликацијата е веќе инсталирана';
+            installButton.style.display = 'none';
+        }
     </script>
 @endsection 
