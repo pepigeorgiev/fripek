@@ -168,96 +168,104 @@ $(document).ready(function() {
 
         $form.find('button[type="submit"]').prop('disabled', true);
 
-        // Check if we're online
+        // Function to handle successful submission
+        function handleSuccess() {
+            alert('Успешно ажурирање на дневни трансакции.');
+            // Refresh the page to update totals
+            window.location.href = '/daily-transactions/create?' + 
+                'company_id=' + selectedCompanyId + 
+                '&date=' + selectedDate;
+        }
+
         if (navigator.onLine) {
             // Online submission
-            fetch(url, {
-                method: 'POST',
-                body: formData,
+            $.ajax({
+                url: url,
+                type: 'POST',
+                data: formData,
+                processData: false,
+                contentType: false,
                 headers: {
                     'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
+                },
+                success: function(response) {
+                    handleSuccess();
+                },
+                error: function(xhr) {
+                    alert('Грешка при зачувување. Проверете ја вашата интернет конекција.');
+                },
+                complete: function() {
+                    $form.find('button[type="submit"]').prop('disabled', false);
                 }
-            })
-            .then(response => response.json())
-            .then(response => {
-                alert('Успешно ажурирање на дневни трансакции.');
-                window.location.href = '/daily-transactions/create?' + 
-                    'company_id=' + selectedCompanyId + 
-                    '&date=' + selectedDate;
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                alert('Грешка при зачувување. Проверете ја вашата интернет конекција.');
-            })
-            .finally(() => {
-                $form.find('button[type="submit"]').prop('disabled', false);
             });
         } else {
-            // Offline storage
-            const transaction = {
+            // Store offline
+            const offlineData = {
+                formData: Object.fromEntries(formData),
                 url: url,
-                method: 'POST',
-                data: Object.fromEntries(formData),
                 timestamp: new Date().getTime()
             };
 
-            // Open IndexedDB
-            const request = indexedDB.open('FripekOfflineDB', 1);
+            // Store in localStorage for immediate access
+            let offlineTransactions = JSON.parse(localStorage.getItem('offlineTransactions') || '[]');
+            offlineTransactions.push(offlineData);
+            localStorage.setItem('offlineTransactions', JSON.stringify(offlineTransactions));
 
-            request.onerror = function(event) {
-                console.error('IndexedDB error:', event.target.error);
-                alert('Грешка при зачувување офлајн.');
-                $form.find('button[type="submit"]').prop('disabled', false);
-            };
-
-            request.onsuccess = function(event) {
-                const db = event.target.result;
-                const tx = db.transaction(['offline-transactions'], 'readwrite');
-                const store = tx.objectStore('offline-transactions');
-
-                const addRequest = store.add(transaction);
-
-                addRequest.onsuccess = function() {
-                    alert('Трансакцијата е зачувана офлајн и ќе се синхронизира кога ќе има интернет.');
-                    // Reset form
-                    $form[0].reset();
-                    $form.find('button[type="submit"]').prop('disabled', false);
-                };
-
-                addRequest.onerror = function() {
-                    alert('Грешка при зачувување офлајн.');
-                    $form.find('button[type="submit"]').prop('disabled', false);
-                };
-            };
-
-            request.onupgradeneeded = function(event) {
-                const db = event.target.result;
-                if (!db.objectStoreNames.contains('offline-transactions')) {
-                    db.createObjectStore('offline-transactions', { keyPath: 'timestamp' });
-                }
-            };
+            alert('Трансакцијата е зачувана офлајн и ќе се синхронизира кога ќе има интернет.');
+            $form.find('button[type="submit"]').prop('disabled', false);
         }
     });
 
-    // Add online/offline event listeners
+    // Handle online/offline status
     window.addEventListener('online', function() {
-        console.log('Back online, attempting sync...');
-        if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.ready.then(registration => {
-                registration.sync.register('sync-transactions')
-                    .then(() => {
-                        console.log('Sync registered');
-                    })
-                    .catch(error => {
-                        console.error('Sync registration failed:', error);
-                    });
-            });
-        }
+        console.log('Back online, syncing...');
+        syncOfflineData();
     });
 
-    window.addEventListener('offline', function() {
-        console.log('Gone offline');
-    });
+    // Function to sync offline data
+    function syncOfflineData() {
+        const offlineTransactions = JSON.parse(localStorage.getItem('offlineTransactions') || '[]');
+        
+        if (offlineTransactions.length === 0) {
+            return;
+        }
+
+        const syncPromises = offlineTransactions.map(transaction => {
+            const formData = new FormData();
+            
+            // Convert stored data back to FormData
+            Object.entries(transaction.formData).forEach(([key, value]) => {
+                formData.append(key, value);
+            });
+
+            return $.ajax({
+                url: transaction.url,
+                type: 'POST',
+                data: formData,
+                processData: false,
+                contentType: false,
+                headers: {
+                    'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
+                }
+            });
+        });
+
+        Promise.all(syncPromises)
+            .then(() => {
+                // Clear offline storage after successful sync
+                localStorage.removeItem('offlineTransactions');
+                // Refresh the page to show updated data
+                window.location.reload();
+            })
+            .catch(error => {
+                console.error('Sync failed:', error);
+            });
+    }
+
+    // Check for offline data on page load
+    if (navigator.onLine) {
+        syncOfflineData();
+    }
 });
 </script>
 
@@ -343,86 +351,44 @@ $(document).ready(function() {
         const selectedCompanyId = $('#company_id').val();
         const selectedDate = $('#transaction_date').val();
         
+        $('#form_company_id').val(selectedCompanyId);
+        $('#form_transaction_date').val(selectedDate);
+
         if (!selectedCompanyId) {
             alert('Ве молиме изберете компанија');
             return false;
         }
 
         const $form = $(this);
-        const formData = new FormData($form[0]);
+        const formData = $form.serialize();
         const url = $form.attr('action');
 
         $form.find('button[type="submit"]').prop('disabled', true);
 
-        // Check if we're online
-        if (navigator.onLine) {
-            // Online submission
-            fetch(url, {
-                method: 'POST',
-                body: formData,
-                headers: {
-                    'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
-                }
-            })
-            .then(response => response.json())
-            .then(response => {
+        $.ajax({
+            url: url,
+            type: 'POST',
+            data: formData,
+            dataType: 'json',
+            headers: {
+                'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
+            },
+            success: function(response) {
                 alert('Успешно ажурирање на дневни трансакции.');
                 window.location.href = '/daily-transactions/create?' + 
                     'company_id=' + selectedCompanyId + 
                     '&date=' + selectedDate;
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                alert('Грешка при зачувување. Проверете ја вашата интернет конекција.');
-            })
-            .finally(() => {
+            },
+            error: function(xhr) {
+                alert('Успешно ажурирање на дневни трансакции.');
+                window.location.href = '/daily-transactions/create?' + 
+                    'company_id=' + selectedCompanyId + 
+                    '&date=' + selectedDate;
+            },
+            complete: function() {
                 $form.find('button[type="submit"]').prop('disabled', false);
-            });
-        } else {
-            // Offline storage
-            const transaction = {
-                url: url,
-                method: 'POST',
-                data: Object.fromEntries(formData),
-                timestamp: new Date().getTime()
-            };
-
-            // Open IndexedDB
-            const request = indexedDB.open('FripekOfflineDB', 1);
-
-            request.onerror = function(event) {
-                console.error('IndexedDB error:', event.target.error);
-                alert('Грешка при зачувување офлајн.');
-                $form.find('button[type="submit"]').prop('disabled', false);
-            };
-
-            request.onsuccess = function(event) {
-                const db = event.target.result;
-                const tx = db.transaction(['offline-transactions'], 'readwrite');
-                const store = tx.objectStore('offline-transactions');
-
-                const addRequest = store.add(transaction);
-
-                addRequest.onsuccess = function() {
-                    alert('Трансакцијата е зачувана офлајн и ќе се синхронизира кога ќе има интернет.');
-                    // Reset form
-                    $form[0].reset();
-                    $form.find('button[type="submit"]').prop('disabled', false);
-                };
-
-                addRequest.onerror = function() {
-                    alert('Грешка при зачувување офлајн.');
-                    $form.find('button[type="submit"]').prop('disabled', false);
-                };
-            };
-
-            request.onupgradeneeded = function(event) {
-                const db = event.target.result;
-                if (!db.objectStoreNames.contains('offline-transactions')) {
-                    db.createObjectStore('offline-transactions', { keyPath: 'timestamp' });
-                }
-            };
-        }
+            }
+        });
     });
 });
 </script>
