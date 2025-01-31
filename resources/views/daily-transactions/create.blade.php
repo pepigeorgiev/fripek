@@ -171,7 +171,6 @@ $(document).ready(function() {
         // Function to handle successful submission
         function handleSuccess() {
             alert('Успешно ажурирање на дневни трансакции.');
-            // Refresh the page to update totals
             window.location.href = '/daily-transactions/create?' + 
                 'company_id=' + selectedCompanyId + 
                 '&date=' + selectedDate;
@@ -182,9 +181,7 @@ $(document).ready(function() {
             $.ajax({
                 url: url,
                 type: 'POST',
-                data: formData,
-                processData: false,
-                contentType: false,
+                data: $form.serialize(), // Changed to serialize() for proper form submission
                 headers: {
                     'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
                 },
@@ -192,7 +189,11 @@ $(document).ready(function() {
                     handleSuccess();
                 },
                 error: function(xhr) {
-                    alert('Грешка при зачувување. Проверете ја вашата интернет конекција.');
+                    if (xhr.status === 422) {
+                        alert('Грешка во внесените податоци. Проверете ги вредностите.');
+                    } else {
+                        alert('Грешка при зачувување. Ве молиме обидете се повторно.');
+                    }
                 },
                 complete: function() {
                     $form.find('button[type="submit"]').prop('disabled', false);
@@ -201,7 +202,10 @@ $(document).ready(function() {
         } else {
             // Store offline
             const offlineData = {
-                formData: Object.fromEntries(formData),
+                formData: $form.serializeArray().reduce((obj, item) => {
+                    obj[item.name] = item.value;
+                    return obj;
+                }, {}),
                 url: url,
                 timestamp: new Date().getTime()
             };
@@ -231,19 +235,10 @@ $(document).ready(function() {
         }
 
         const syncPromises = offlineTransactions.map(transaction => {
-            const formData = new FormData();
-            
-            // Convert stored data back to FormData
-            Object.entries(transaction.formData).forEach(([key, value]) => {
-                formData.append(key, value);
-            });
-
             return $.ajax({
                 url: transaction.url,
                 type: 'POST',
-                data: formData,
-                processData: false,
-                contentType: false,
+                data: transaction.formData,
                 headers: {
                     'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
                 }
