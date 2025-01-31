@@ -1,14 +1,8 @@
-const CACHE_NAME = 'fripek-v2';
-const DOMAIN = 'https://fripekapp.mk';
-
+const CACHE_NAME = 'fripek-v3';
 const urlsToCache = [
-    '/',
-    '/install-app',
-    '/css/app.css',
-    '/js/app.js',
+    '/manifest.json',
     '/images/icon-192x192.png',
-    '/images/icon-512x512.png',
-    '/offline.html'  // Create this file for offline fallback
+    '/images/icon-512x512.png'
 ];
 
 self.addEventListener('install', event => {
@@ -17,40 +11,64 @@ self.addEventListener('install', event => {
         caches.open(CACHE_NAME)
             .then(cache => {
                 console.log('Service Worker: Caching Files...');
-                return cache.addAll(urlsToCache);
+                return Promise.all(
+                    urlsToCache.map(url => {
+                        return fetch(url)
+                            .then(response => {
+                                if (!response.ok) {
+                                    throw new Error(`Failed to fetch ${url}`);
+                                }
+                                return cache.put(url, response);
+                            })
+                            .catch(error => {
+                                console.error(`Failed to cache ${url}:`, error);
+                            });
+                    })
+                );
             })
-            .then(() => self.skipWaiting())
+            .then(() => {
+                console.log('Service Worker: All files cached');
+                return self.skipWaiting();
+            })
     );
 });
 
 self.addEventListener('activate', event => {
     console.log('Service Worker: Activated');
     event.waitUntil(
-        caches.keys().then(cacheNames => {
-            return Promise.all(
-                cacheNames.map(cache => {
-                    if (cache !== CACHE_NAME) {
-                        console.log('Service Worker: Clearing Old Cache');
-                        return caches.delete(cache);
-                    }
-                })
-            );
-        })
+        caches.keys()
+            .then(cacheNames => {
+                return Promise.all(
+                    cacheNames.map(cache => {
+                        if (cache !== CACHE_NAME) {
+                            console.log('Service Worker: Clearing Old Cache');
+                            return caches.delete(cache);
+                        }
+                    })
+                );
+            })
     );
+    return self.clients.claim();
 });
 
 self.addEventListener('fetch', event => {
-    console.log('Service Worker: Fetching');
+    if (event.request.method !== 'GET') {
+        return;
+    }
+
     event.respondWith(
-        fetch(event.request)
-            .then(res => {
-                const resClone = res.clone();
-                caches.open(CACHE_NAME)
-                    .then(cache => {
-                        cache.put(event.request, resClone);
-                    });
-                return res;
+        caches.match(event.request)
+            .then(response => {
+                if (response) {
+                    return response;
+                }
+                return fetch(event.request);
             })
-            .catch(() => caches.match(event.request))
+            .catch(() => {
+                // Return offline fallback if available
+                if (event.request.mode === 'navigate') {
+                    return caches.match('/');
+                }
+            })
     );
 }); 

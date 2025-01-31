@@ -209,6 +209,43 @@
     <link rel="apple-touch-startup-image" href="/images/splash-640x1136.png" media="(device-width: 320px) and (device-height: 568px) and (-webkit-device-pixel-ratio: 2)">
     <link rel="apple-touch-startup-image" href="/images/splash-750x1334.png" media="(device-width: 375px) and (device-height: 667px) and (-webkit-device-pixel-ratio: 2)">
     <link rel="apple-touch-startup-image" href="/images/splash-1242x2208.png" media="(device-width: 414px) and (device-height: 736px) and (-webkit-device-pixel-ratio: 3)">
+
+    <!-- PWA Default Route Script -->
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Check if running as PWA
+            if (window.matchMedia('(display-mode: standalone)').matches) {
+                // Redirect to daily transactions if on home page
+                if (window.location.pathname === '/' || window.location.pathname === '/dashboard') {
+                    window.location.href = '{{ route('daily-transactions.create') }}';
+                }
+
+                // Handle when app is resumed/focused
+                document.addEventListener('visibilitychange', function() {
+                    if (document.visibilityState === 'visible' && 
+                        (window.location.pathname === '/' || window.location.pathname === '/dashboard')) {
+                        window.location.href = '{{ route('daily-transactions.create') }}';
+                    }
+                });
+
+                // Handle back button
+                window.addEventListener('popstate', function() {
+                    if (window.location.pathname === '/' || window.location.pathname === '/dashboard') {
+                        window.location.href = '{{ route('daily-transactions.create') }}';
+                    }
+                });
+            }
+        });
+
+        // Handle app resume from background
+        window.addEventListener('focus', function() {
+            if (window.matchMedia('(display-mode: standalone)').matches) {
+                if (window.location.pathname === '/' || window.location.pathname === '/dashboard') {
+                    window.location.href = '{{ route('daily-transactions.create') }}';
+                }
+            }
+        });
+    </script>
 </head>
 <body class="bg-gray-100">
     <div x-data="{ isOpen: false }" class="flex min-h-screen">
