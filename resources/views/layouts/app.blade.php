@@ -464,20 +464,50 @@
                     e.preventDefault();
                     window.location.href = '/daily-transactions/create';
                 }
+            @elseif(auth()->user()->role === 'admin-admin' || auth()->user()->role === 'admin_user')
+                // Admin users should be able to access everything
+                return true;
             @endif
         @endauth
     });
 
-    // Initial route check
+    // Initial route/default page check
     @auth
+        const currentPath = window.location.pathname;
+        
         @if(auth()->user()->role === 'user')
-            // Allow access to both daily transactions and summary
-            if (!window.location.pathname.includes('daily-transactions') && 
-                !window.location.pathname.includes('summary')) {
+            // Allow access to both daily transactions and summary for regular users
+            if (!currentPath.includes('daily-transactions') && 
+                !currentPath.includes('summary')) {
                 window.location.href = '/daily-transactions/create';
+            }
+        @elseif(auth()->user()->role === 'admin-admin' || auth()->user()->role === 'admin_user')
+            // For admin users, if they're at root, redirect to dashboard
+            if (currentPath === '/' || currentPath === '') {
+                window.location.href = '/dashboard';
             }
         @endif
     @endauth
+
+    // PWA specific checks
+    if (window.matchMedia('(display-mode: standalone)').matches) {
+        @auth
+            const currentPath = window.location.pathname;
+            
+            @if(auth()->user()->role === 'admin-admin' || auth()->user()->role === 'admin_user')
+                // For admin users in PWA mode, default to dashboard if at root
+                if (currentPath === '/' || currentPath === '') {
+                    window.location.href = '/dashboard';
+                }
+            @elseif(auth()->user()->role === 'user')
+                // Regular users in PWA mode can access both daily transactions and summary
+                if (!currentPath.includes('daily-transactions') && 
+                    !currentPath.includes('summary')) {
+                    window.location.href = '/daily-transactions/create';
+                }
+            @endif
+        @endauth
+    }
     </script>
 </body>
 </html>
