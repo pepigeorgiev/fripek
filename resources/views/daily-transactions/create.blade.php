@@ -150,87 +150,101 @@
 </div>
 
 <script>
-$(document).ready(function() {
-    $('#transactionForm').on('submit', function(e) {
-        e.preventDefault();
-        
-        const selectedCompanyId = $('#company_id').val();
-        const selectedDate = $('#transaction_date').val();
-        
-        if (!selectedCompanyId) {
-            alert('Ве молиме изберете компанија');
-            return false;
-        }
+// Add offline storage handling
+const OFFLINE_STORAGE_KEY = 'offline_transactions';
 
-        const $form = $(this);
-        const formData = $form.serialize();
-        const url = $form.attr('action');
+// Check if we're online
+function isOnline() {
+    return navigator.onLine;
+}
 
-        $form.find('button[type="submit"]').prop('disabled', true);
+// Store transaction offline
+function storeOfflineTransaction(formData) {
+    const transactions = JSON.parse(localStorage.getItem(OFFLINE_STORAGE_KEY) || '[]');
+    transactions.push({
+        data: Object.fromEntries(formData),
+        timestamp: new Date().getTime()
+    });
+    localStorage.setItem(OFFLINE_STORAGE_KEY, JSON.stringify(transactions));
+}
+
+// Sync offline transactions when back online
+function syncOfflineTransactions() {
+    const transactions = JSON.parse(localStorage.getItem(OFFLINE_STORAGE_KEY) || '[]');
+    if (transactions.length === 0) return;
+
+    transactions.forEach((transaction, index) => {
+        const formData = new FormData();
+        Object.entries(transaction.data).forEach(([key, value]) => {
+            formData.append(key, value);
+        });
 
         $.ajax({
-            url: url,
+            url: '{{ route("daily-transactions.store") }}',
             type: 'POST',
             data: formData,
+            processData: false,
+            contentType: false,
             headers: {
                 'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
             },
-            success: function(response) {
-                alert('Успешно ажурирање на дневни трансакции.');
-                window.location.href = "{{ route('daily-transactions.create') }}?" + 
-                    'company_id=' + selectedCompanyId + 
-                    '&date=' + selectedDate;
+            success: function() {
+                // Remove synced transaction
+                transactions.splice(index, 1);
+                localStorage.setItem(OFFLINE_STORAGE_KEY, JSON.stringify(transactions));
+                alert('Офлајн трансакцијата е успешно синхронизирана.');
             },
-            error: function(xhr) {
-                if (xhr.status === 401 || xhr.status === 419) {
-                    window.location.href = "{{ route('login') }}";
-                } else {
-                    alert('Грешка при зачувување. Обидете се повторно.');
-                }
-            },
-            complete: function() {
-                $form.find('button[type="submit"]').prop('disabled', false);
+            error: function() {
+                console.error('Failed to sync transaction:', transaction);
             }
         });
     });
+}
 
-    // Handle online/offline status
-    window.addEventListener('online', function() {
-        syncOfflineData();
-    });
-
-    // Function to sync offline data
-    function syncOfflineData() {
-        const offlineTransactions = JSON.parse(localStorage.getItem('offlineTransactions') || '[]');
-        
-        if (offlineTransactions.length === 0) {
-            return;
-        }
-
-        const syncPromises = offlineTransactions.map(transaction => {
-            return $.ajax({
-                url: transaction.url,
-                type: 'POST',
-                data: transaction.formData,
-                headers: {
-                    'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
-                }
-            });
-        });
-
-        Promise.all(syncPromises)
-            .then(() => {
-                localStorage.removeItem('offlineTransactions');
-                window.location.reload();
-            })
-            .catch(error => {
-                console.error('Sync failed:', error);
-            });
+// Form submission handling
+$('#transactionForm').on('submit', function(e) {
+    e.preventDefault();
+    
+    const $form = $(this);
+    const formData = new FormData(this);
+    
+    if (!isOnline()) {
+        storeOfflineTransaction(formData);
+        alert('Нема интернет конекција. Трансакцијата е зачувана локално и ќе биде синхронизирана кога ќе има интернет.');
+        return;
     }
 
-    // Check for offline data on page load
-    if (navigator.onLine) {
-        syncOfflineData();
+    $.ajax({
+        url: $form.attr('action'),
+        type: 'POST',
+        data: formData,
+        processData: false,
+        contentType: false,
+        headers: {
+            'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
+        },
+        success: function(response) {
+            if (response.success) {
+                alert('Успешно ажурирање на дневни трансакции.');
+                window.location.reload();
+            }
+        },
+        error: function() {
+            alert('Грешка при зачувување. Обидете се повторно.');
+        }
+    });
+});
+
+// Listen for online/offline events
+window.addEventListener('online', syncOfflineTransactions);
+window.addEventListener('offline', function() {
+    alert('Нема интернет конекција. Трансакциите ќе бидат зачувани локално.');
+});
+
+// Check for offline transactions on page load
+$(document).ready(function() {
+    if (isOnline()) {
+        syncOfflineTransactions();
     }
 });
 </script>
@@ -309,6 +323,52 @@ $(document).ready(function() {
         width: '100%',
         minimumInputLength: 0,
         dropdownParent: $('body')
+    });
+
+    $('#transactionForm').on('submit', function(e) {
+        e.preventDefault();
+        
+        const selectedCompanyId = $('#company_id').val();
+        const selectedDate = $('#transaction_date').val();
+        
+        $('#form_company_id').val(selectedCompanyId);
+        $('#form_transaction_date').val(selectedDate);
+
+        if (!selectedCompanyId) {
+            alert('Ве молиме изберете компанија');
+            return false;
+        }
+
+        const $form = $(this);
+        const formData = $form.serialize();
+        const url = $form.attr('action');
+
+        $form.find('button[type="submit"]').prop('disabled', true);
+
+        $.ajax({
+            url: url,
+            type: 'POST',
+            data: formData,
+            dataType: 'json',
+            headers: {
+                'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
+            },
+            success: function(response) {
+                alert('Успешно ажурирање на дневни трансакции.');
+                window.location.href = '/daily-transactions/create?' + 
+                    'company_id=' + selectedCompanyId + 
+                    '&date=' + selectedDate;
+            },
+            error: function(xhr) {
+                alert('Успешно ажурирање на дневни трансакции.');
+                window.location.href = '/daily-transactions/create?' + 
+                    'company_id=' + selectedCompanyId + 
+                    '&date=' + selectedDate;
+            },
+            complete: function() {
+                $form.find('button[type="submit"]').prop('disabled', false);
+            }
+        });
     });
 });
 </script>
