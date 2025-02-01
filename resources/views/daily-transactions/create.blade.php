@@ -150,132 +150,56 @@
 </div>
 
 <script>
-// Add offline storage handling
-const OFFLINE_STORAGE_KEY = 'offline_transactions';
-let offlineAlert = null; // Variable to store alert reference
-
-// Check if we're online
-function isOnline() {
-    return navigator.onLine;
-}
-
-// Store transaction offline
-function storeOfflineTransaction(formData) {
-    const transactions = JSON.parse(localStorage.getItem(OFFLINE_STORAGE_KEY) || '[]');
-    transactions.push({
-        data: Object.fromEntries(formData),
-        timestamp: new Date().getTime()
+$(document).ready(function() {
+    // Select2 initialization
+    $('#company_id').select2({
+        placeholder: 'Пребарувај компанија...',
+        allowClear: true,
+        width: '100%',
+        minimumInputLength: 0,
+        dropdownParent: $('body')
     });
-    localStorage.setItem(OFFLINE_STORAGE_KEY, JSON.stringify(transactions));
-    
-    // Show offline alert
-    offlineAlert = alert('Нема интернет конекција. Трансакцијата е зачувана локално и ќе биде синхронизирана кога ќе има интернет.');
-}
 
-// Sync offline transactions when back online
-function syncOfflineTransactions() {
-    const transactions = JSON.parse(localStorage.getItem(OFFLINE_STORAGE_KEY) || '[]');
-    if (transactions.length === 0) return;
+    // Form submission handler
+    $('#transactionForm').on('submit', function(e) {
+        e.preventDefault();
+        
+        const selectedCompanyId = $('#company_id').val();
+        const selectedDate = $('#transaction_date').val();
+        
+        if (!selectedCompanyId) {
+            alert('Ве молиме изберете компанија');
+            return false;
+        }
 
-    let syncedCount = 0;
-    const totalTransactions = transactions.length;
+        const $form = $(this);
+        const formData = $form.serialize();
+        const url = $form.attr('action');
 
-    transactions.forEach((transaction, index) => {
-        const formData = new FormData();
-        Object.entries(transaction.data).forEach(([key, value]) => {
-            formData.append(key, value);
-        });
+        $form.find('button[type="submit"]').prop('disabled', true);
 
         $.ajax({
-            url: '{{ route("daily-transactions.store") }}',
+            url: url,
             type: 'POST',
             data: formData,
-            processData: false,
-            contentType: false,
             headers: {
                 'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
             },
-            success: function() {
-                // Remove synced transaction
-                transactions.splice(index, 1);
-                localStorage.setItem(OFFLINE_STORAGE_KEY, JSON.stringify(transactions));
-                syncedCount++;
-                
-                if (syncedCount === totalTransactions) {
-                    // All transactions synced
-                    alert('Сите офлајн трансакции се успешно синхронизирани.');
-                    window.location.reload(); // Refresh page to show updated data
+            success: function(response) {
+                if (response.success) {
+                    alert('Успешно ажурирање на дневни трансакции.');
+                    // Stay on the same page with updated parameters
+                    window.location.reload();
                 }
             },
-            error: function() {
-                console.error('Failed to sync transaction:', transaction);
+            error: function(xhr) {
+                alert('Грешка при зачувување. Обидете се повторно.');
+            },
+            complete: function() {
+                $form.find('button[type="submit"]').prop('disabled', false);
             }
         });
     });
-}
-
-// Form submission handling
-$('#transactionForm').on('submit', function(e) {
-    e.preventDefault();
-    
-    const $form = $(this);
-    const formData = new FormData(this);
-    
-    if (!isOnline()) {
-        storeOfflineTransaction(formData);
-        return;
-    }
-
-    $.ajax({
-        url: $form.attr('action'),
-        type: 'POST',
-        data: formData,
-        processData: false,
-        contentType: false,
-        headers: {
-            'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
-        },
-        success: function(response) {
-            if (response.success) {
-                alert('Успешно ажурирање на дневни трансакции.');
-                window.location.reload();
-            }
-        },
-        error: function() {
-            if (!isOnline()) {
-                storeOfflineTransaction(formData);
-            } else {
-                alert('Грешка при зачувување. Обидете се повторно.');
-            }
-        }
-    });
-});
-
-// Listen for online event
-window.addEventListener('online', function() {
-    // Close any existing offline alert
-    if (offlineAlert) {
-        offlineAlert.close();
-        offlineAlert = null;
-    }
-    
-    // Sync transactions
-    syncOfflineTransactions();
-});
-
-// Listen for offline event
-window.addEventListener('offline', function() {
-    alert('Нема интернет конекција. Трансакциите ќе бидат зачувани локално.');
-});
-
-// Check for offline transactions on page load
-$(document).ready(function() {
-    if (isOnline()) {
-        const transactions = JSON.parse(localStorage.getItem(OFFLINE_STORAGE_KEY) || '[]');
-        if (transactions.length > 0) {
-            syncOfflineTransactions();
-        }
-    }
 });
 </script>
 
@@ -342,25 +266,5 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 });
 </script>
-
-
-
-<script>
-$(document).ready(function() {
-    $('#company_id').select2({
-        placeholder: 'Пребарувај компанија...',
-        allowClear: true,
-        width: '100%',
-        minimumInputLength: 0,
-        dropdownParent: $('body')
-    });
-});
-</script>
-
-
-
-
-
-
 
 @endsection
