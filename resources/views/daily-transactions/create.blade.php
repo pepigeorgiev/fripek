@@ -151,25 +151,12 @@
 
 <script>
 $(document).ready(function() {
-    // Select2 initialization
-    $('#company_id').select2({
-        placeholder: 'Пребарувај компанија...',
-        allowClear: true,
-        width: '100%',
-        minimumInputLength: 0,
-        dropdownParent: $('body')
-    });
-
-    // Form submission handler
     $('#transactionForm').on('submit', function(e) {
         e.preventDefault();
         
         const selectedCompanyId = $('#company_id').val();
         const selectedDate = $('#transaction_date').val();
         
-        $('#form_company_id').val(selectedCompanyId);
-        $('#form_transaction_date').val(selectedDate);
-
         if (!selectedCompanyId) {
             alert('Ве молиме изберете компанија');
             return false;
@@ -189,15 +176,7 @@ $(document).ready(function() {
                 'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
             },
             success: function(response) {
-                if (response.success) {
-                    // Update dashboard if admin
-                    if (response.isAdmin) {
-                        updateDashboard(response.todaySummary);
-                        updateMonthlySummary(response.monthlyTransactions);
-                    }
-                }
                 alert('Успешно ажурирање на дневни трансакции.');
-                // Use Laravel's route helper for redirect
                 window.location.href = "{{ route('daily-transactions.create') }}?" + 
                     'company_id=' + selectedCompanyId + 
                     '&date=' + selectedDate;
@@ -207,9 +186,6 @@ $(document).ready(function() {
                     window.location.href = "{{ route('login') }}";
                 } else {
                     alert('Грешка при зачувување. Обидете се повторно.');
-                    window.location.href = "{{ route('daily-transactions.create') }}?" + 
-                        'company_id=' + selectedCompanyId + 
-                        '&date=' + selectedDate;
                 }
             },
             complete: function() {
@@ -218,40 +194,43 @@ $(document).ready(function() {
         });
     });
 
-    // Dashboard update functions
-    function updateDashboard(todaySummary) {
-        $('#dashboard-summary tbody').empty();
-        todaySummary.forEach(function(transaction) {
-            const row = `
-                <tr>
-                    <td>${transaction.bread_type.name}</td>
-                    <td>${transaction.delivered}</td>
-                    <td>${transaction.returned}</td>
-                    <td>${transaction.gratis}</td>
-                    <td>${transaction.delivered - transaction.returned - transaction.gratis}</td>
-                </tr>
-            `;
-            $('#dashboard-summary tbody').append(row);
-        });
-    }
+    // Handle online/offline status
+    window.addEventListener('online', function() {
+        syncOfflineData();
+    });
 
-    function updateMonthlySummary(monthlyTransactions) {
-        $('#monthly-summary tbody').empty();
-        Object.keys(monthlyTransactions).forEach(function(date) {
-            const transactions = monthlyTransactions[date];
-            transactions.forEach(function(transaction) {
-                const row = `
-                    <tr>
-                        <td>${transaction.bread_type.name}</td>
-                        <td>${transaction.delivered}</td>
-                        <td>${transaction.returned}</td>
-                        <td>${transaction.gratis}</td>
-                        <td>${transaction.delivered - transaction.returned - transaction.gratis}</td>
-                    </tr>
-                `;
-                $('#monthly-summary tbody').append(row);
+    // Function to sync offline data
+    function syncOfflineData() {
+        const offlineTransactions = JSON.parse(localStorage.getItem('offlineTransactions') || '[]');
+        
+        if (offlineTransactions.length === 0) {
+            return;
+        }
+
+        const syncPromises = offlineTransactions.map(transaction => {
+            return $.ajax({
+                url: transaction.url,
+                type: 'POST',
+                data: transaction.formData,
+                headers: {
+                    'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
+                }
             });
         });
+
+        Promise.all(syncPromises)
+            .then(() => {
+                localStorage.removeItem('offlineTransactions');
+                window.location.reload();
+            })
+            .catch(error => {
+                console.error('Sync failed:', error);
+            });
+    }
+
+    // Check for offline data on page load
+    if (navigator.onLine) {
+        syncOfflineData();
     }
 });
 </script>
@@ -319,5 +298,25 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 });
 </script>
+
+
+
+<script>
+$(document).ready(function() {
+    $('#company_id').select2({
+        placeholder: 'Пребарувај компанија...',
+        allowClear: true,
+        width: '100%',
+        minimumInputLength: 0,
+        dropdownParent: $('body')
+    });
+});
+</script>
+
+
+
+
+
+
 
 @endsection
