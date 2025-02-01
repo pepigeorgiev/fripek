@@ -405,40 +405,20 @@
 
     <!-- Register Service Worker -->
     <script>
-        // Service Worker Registration with role-based checks
+        // Immediately unregister all service workers and prevent new registrations
         if ('serviceWorker' in navigator) {
-            @auth
-                @if(auth()->user()->role === 'user')
-                    // Register service worker only for regular users
-                    navigator.serviceWorker.register('/sw.js')
-                        .then(registration => {
-                            console.log('ServiceWorker registered');
-                        })
-                        .catch(error => {
-                            console.log('ServiceWorker registration failed: ', error);
-                        });
-                @else
-                    // For admin and super_admin, unregister any existing service worker
-                    navigator.serviceWorker.getRegistrations().then(function(registrations) {
-                        for(let registration of registrations) {
-                            registration.unregister();
-                        }
-                    });
-                @endif
-            @endauth
+            navigator.serviceWorker.getRegistrations().then(function(registrations) {
+                for(let registration of registrations) {
+                    registration.unregister();
+                }
+            });
         }
 
-        // PWA navigation handling
-        if (window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true) {
-            @auth
-                @if(auth()->user()->role === 'user')
-                    // Regular users restricted to daily transactions in PWA
-                    if (!window.location.pathname.includes('daily-transactions') && 
-                        !window.location.pathname.includes('daily-report')) {
-                        window.location.href = '/daily-transactions/create';
-                    }
-                @endif
-            @endauth
+        // Prevent future service worker registrations
+        if (window.isSecureContext) {
+            navigator.serviceWorker.register = function() {
+                return Promise.reject(new Error('Service Worker registration is disabled'));
+            };
         }
     </script>
 
@@ -469,6 +449,61 @@
                 })
             });
         }
+    </script>
+
+    <script>
+    // PWA and navigation handling
+    if ('serviceWorker' in navigator) {
+        // Always register service worker regardless of role
+        navigator.serviceWorker.register('/sw.js')
+            .then(registration => {
+                console.log('ServiceWorker registered');
+            })
+            .catch(error => {
+                console.log('ServiceWorker registration failed: ', error);
+            });
+    }
+
+    // Handle navigation
+    const isPwa = window.matchMedia('(display-mode: standalone)').matches || 
+                  window.navigator.standalone === true;
+
+    // Navigation click handler
+    document.addEventListener('click', function(e) {
+        const link = e.target.closest('a');
+        if (!link) return;
+
+        @auth
+            @if(auth()->user()->role === 'user')
+                // Regular users restricted to daily transactions and reports
+                if (!link.href.includes('daily-transactions') && 
+                    !link.href.includes('daily-report')) {
+                    e.preventDefault();
+                    window.location.href = '/daily-transactions/create';
+                }
+            @else
+                // Admin and Super Admin can access everything (except admin can't access users)
+                @if(auth()->user()->role === 'admin')
+                    if (link.href.includes('/users')) {
+                        e.preventDefault();
+                        return;
+                    }
+                @endif
+                // Allow normal navigation
+                return true;
+            @endif
+        @endauth
+    });
+
+    // Initial route check
+    @auth
+        @if(auth()->user()->role === 'user')
+            if (!window.location.pathname.includes('daily-transactions') && 
+                !window.location.pathname.includes('daily-report')) {
+                window.location.href = '/daily-transactions/create';
+            }
+        @endif
+    @endauth
     </script>
 </body>
 </html>
