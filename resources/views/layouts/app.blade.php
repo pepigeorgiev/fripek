@@ -269,31 +269,25 @@
             </div>
 
             <nav class="mt-5">
-                @if(auth()->user()->role === 'admin' || auth()->user()->role === 'super_admin')
+                @if(auth()->user()->isAdmin())
                     <a href="{{ route('dashboard') }}" 
                        @click="isOpen = false"
                        class="block px-4 py-2 text-gray-600 hover:bg-gray-100 {{ request()->routeIs('dashboard') ? 'bg-gray-200' : '' }}">
                         Почетна
                     </a>
-                @endif
 
-                @if(auth()->user()->role === 'admin' || auth()->user()->role === 'super_admin')
                     <a href="{{ route('companies.index') }}" 
                        @click="isOpen = false"
                        class="block px-4 py-2 text-gray-600 hover:bg-gray-100 {{ request()->routeIs('companies.*') ? 'bg-gray-200' : '' }}">
                         Компании
                     </a>
-                @endif
 
-                @if(auth()->user()->role === 'admin' || auth()->user()->role === 'super_admin')
                     <a href="{{ route('bread-types.index') }}" 
                        @click="isOpen = false"
                        class="block px-4 py-2 text-gray-600 hover:bg-gray-100 {{ request()->routeIs('bread-types.*') ? 'bg-gray-200' : '' }}">
                         Управување со типови на леб
                     </a>
-                @endif
 
-                @if(auth()->user()->role === 'admin' || auth()->user()->role === 'super_admin')
                     <a href="{{ route('invoice-companies.index') }}" 
                        @click="isOpen = false"
                        class="block px-4 py-2 text-gray-600 hover:bg-gray-100 {{ request()->routeIs('invoice-companies.*') ? 'bg-gray-200' : '' }}">
@@ -313,7 +307,7 @@
                     Дневен извештај
                 </a>
 
-                @if(auth()->user()->role === 'admin' || auth()->user()->role === 'super_admin')
+                @if(auth()->user()->role === 'admin-user' || auth()->user()->role === 'admin-admin')
                     <a href="{{ route('transaction.history') }}" 
                        @click="isOpen = false"
                        class="block px-4 py-2 text-gray-600 hover:bg-gray-100 {{ request()->routeIs('transaction.history') ? 'bg-gray-200' : '' }}">
@@ -321,7 +315,7 @@
                     </a>
                 @endif
 
-                @if(auth()->user()->role === 'admin' || auth()->user()->role === 'super_admin')
+                @if(auth()->user()->isSuperAdmin())
                     <a href="{{ route('users.manage') }}" 
                        @click="isOpen = false"
                        class="block px-4 py-2 text-gray-600 hover:bg-gray-100 {{ request()->routeIs('users.*') ? 'bg-gray-200' : '' }}">
@@ -329,7 +323,7 @@
                     </a>
                 @endif
 
-                @if(auth()->user()->role === 'admin' || auth()->user()->role === 'super_admin')
+                @if(auth()->user()->role === 'admin-user' || auth()->user()->role === 'admin-admin')
     <a href="{{ route('install.show') }}" 
        @click="isOpen = false"
        class="block px-4 py-2 text-gray-600 hover:bg-gray-100 {{ request()->routeIs('install.show') ? 'bg-gray-200' : '' }}">
@@ -475,12 +469,32 @@
                     e.preventDefault();
                     window.location.href = '/daily-transactions/create';
                 }
+            @else
+                // Admin and Super Admin can access everything (except admin can't access users)
+                @if(auth()->user()->role === 'admin')
+                    if (link.href.includes('/users')) {
+                        e.preventDefault();
+                        return;
+                    }
+                @endif
             @endif
-            // Admin and super_admin can navigate freely
         @endauth
     });
 
-    // Initial route check for users only
+    // Service Worker registration
+    if ('serviceWorker' in navigator) {
+        window.addEventListener('load', function() {
+            navigator.serviceWorker.register('/sw.js')
+                .then(function(registration) {
+                    console.log('ServiceWorker registration successful');
+                })
+                .catch(function(err) {
+                    console.log('ServiceWorker registration failed: ', err);
+                });
+        });
+    }
+
+    // Initial route check for users
     @auth
         @if(auth()->user()->role === 'user')
             if (!window.location.pathname.includes('daily-transactions') && 
