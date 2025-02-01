@@ -403,25 +403,6 @@
         window.addEventListener('offline', updateOnlineStatus);
     </script>
 
-    <!-- Register Service Worker -->
-    <script>
-        // Immediately unregister all service workers and prevent new registrations
-        if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.getRegistrations().then(function(registrations) {
-                for(let registration of registrations) {
-                    registration.unregister();
-                }
-            });
-        }
-
-        // Prevent future service worker registrations
-        if (window.isSecureContext) {
-            navigator.serviceWorker.register = function() {
-                return Promise.reject(new Error('Service Worker registration is disabled'));
-            };
-        }
-    </script>
-
     <div id="ios-install-instructions" style="display: none;">
         <p>To install this app on your iPhone:</p>
         <ol>
