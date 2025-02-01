@@ -480,8 +480,8 @@
         }
     </script>
 
+    <!-- PWA and Navigation Script -->
     <script>
-        // Debug information
         console.log('=== Navigation Debug ===');
         console.log('Current path:', window.location.pathname);
         console.log('Is PWA:', window.matchMedia('(display-mode: standalone)').matches);
@@ -492,62 +492,83 @@
             console.log('No authenticated user');
         @endauth
 
-        // Navigation handling with role-based routing
-        document.addEventListener('click', function(e) {
-            const link = e.target.closest('a');
-            if (!link) return;
-
+        document.addEventListener('DOMContentLoaded', function() {
+            const isPWA = window.matchMedia('(display-mode: standalone)').matches;
+            
             @auth
-                console.log('Link clicked:', {
-                    href: link.href,
-                    path: new URL(link.href).pathname,
-                    role: '{{ auth()->user()->role }}'
-                });
-
                 const userRole = '{{ auth()->user()->role }}';
-                
-                // ONLY restrict navigation for regular users
-                if (userRole === 'user') {
-                    console.log('Regular user access check');
-                    const path = new URL(link.href).pathname;
-                    
-                    if (!path.includes('/daily-transactions') && 
-                        !path.includes('/summary')) {
-                        console.log('Blocking restricted path, redirecting to daily transactions');
-                        e.preventDefault();
-                        window.location.href = '/daily-transactions/create';
-                        return false;
+                const baseUrl = '{{ config('app.url') }}';
+
+                function handleNavigation() {
+                    const currentPath = window.location.pathname;
+
+                    if (userRole === 'user') {
+                        // Regular users are restricted to daily transactions and summary
+                        if (!currentPath.includes('/daily-transactions') && 
+                            !currentPath.includes('/summary')) {
+                            window.location.href = baseUrl + '/daily-transactions/create';
+                        }
+                    } else if ((userRole === 'admin-admin' || userRole === 'admin_user') && 
+                              (currentPath === '/' || currentPath === '')) {
+                        // Admin users default to dashboard only when at root
+                        window.location.href = baseUrl + '/dashboard';
                     }
                 }
-                // All other roles (admin-admin, admin_user, super_admin) can navigate freely
+
+                // Initial navigation check
+                handleNavigation();
+
+                // Handle visibility changes (app resume)
+                document.addEventListener('visibilitychange', function() {
+                    if (document.visibilityState === 'visible') {
+                        handleNavigation();
+                    }
+                });
+
+                // Handle back button
+                window.addEventListener('popstate', function() {
+                    handleNavigation();
+                });
+
+                // Handle focus (app resume from background)
+                window.addEventListener('focus', function() {
+                    handleNavigation();
+                });
+
+                // Handle click navigation
+                document.addEventListener('click', function(e) {
+                    const link = e.target.closest('a');
+                    if (!link) return;
+
+                    console.log('Link clicked:', {
+                        href: link.href,
+                        role: userRole,
+                        isPWA: isPWA
+                    });
+
+                    if (userRole === 'user') {
+                        const path = new URL(link.href).pathname;
+                        if (!path.includes('/daily-transactions') && 
+                            !path.includes('/summary')) {
+                            e.preventDefault();
+                            window.location.href = baseUrl + '/daily-transactions/create';
+                        }
+                    }
+                });
             @endauth
         });
 
-        // Initial route check on page load
-        @auth
-            const userRole = '{{ auth()->user()->role }}';
-            const currentPath = window.location.pathname;
-
-            // ONLY redirect regular users
-            if (userRole === 'user') {
-                if (!currentPath.includes('/daily-transactions') && 
-                    !currentPath.includes('/summary')) {
-                    console.log('Initial redirect for user role');
-                    window.location.href = '/daily-transactions/create';
-                }
-            }
-            
-            // For admin roles, only redirect if at root path
-            if ((userRole === 'admin-admin' || userRole === 'admin_user') && 
-                (currentPath === '/' || currentPath === '')) {
-                console.log('Initial redirect for admin role to dashboard');
-                window.location.href = '/dashboard';
-            }
-        @endauth
-
-        // Remove any PWA-specific redirects that might override admin access
-        if (window.matchMedia('(display-mode: standalone)').matches) {
-            console.log('PWA mode detected - maintaining role permissions');
+        // Service Worker Registration
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', function() {
+                navigator.serviceWorker.register('/sw.js')
+                    .then(registration => {
+                        console.log('ServiceWorker registered successfully');
+                    })
+                    .catch(error => {
+                        console.log('ServiceWorker registration failed:', error);
+                    });
+            });
         }
     </script>
 </body>
