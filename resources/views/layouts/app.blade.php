@@ -450,46 +450,5 @@
             });
         }
     </script>
-
-    <script>
-    // PWA navigation handling
-    if (window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true) {
-        @auth
-            @if(auth()->user()->role === 'user')
-                // Regular users restricted to daily transactions in PWA
-                if (!window.location.pathname.includes('daily-transactions') && 
-                    !window.location.pathname.includes('daily-report')) {
-                    window.location.href = '/daily-transactions/create';
-                }
-            @endif
-        @endauth
-    }
-
-    // Navigation handler
-    document.addEventListener('click', function(e) {
-        const link = e.target.closest('a');
-        if (link && link.href.startsWith(window.location.origin)) {
-            @auth
-                @if(auth()->user()->role === 'super_admin')
-                    return true; // Super admin can access everything
-                @elseif(auth()->user()->role === 'admin')
-                    // Admin can access everything except user management
-                    if (link.href.includes('users')) {
-                        e.preventDefault();
-                        return false;
-                    }
-                    return true;
-                @else
-                    // Regular users restricted to daily transactions and reports
-                    if (!link.href.includes('daily-transactions') && 
-                        !link.href.includes('daily-report')) {
-                        e.preventDefault();
-                        window.location.href = '/daily-transactions/create';
-                    }
-                @endif
-            @endauth
-        }
-    });
-    </script>
 </body>
 </html>
