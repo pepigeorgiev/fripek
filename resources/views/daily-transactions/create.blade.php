@@ -71,6 +71,10 @@
             </div>
         </div>
 
+        <div id="customAlert" class="alert alert-info" style="display: none; position: fixed; top: 20px; right: 20px; z-index: 9999; padding: 15px;">
+            <span id="alertMessage"></span>
+        </div>
+
         <form id="transactionForm" action="{{ route('daily-transactions.store') }}" method="POST">
             @csrf
             <input type="hidden" name="company_id" id="form_company_id">
@@ -150,88 +154,56 @@
 </div>
 
 <script>
-$(document).ready(function() {
-    $('#transactionForm').on('submit', function(e) {
-        e.preventDefault();
-        
-        const selectedCompanyId = $('#company_id').val();
-        const selectedDate = $('#transaction_date').val();
-        
-        if (!selectedCompanyId) {
-            alert('Ве молиме изберете компанија');
-            return false;
-        }
+// Custom alert function
+function showCustomAlert(message, duration = 3000) {
+    $('#alertMessage').text(message);
+    $('#customAlert').fadeIn();
+    
+    // Automatically hide after duration
+    setTimeout(function() {
+        $('#customAlert').fadeOut();
+    }, duration);
+}
 
-        const $form = $(this);
-        const formData = $form.serialize();
-        const url = $form.attr('action');
+// Form submission handling
+$('#transactionForm').on('submit', function(e) {
+    e.preventDefault();
+    
+    const $form = $(this);
+    const formData = new FormData(this);
+    
+    if (!isOnline()) {
+        storeOfflineTransaction(formData);
+        showCustomAlert('Нема интернет конекција. Трансакцијата е зачувана локално и ќе биде синхронизирана кога ќе има интернет.');
+        return;
+    }
 
-        $form.find('button[type="submit"]').prop('disabled', true);
-
-        $.ajax({
-            url: url,
-            type: 'POST',
-            data: formData,
-            headers: {
-                'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
-            },
-            success: function(response) {
-                alert('Успешно ажурирање на дневни трансакции.');
-                window.location.href = "{{ route('daily-transactions.create') }}?" + 
-                    'company_id=' + selectedCompanyId + 
-                    '&date=' + selectedDate;
-            },
-            error: function(xhr) {
-                if (xhr.status === 401 || xhr.status === 419) {
-                    window.location.href = "{{ route('login') }}";
-                } else {
-                    alert('Грешка при зачувување. Обидете се повторно.');
-                }
-            },
-            complete: function() {
-                $form.find('button[type="submit"]').prop('disabled', false);
+    $.ajax({
+        url: $form.attr('action'),
+        type: 'POST',
+        data: formData,
+        processData: false,
+        contentType: false,
+        headers: {
+            'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
+        },
+        success: function(response) {
+            if (response.success) {
+                showCustomAlert('Успешно ажурирање на дневни трансакции.');
+                setTimeout(function() {
+                    window.location.reload();
+                }, 1000);
             }
-        });
-    });
-
-    // Handle online/offline status
-    window.addEventListener('online', function() {
-        syncOfflineData();
-    });
-
-    // Function to sync offline data
-    function syncOfflineData() {
-        const offlineTransactions = JSON.parse(localStorage.getItem('offlineTransactions') || '[]');
-        
-        if (offlineTransactions.length === 0) {
-            return;
+        },
+        error: function() {
+            showCustomAlert('Грешка при зачувување. Обидете се повторно.');
         }
+    });
+});
 
-        const syncPromises = offlineTransactions.map(transaction => {
-            return $.ajax({
-                url: transaction.url,
-                type: 'POST',
-                data: transaction.formData,
-                headers: {
-                    'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
-                }
-            });
-        });
-
-        Promise.all(syncPromises)
-            .then(() => {
-                localStorage.removeItem('offlineTransactions');
-                window.location.reload();
-            })
-            .catch(error => {
-                console.error('Sync failed:', error);
-            });
-    }
-
-    // Check for offline data on page load
-    if (navigator.onLine) {
-        syncOfflineData();
-    }
+// Listen for online event
+window.addEventListener('online', function() {
+    syncOfflineTransactions();
 });
 </script>
 
