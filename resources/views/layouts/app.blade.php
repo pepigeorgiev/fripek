@@ -269,25 +269,31 @@
             </div>
 
             <nav class="mt-5">
-                @if(auth()->user()->isAdmin())
+                @if(auth()->user()->role === 'admin' || auth()->user()->role === 'super_admin')
                     <a href="{{ route('dashboard') }}" 
                        @click="isOpen = false"
                        class="block px-4 py-2 text-gray-600 hover:bg-gray-100 {{ request()->routeIs('dashboard') ? 'bg-gray-200' : '' }}">
                         Почетна
                     </a>
+                @endif
 
+                @if(auth()->user()->role === 'admin' || auth()->user()->role === 'super_admin')
                     <a href="{{ route('companies.index') }}" 
                        @click="isOpen = false"
                        class="block px-4 py-2 text-gray-600 hover:bg-gray-100 {{ request()->routeIs('companies.*') ? 'bg-gray-200' : '' }}">
                         Компании
                     </a>
+                @endif
 
+                @if(auth()->user()->role === 'admin' || auth()->user()->role === 'super_admin')
                     <a href="{{ route('bread-types.index') }}" 
                        @click="isOpen = false"
                        class="block px-4 py-2 text-gray-600 hover:bg-gray-100 {{ request()->routeIs('bread-types.*') ? 'bg-gray-200' : '' }}">
                         Управување со типови на леб
                     </a>
+                @endif
 
+                @if(auth()->user()->role === 'admin' || auth()->user()->role === 'super_admin')
                     <a href="{{ route('invoice-companies.index') }}" 
                        @click="isOpen = false"
                        class="block px-4 py-2 text-gray-600 hover:bg-gray-100 {{ request()->routeIs('invoice-companies.*') ? 'bg-gray-200' : '' }}">
@@ -307,7 +313,7 @@
                     Дневен извештај
                 </a>
 
-                @if(auth()->user()->role === 'admin-user' || auth()->user()->role === 'admin-admin')
+                @if(auth()->user()->role === 'admin' || auth()->user()->role === 'super_admin')
                     <a href="{{ route('transaction.history') }}" 
                        @click="isOpen = false"
                        class="block px-4 py-2 text-gray-600 hover:bg-gray-100 {{ request()->routeIs('transaction.history') ? 'bg-gray-200' : '' }}">
@@ -315,7 +321,7 @@
                     </a>
                 @endif
 
-                @if(auth()->user()->isSuperAdmin())
+                @if(auth()->user()->role === 'admin' || auth()->user()->role === 'super_admin')
                     <a href="{{ route('users.manage') }}" 
                        @click="isOpen = false"
                        class="block px-4 py-2 text-gray-600 hover:bg-gray-100 {{ request()->routeIs('users.*') ? 'bg-gray-200' : '' }}">
@@ -323,7 +329,7 @@
                     </a>
                 @endif
 
-                @if(auth()->user()->role === 'admin-user' || auth()->user()->role === 'admin-admin')
+                @if(auth()->user()->role === 'admin' || auth()->user()->role === 'super_admin')
     <a href="{{ route('install.show') }}" 
        @click="isOpen = false"
        class="block px-4 py-2 text-gray-600 hover:bg-gray-100 {{ request()->routeIs('install.show') ? 'bg-gray-200' : '' }}">
@@ -470,6 +476,7 @@
                     window.location.href = '/daily-transactions/create';
                 }
             @endif
+            // Admin and super_admin can navigate freely
         @endauth
     });
 
