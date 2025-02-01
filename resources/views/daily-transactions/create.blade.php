@@ -149,10 +149,6 @@
     </div>
 </div>
 
-<div id="customAlert" class="alert alert-info" style="display: none; position: fixed; top: 20px; right: 20px; z-index: 9999; padding: 15px;">
-    <span id="alertMessage"></span>
-</div>
-
 <script>
 // Add offline storage handling
 const OFFLINE_STORAGE_KEY = 'offline_transactions';
@@ -172,83 +168,38 @@ function storeOfflineTransaction(formData) {
     localStorage.setItem(OFFLINE_STORAGE_KEY, JSON.stringify(transactions));
 }
 
-// Custom alert function
-function showCustomAlert(message, duration = 3000) {
-    $('#alertMessage').text(message);
-    $('#customAlert').fadeIn();
-    
-    setTimeout(function() {
-        $('#customAlert').fadeOut();
-    }, duration);
-}
-
-// Modify the syncOfflineTransactions function
+// Sync offline transactions when back online
 function syncOfflineTransactions() {
     const transactions = JSON.parse(localStorage.getItem(OFFLINE_STORAGE_KEY) || '[]');
     if (transactions.length === 0) return;
 
-    let syncedCount = 0;
-    const totalTransactions = transactions.length;
-    
-    const syncPromises = transactions.map((transaction, index) => {
+    transactions.forEach((transaction, index) => {
         const formData = new FormData();
         Object.entries(transaction.data).forEach(([key, value]) => {
             formData.append(key, value);
         });
 
-        return new Promise((resolve, reject) => {
-            $.ajax({
-                url: '{{ route("daily-transactions.store") }}',
-                type: 'POST',
-                data: formData,
-                processData: false,
-                contentType: false,
-                headers: {
-                    'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
-                },
-                success: function() {
-                    syncedCount++;
-                    resolve(index);
-                },
-                error: function(error) {
-                    reject({ index, error });
-                }
-            });
-        });
-    });
-
-    Promise.allSettled(syncPromises)
-        .then(results => {
-            const successful = results.filter(r => r.status === 'fulfilled').length;
-            const failed = results.filter(r => r.status === 'rejected').length;
-            
-            const remainingTransactions = transactions.filter((_, index) => 
-                !results.find(r => r.status === 'fulfilled' && r.value === index)
-            );
-            localStorage.setItem(OFFLINE_STORAGE_KEY, JSON.stringify(remainingTransactions));
-
-            if (successful > 0) {
-                showCustomAlert(`Успешно синхронизирани ${successful} трансакции.${failed > 0 ? `\n${failed} трансакции не успеаја да се синхронизираат.` : ''}`, 5000);
-                
-                if (failed === 0) {
-                    setTimeout(() => window.location.reload(), 2000);
-                }
+        $.ajax({
+            url: '{{ route("daily-transactions.store") }}',
+            type: 'POST',
+            data: formData,
+            processData: false,
+            contentType: false,
+            headers: {
+                'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
+            },
+            success: function() {
+                // Remove synced transaction
+                transactions.splice(index, 1);
+                localStorage.setItem(OFFLINE_STORAGE_KEY, JSON.stringify(transactions));
+                alert('Офлајн трансакцијата е успешно синхронизирана.');
+            },
+            error: function() {
+                console.error('Failed to sync transaction:', transaction);
             }
         });
+    });
 }
-
-// Modify online event listener
-window.addEventListener('online', function() {
-    if (checkPendingTransactions()) {
-        showCustomAlert('Интернет конекцијата е повторно воспоставена. Синхронизација на трансакции...', 3000);
-        setTimeout(() => syncOfflineTransactions(), 1000);
-    }
-});
-
-// Modify offline event listener
-window.addEventListener('offline', function() {
-    showCustomAlert('Нема интернет конекција. Трансакциите ќе бидат зачувани локално.', 3000);
-});
 
 // Form submission handling
 $('#transactionForm').on('submit', function(e) {
@@ -282,6 +233,12 @@ $('#transactionForm').on('submit', function(e) {
             alert('Грешка при зачувување. Обидете се повторно.');
         }
     });
+});
+
+// Listen for online/offline events
+window.addEventListener('online', syncOfflineTransactions);
+window.addEventListener('offline', function() {
+    alert('Нема интернет конекција. Трансакциите ќе бидат зачувани локално.');
 });
 
 // Check for offline transactions on page load
