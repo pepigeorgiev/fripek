@@ -71,10 +71,6 @@
             </div>
         </div>
 
-        <div id="customAlert" class="alert alert-info" style="display: none; position: fixed; top: 20px; right: 20px; z-index: 9999; padding: 15px;">
-            <span id="alertMessage"></span>
-        </div>
-
         <form id="transactionForm" action="{{ route('daily-transactions.store') }}" method="POST">
             @csrf
             <input type="hidden" name="company_id" id="form_company_id">
@@ -154,56 +150,109 @@
 </div>
 
 <script>
-// Custom alert function
-function showCustomAlert(message, duration = 3000) {
-    $('#alertMessage').text(message);
-    $('#customAlert').fadeIn();
-    
-    // Automatically hide after duration
-    setTimeout(function() {
-        $('#customAlert').fadeOut();
-    }, duration);
-}
+$(document).ready(function() {
+    // Select2 initialization
+    $('#company_id').select2({
+        placeholder: 'Пребарувај компанија...',
+        allowClear: true,
+        width: '100%',
+        minimumInputLength: 0,
+        dropdownParent: $('body')
+    });
 
-// Form submission handling
-$('#transactionForm').on('submit', function(e) {
-    e.preventDefault();
-    
-    const $form = $(this);
-    const formData = new FormData(this);
-    
-    if (!isOnline()) {
-        storeOfflineTransaction(formData);
-        showCustomAlert('Нема интернет конекција. Трансакцијата е зачувана локално и ќе биде синхронизирана кога ќе има интернет.');
-        return;
+    // Form submission handler
+    $('#transactionForm').on('submit', function(e) {
+        e.preventDefault();
+        
+        const selectedCompanyId = $('#company_id').val();
+        const selectedDate = $('#transaction_date').val();
+        
+        $('#form_company_id').val(selectedCompanyId);
+        $('#form_transaction_date').val(selectedDate);
+
+        if (!selectedCompanyId) {
+            alert('Ве молиме изберете компанија');
+            return false;
+        }
+
+        const $form = $(this);
+        const formData = $form.serialize();
+        const url = $form.attr('action');
+
+        $form.find('button[type="submit"]').prop('disabled', true);
+
+        $.ajax({
+            url: url,
+            type: 'POST',
+            data: formData,
+            headers: {
+                'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
+            },
+            success: function(response) {
+                if (response.success) {
+                    // Update dashboard if admin
+                    if (response.isAdmin) {
+                        updateDashboard(response.todaySummary);
+                        updateMonthlySummary(response.monthlyTransactions);
+                    }
+                }
+                alert('Успешно ажурирање на дневни трансакции.');
+                // Use Laravel's route helper for redirect
+                window.location.href = "{{ route('daily-transactions.create') }}?" + 
+                    'company_id=' + selectedCompanyId + 
+                    '&date=' + selectedDate;
+            },
+            error: function(xhr) {
+                if (xhr.status === 401 || xhr.status === 419) {
+                    window.location.href = "{{ route('login') }}";
+                } else {
+                    alert('Грешка при зачувување. Обидете се повторно.');
+                    window.location.href = "{{ route('daily-transactions.create') }}?" + 
+                        'company_id=' + selectedCompanyId + 
+                        '&date=' + selectedDate;
+                }
+            },
+            complete: function() {
+                $form.find('button[type="submit"]').prop('disabled', false);
+            }
+        });
+    });
+
+    // Dashboard update functions
+    function updateDashboard(todaySummary) {
+        $('#dashboard-summary tbody').empty();
+        todaySummary.forEach(function(transaction) {
+            const row = `
+                <tr>
+                    <td>${transaction.bread_type.name}</td>
+                    <td>${transaction.delivered}</td>
+                    <td>${transaction.returned}</td>
+                    <td>${transaction.gratis}</td>
+                    <td>${transaction.delivered - transaction.returned - transaction.gratis}</td>
+                </tr>
+            `;
+            $('#dashboard-summary tbody').append(row);
+        });
     }
 
-    $.ajax({
-        url: $form.attr('action'),
-        type: 'POST',
-        data: formData,
-        processData: false,
-        contentType: false,
-        headers: {
-            'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
-        },
-        success: function(response) {
-            if (response.success) {
-                showCustomAlert('Успешно ажурирање на дневни трансакции.');
-                setTimeout(function() {
-                    window.location.reload();
-                }, 1000);
-            }
-        },
-        error: function() {
-            showCustomAlert('Грешка при зачувување. Обидете се повторно.');
-        }
-    });
-});
-
-// Listen for online event
-window.addEventListener('online', function() {
-    syncOfflineTransactions();
+    function updateMonthlySummary(monthlyTransactions) {
+        $('#monthly-summary tbody').empty();
+        Object.keys(monthlyTransactions).forEach(function(date) {
+            const transactions = monthlyTransactions[date];
+            transactions.forEach(function(transaction) {
+                const row = `
+                    <tr>
+                        <td>${transaction.bread_type.name}</td>
+                        <td>${transaction.delivered}</td>
+                        <td>${transaction.returned}</td>
+                        <td>${transaction.gratis}</td>
+                        <td>${transaction.delivered - transaction.returned - transaction.gratis}</td>
+                    </tr>
+                `;
+                $('#monthly-summary tbody').append(row);
+            });
+        });
+    }
 });
 </script>
 
@@ -270,25 +319,5 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 });
 </script>
-
-
-
-<script>
-$(document).ready(function() {
-    $('#company_id').select2({
-        placeholder: 'Пребарувај компанија...',
-        allowClear: true,
-        width: '100%',
-        minimumInputLength: 0,
-        dropdownParent: $('body')
-    });
-});
-</script>
-
-
-
-
-
-
 
 @endsection
