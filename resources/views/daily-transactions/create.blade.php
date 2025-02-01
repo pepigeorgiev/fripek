@@ -163,44 +163,35 @@ $(document).ready(function() {
         }
 
         const $form = $(this);
+        const formData = $form.serialize();
         const url = $form.attr('action');
 
         $form.find('button[type="submit"]').prop('disabled', true);
 
-        if (navigator.onLine) {
-            // Online submission - using the original working code
-            $.ajax({
-                url: url,
-                type: 'POST',
-                data: $form.serialize(),
-                success: function(response) {
-                    alert('Успешно ажурирање на дневни трансакции.');
-                    window.location.href = '/daily-transactions/create?' + 
-                        'company_id=' + selectedCompanyId + 
-                        '&date=' + selectedDate;
-                },
-                complete: function() {
-                    $form.find('button[type="submit"]').prop('disabled', false);
+        $.ajax({
+            url: url,
+            type: 'POST',
+            data: formData,
+            headers: {
+                'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
+            },
+            success: function(response) {
+                alert('Успешно ажурирање на дневни трансакции.');
+                window.location.href = "{{ route('daily-transactions.create') }}?" + 
+                    'company_id=' + selectedCompanyId + 
+                    '&date=' + selectedDate;
+            },
+            error: function(xhr) {
+                if (xhr.status === 401 || xhr.status === 419) {
+                    window.location.href = "{{ route('login') }}";
+                } else {
+                    alert('Грешка при зачувување. Обидете се повторно.');
                 }
-            });
-        } else {
-            // Store offline
-            const offlineData = {
-                formData: $form.serializeArray().reduce((obj, item) => {
-                    obj[item.name] = item.value;
-                    return obj;
-                }, {}),
-                url: url,
-                timestamp: new Date().getTime()
-            };
-
-            let offlineTransactions = JSON.parse(localStorage.getItem('offlineTransactions') || '[]');
-            offlineTransactions.push(offlineData);
-            localStorage.setItem('offlineTransactions', JSON.stringify(offlineTransactions));
-
-            alert('Трансакцијата е зачувана офлајн и ќе се синхронизира кога ќе има интернет.');
-            $form.find('button[type="submit"]').prop('disabled', false);
-        }
+            },
+            complete: function() {
+                $form.find('button[type="submit"]').prop('disabled', false);
+            }
+        });
     });
 
     // Handle online/offline status
@@ -318,52 +309,6 @@ $(document).ready(function() {
         width: '100%',
         minimumInputLength: 0,
         dropdownParent: $('body')
-    });
-
-    $('#transactionForm').on('submit', function(e) {
-        e.preventDefault();
-        
-        const selectedCompanyId = $('#company_id').val();
-        const selectedDate = $('#transaction_date').val();
-        
-        $('#form_company_id').val(selectedCompanyId);
-        $('#form_transaction_date').val(selectedDate);
-
-        if (!selectedCompanyId) {
-            alert('Ве молиме изберете компанија');
-            return false;
-        }
-
-        const $form = $(this);
-        const formData = $form.serialize();
-        const url = $form.attr('action');
-
-        $form.find('button[type="submit"]').prop('disabled', true);
-
-        $.ajax({
-            url: url,
-            type: 'POST',
-            data: formData,
-            dataType: 'json',
-            headers: {
-                'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
-            },
-            success: function(response) {
-                alert('Успешно ажурирање на дневни трансакции.');
-                window.location.href = '/daily-transactions/create?' + 
-                    'company_id=' + selectedCompanyId + 
-                    '&date=' + selectedDate;
-            },
-            error: function(xhr) {
-                alert('Успешно ажурирање на дневни трансакции.');
-                window.location.href = '/daily-transactions/create?' + 
-                    'company_id=' + selectedCompanyId + 
-                    '&date=' + selectedDate;
-            },
-            complete: function() {
-                $form.find('button[type="submit"]').prop('disabled', false);
-            }
-        });
     });
 });
 </script>
