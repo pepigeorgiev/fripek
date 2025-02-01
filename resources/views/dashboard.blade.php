@@ -6,10 +6,9 @@
         <h1 class="text-2xl font-bold">Дневен преглед</h1>
         
         <div class="flex items-center space-x-4">
-            <!-- User Filter Dropdown - Only visible to admin and super admin -->
-            @if($currentUser->isAdmin() || $currentUser->role === 'super_admin')
+            <!-- User Filter Dropdown - Only for super_admin -->
+            @if($currentUser->role === 'super_admin')
                 <form method="GET" action="{{ route('dashboard') }}" class="flex items-center space-x-2">
-                    <!-- Preserve date if it was selected -->
                     @if(request()->has('date'))
                         <input type="hidden" name="date" value="{{ $selectedDate }}">
                     @endif
@@ -29,21 +28,22 @@
                 </form>
             @endif
 
-            <!-- Date Filter -->
-            <form method="GET" action="{{ route('dashboard') }}" class="flex items-center space-x-2">
-                <!-- Preserve user_id if it was selected -->
-                @if(request()->has('user_id'))
-                    <input type="hidden" name="user_id" value="{{ $selectedUserId }}">
-                @endif
-                
-                <input 
-                    type="date" 
-                    name="date" 
-                    value="{{ $selectedDate }}"
-                    class="border rounded px-3 py-1"
-                    onchange="this.form.submit()"
-                >
-            </form>
+            <!-- Date Filter - For both admin and super_admin -->
+            @if($currentUser->role === 'super_admin' || $currentUser->role === 'admin')
+                <form method="GET" action="{{ route('dashboard') }}" class="flex items-center space-x-2">
+                    @if(request()->has('user_id'))
+                        <input type="hidden" name="user_id" value="{{ $selectedUserId }}">
+                    @endif
+                    
+                    <input 
+                        type="date" 
+                        name="date" 
+                        value="{{ $selectedDate }}"
+                        class="border rounded px-3 py-1"
+                        onchange="this.form.submit()"
+                    >
+                </form>
+            @endif
         </div>
     </div>
     
