@@ -452,23 +452,11 @@
     </script>
 
     <script>
-    // PWA and navigation handling
-    if ('serviceWorker' in navigator) {
-        // Always register service worker regardless of role
-        navigator.serviceWorker.register('/sw.js')
-            .then(registration => {
-                console.log('ServiceWorker registered');
-            })
-            .catch(error => {
-                console.log('ServiceWorker registration failed: ', error);
-            });
-    }
-
-    // Handle navigation
+    // Simple PWA detection
     const isPwa = window.matchMedia('(display-mode: standalone)').matches || 
                   window.navigator.standalone === true;
 
-    // Navigation click handler
+    // Basic navigation handler
     document.addEventListener('click', function(e) {
         const link = e.target.closest('a');
         if (!link) return;
@@ -481,21 +469,11 @@
                     e.preventDefault();
                     window.location.href = '/daily-transactions/create';
                 }
-            @else
-                // Admin and Super Admin can access everything (except admin can't access users)
-                @if(auth()->user()->role === 'admin')
-                    if (link.href.includes('/users')) {
-                        e.preventDefault();
-                        return;
-                    }
-                @endif
-                // Allow normal navigation
-                return true;
             @endif
         @endauth
     });
 
-    // Initial route check
+    // Initial route check for users only
     @auth
         @if(auth()->user()->role === 'user')
             if (!window.location.pathname.includes('daily-transactions') && 
