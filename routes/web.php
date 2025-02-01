@@ -78,6 +78,8 @@ Route::middleware(['auth'])->group(function () {
     Route::resource('daily-transactions', DailyTransactionController::class);
     Route::post('/daily-transactions/mark-as-paid', [DailyTransactionController::class, 'markAsPaid'])
         ->name('daily-transactions.markAsPaid');
+    Route::get('/daily-transactions/unpaid', [DailyTransactionController::class, 'getUnpaidTransactions'])
+        ->name('daily-transactions.unpaid');
     
     // Summary routes
     Route::get('/summary', [SummaryController::class, 'index'])->name('summary.index');
@@ -238,3 +240,8 @@ Route::get('/debug-history', function() {
         ];
     }
 });
+
+// Add this route for CSRF token refresh
+Route::get('/csrf-token', function () {
+    return response()->json(['token' => csrf_token()]);
+})->middleware('web');

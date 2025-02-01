@@ -150,6 +150,34 @@
 </div>
 
 <script>
+// CSRF token refresh mechanism
+function refreshCsrfToken() {
+    return $.get('/csrf-token').then(function(data) {
+        $('meta[name="csrf-token"]').attr('content', data.token);
+        $('[name="_token"]').val(data.token);
+        return data.token;
+    });
+}
+
+// Setup Ajax to handle 419 globally
+$.ajaxSetup({
+    error: function(xhr, status, error) {
+        if (xhr.status === 419) {
+            // Silently refresh CSRF token and retry the request
+            refreshCsrfToken().then(() => {
+                // Retry the original request with new token
+                const originalRequest = this;
+                originalRequest.headers = {
+                    ...originalRequest.headers,
+                    'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
+                };
+                $.ajax(originalRequest);
+            });
+            return false; // Prevent error from showing
+        }
+    }
+});
+
 // Add offline storage handling
 const OFFLINE_STORAGE_KEY = 'offline_transactions';
 
@@ -205,14 +233,24 @@ function syncOfflineTransactions() {
 $('#transactionForm').on('submit', function(e) {
     e.preventDefault();
     
+    const selectedCompanyId = $('#company_id').val();
+    const selectedDate = $('#transaction_date').val();
+
+    if (!selectedCompanyId) {
+        showCustomAlert('Ве молиме изберете компанија');
+        return false;
+    }
+
     const $form = $(this);
     const formData = new FormData(this);
     
     if (!isOnline()) {
         storeOfflineTransaction(formData);
-        alert('Нема интернет конекција. Трансакцијата е зачувана локално и ќе биде синхронизирана кога ќе има интернет.');
+        showCustomAlert('Нема интернет конекција. Трансакцијата е зачувана локално.');
         return;
     }
+
+    $form.find('button[type="submit"]').prop('disabled', true);
 
     $.ajax({
         url: $form.attr('action'),
@@ -224,13 +262,21 @@ $('#transactionForm').on('submit', function(e) {
             'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
         },
         success: function(response) {
-            if (response.success) {
-                alert('Успешно ажурирање на дневни трансакции.');
-                window.location.reload();
-            }
+            showCustomAlert('Успешно ажурирање на дневни трансакции.');
+            setTimeout(() => {
+                window.location.href = '/daily-transactions/create?' + 
+                    'company_id=' + selectedCompanyId + 
+                    '&date=' + selectedDate;
+            }, 1000);
         },
-        error: function() {
-            alert('Грешка при зачувување. Обидете се повторно.');
+        error: function(xhr) {
+            if (xhr.status === 419) {
+                return; // Let the global handler deal with it
+            }
+            showCustomAlert('Грешка при зачувување. Обидете се повторно.');
+        },
+        complete: function() {
+            $form.find('button[type="submit"]').prop('disabled', false);
         }
     });
 });
