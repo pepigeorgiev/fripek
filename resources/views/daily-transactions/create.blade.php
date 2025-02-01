@@ -151,16 +151,6 @@
 
 <script>
 $(document).ready(function() {
-    // Select2 initialization
-    $('#company_id').select2({
-        placeholder: 'Пребарувај компанија...',
-        allowClear: true,
-        width: '100%',
-        minimumInputLength: 0,
-        dropdownParent: $('body')
-    });
-
-    // Form submission handler
     $('#transactionForm').on('submit', function(e) {
         e.preventDefault();
         
@@ -186,20 +176,62 @@ $(document).ready(function() {
                 'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
             },
             success: function(response) {
-                if (response.success) {
-                    alert('Успешно ажурирање на дневни трансакции.');
-                    // Stay on the same page with updated parameters
-                    window.location.reload();
-                }
+                alert('Успешно ажурирање на дневни трансакции.');
+                window.location.href = "{{ route('daily-transactions.create') }}?" + 
+                    'company_id=' + selectedCompanyId + 
+                    '&date=' + selectedDate;
             },
             error: function(xhr) {
-                alert('Грешка при зачувување. Обидете се повторно.');
+                if (xhr.status === 401 || xhr.status === 419) {
+                    window.location.href = "{{ route('login') }}";
+                } else {
+                    alert('Грешка при зачувување. Обидете се повторно.');
+                }
             },
             complete: function() {
                 $form.find('button[type="submit"]').prop('disabled', false);
             }
         });
     });
+
+    // Handle online/offline status
+    window.addEventListener('online', function() {
+        syncOfflineData();
+    });
+
+    // Function to sync offline data
+    function syncOfflineData() {
+        const offlineTransactions = JSON.parse(localStorage.getItem('offlineTransactions') || '[]');
+        
+        if (offlineTransactions.length === 0) {
+            return;
+        }
+
+        const syncPromises = offlineTransactions.map(transaction => {
+            return $.ajax({
+                url: transaction.url,
+                type: 'POST',
+                data: transaction.formData,
+                headers: {
+                    'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
+                }
+            });
+        });
+
+        Promise.all(syncPromises)
+            .then(() => {
+                localStorage.removeItem('offlineTransactions');
+                window.location.reload();
+            })
+            .catch(error => {
+                console.error('Sync failed:', error);
+            });
+    }
+
+    // Check for offline data on page load
+    if (navigator.onLine) {
+        syncOfflineData();
+    }
 });
 </script>
 
@@ -266,5 +298,25 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 });
 </script>
+
+
+
+<script>
+$(document).ready(function() {
+    $('#company_id').select2({
+        placeholder: 'Пребарувај компанија...',
+        allowClear: true,
+        width: '100%',
+        minimumInputLength: 0,
+        dropdownParent: $('body')
+    });
+});
+</script>
+
+
+
+
+
+
 
 @endsection
