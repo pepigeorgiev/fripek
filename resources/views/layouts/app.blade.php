@@ -269,7 +269,7 @@
             </div>
 
             <nav class="mt-5">
-                @if(auth()->user()->isAdmin())
+                @if(auth()->user()->isAdmin() || auth()->user()->role === 'admin_user' || auth()->user()->role === 'super_admin')
                     <a href="{{ route('dashboard') }}" 
                        @click="isOpen = false"
                        class="block px-4 py-2 text-gray-600 hover:bg-gray-100 {{ request()->routeIs('dashboard') ? 'bg-gray-200' : '' }}">
@@ -293,8 +293,15 @@
                        class="block px-4 py-2 text-gray-600 hover:bg-gray-100 {{ request()->routeIs('invoice-companies.*') ? 'bg-gray-200' : '' }}">
                         Компании за фактурирање
                     </a>
+
+                    <a href="{{ route('transaction.history') }}" 
+                       @click="isOpen = false"
+                       class="block px-4 py-2 text-gray-600 hover:bg-gray-100 {{ request()->routeIs('transaction.history') ? 'bg-gray-200' : '' }}">
+                        Историја на промени
+                    </a>
                 @endif
 
+                <!-- Routes for all users including regular users -->
                 <a href="{{ route('daily-transactions.create') }}" 
                    @click="isOpen = false"
                    class="block px-4 py-2 text-gray-600 hover:bg-gray-100 {{ request()->routeIs('daily-transactions.*') ? 'bg-gray-200' : '' }}">
@@ -307,15 +314,7 @@
                     Дневен извештај
                 </a>
 
-                @if(auth()->user()->role === 'admin-user' || auth()->user()->role === 'admin-admin')
-                    <a href="{{ route('transaction.history') }}" 
-                       @click="isOpen = false"
-                       class="block px-4 py-2 text-gray-600 hover:bg-gray-100 {{ request()->routeIs('transaction.history') ? 'bg-gray-200' : '' }}">
-                        Историја на промени
-                    </a>
-                @endif
-
-                @if(auth()->user()->isSuperAdmin())
+                @if(auth()->user()->role === 'super_admin')
                     <a href="{{ route('users.manage') }}" 
                        @click="isOpen = false"
                        class="block px-4 py-2 text-gray-600 hover:bg-gray-100 {{ request()->routeIs('users.*') ? 'bg-gray-200' : '' }}">
@@ -323,14 +322,14 @@
                     </a>
                 @endif
 
-                @if(auth()->user()->role === 'admin-user' || auth()->user()->role === 'admin-admin')
-    <a href="{{ route('install.show') }}" 
-       @click="isOpen = false"
-       class="block px-4 py-2 text-gray-600 hover:bg-gray-100 {{ request()->routeIs('install.show') ? 'bg-gray-200' : '' }}">
-        <i class="fas fa-mobile-alt mr-2"></i>
-        Инсталирај апликација
-    </a>
-@endif
+                @if(auth()->user()->isAdmin() || auth()->user()->role === 'admin_user' || auth()->user()->role === 'super_admin')
+                    <a href="{{ route('install.show') }}" 
+                       @click="isOpen = false"
+                       class="block px-4 py-2 text-gray-600 hover:bg-gray-100 {{ request()->routeIs('install.show') ? 'bg-gray-200' : '' }}">
+                        <i class="fas fa-mobile-alt mr-2"></i>
+                        Инсталирај апликација
+                    </a>
+                @endif
 
                 <div class="mt-5 pt-4 border-t">
                     <form method="POST" action="{{ route('logout') }}">
@@ -403,6 +402,25 @@
         window.addEventListener('offline', updateOnlineStatus);
     </script>
 
+    <!-- Register Service Worker -->
+    <script>
+        // Immediately unregister all service workers and prevent new registrations
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.getRegistrations().then(function(registrations) {
+                for(let registration of registrations) {
+                    registration.unregister();
+                }
+            });
+        }
+
+        // Prevent future service worker registrations
+        if (window.isSecureContext) {
+            navigator.serviceWorker.register = function() {
+                return Promise.reject(new Error('Service Worker registration is disabled'));
+            };
+        }
+    </script>
+
     <div id="ios-install-instructions" style="display: none;">
         <p>To install this app on your iPhone:</p>
         <ol>
@@ -433,36 +451,33 @@
     </script>
 
     <script>
-    // PWA navigation handling
-    const isPwa = window.matchMedia('(display-mode: standalone)').matches || 
-                  window.navigator.standalone === true;
-
-    // Only restrict navigation for regular users
-    @auth
-        @if(auth()->user()->role === 'user')
-            if (!window.location.pathname.includes('daily-transactions') && 
-                !window.location.pathname.includes('daily-report')) {
-                window.location.href = '/daily-transactions/create';
-            }
-        @endif
-    @endauth
-
-    // Navigation click handler
+    // Navigation handling for both PWA and web
     document.addEventListener('click', function(e) {
         const link = e.target.closest('a');
         if (!link) return;
 
         @auth
             @if(auth()->user()->role === 'user')
-                // Regular users restricted to daily transactions and reports
+                // Regular users can access daily transactions and summary
                 if (!link.href.includes('daily-transactions') && 
-                    !link.href.includes('daily-report')) {
+                    !link.href.includes('summary')) {
                     e.preventDefault();
                     window.location.href = '/daily-transactions/create';
                 }
             @endif
         @endauth
     });
+
+    // Initial route check
+    @auth
+        @if(auth()->user()->role === 'user')
+            // Allow access to both daily transactions and summary
+            if (!window.location.pathname.includes('daily-transactions') && 
+                !window.location.pathname.includes('summary')) {
+                window.location.href = '/daily-transactions/create';
+            }
+        @endif
+    @endauth
     </script>
 </body>
 </html>
