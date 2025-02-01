@@ -405,39 +405,21 @@
 
     <!-- Register Service Worker -->
     <script>
+        // Immediately unregister all service workers and prevent new registrations
         if ('serviceWorker' in navigator) {
-            // First unregister any existing service workers
-            navigator.serviceWorker.getRegistrations()
-                .then(async registrations => {
-                    for (const registration of registrations) {
-                        await registration.unregister();
-                    }
-                    console.log('Old service workers removed');
-                    
-                    // Register new service worker
-                    return navigator.serviceWorker.register('/sw.js');
-                })
-                .then(() => {
-                    console.log('New service worker registered');
-                })
-                .catch(error => {
-                    console.error('Service Worker error:', error);
-                });
+            navigator.serviceWorker.getRegistrations().then(function(registrations) {
+                for(let registration of registrations) {
+                    registration.unregister();
+                }
+            });
         }
 
-        // Listen for install prompt
-        window.addEventListener('beforeinstallprompt', (e) => {
-            e.preventDefault();
-            // Store the event for later use
-            window.deferredPrompt = e;
-            console.log('Install prompt ready');
-        });
-    </script>
-
-    <script>
-        navigator.serviceWorker.getRegistrations().then(function(registrations) {
-            console.log('Service Worker Registrations:', registrations);
-        });
+        // Prevent future service worker registrations
+        if (window.isSecureContext) {
+            navigator.serviceWorker.register = function() {
+                return Promise.reject(new Error('Service Worker registration is disabled'));
+            };
+        }
     </script>
 
     <div id="ios-install-instructions" style="display: none;">
@@ -465,17 +447,6 @@
                     event: 'platform',
                     details: 'iOS Device Detected'
                 })
-            });
-        }
-    </script>
-
-    <script>
-        // Add this to your layout file temporarily
-        if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.getRegistrations().then(function(registrations) {
-                for(let registration of registrations) {
-                    registration.unregister();
-                }
             });
         }
     </script>

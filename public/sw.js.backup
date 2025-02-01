@@ -5,7 +5,6 @@ const urlsToCache = [
     '/manifest.json',
     '/images/icon-192x192.png',
     '/images/icon-512x512.png',
-    '/daily-transactions/create',
     '/css/app.css',
     '/js/app.js'
 ];
@@ -17,25 +16,9 @@ self.addEventListener('install', event => {
         caches.open(CACHE_NAME)
             .then(cache => {
                 console.log('Service Worker: Caching Files...');
-                return Promise.all(
-                    urlsToCache.map(url => {
-                        return fetch(url)
-                            .then(response => {
-                                if (!response.ok) {
-                                    throw new Error(`Failed to fetch ${url}`);
-                                }
-                                return cache.put(url, response);
-                            })
-                            .catch(error => {
-                                console.error(`Failed to cache ${url}:`, error);
-                            });
-                    })
-                );
+                return cache.addAll(urlsToCache);
             })
-            .then(() => {
-                console.log('Service Worker: All files cached');
-                return self.skipWaiting();
-            })
+            .then(() => self.skipWaiting())
     );
 });
 
@@ -58,39 +41,20 @@ self.addEventListener('activate', event => {
     return self.clients.claim();
 });
 
-// Fetch event
+// Updated Fetch event handler
 self.addEventListener('fetch', event => {
-    // Handle POST requests for transactions
-    if (event.request.method === 'POST' && event.request.url.includes('/daily-transactions')) {
-        event.respondWith(
-            fetch(event.request.clone())
-                .catch(async error => {
-                    console.log('Offline, storing transaction...');
-                    const formData = await event.request.clone().formData();
-                    const transaction = {
-                        url: event.request.url,
-                        method: event.request.method,
-                        data: Object.fromEntries(formData),
-                        timestamp: new Date().getTime()
-                    };
-
-                    const db = await openDB();
-                    const tx = db.transaction(OFFLINE_DATA, 'readwrite');
-                    await tx.objectStore(OFFLINE_DATA).add(transaction);
-
-                    return new Response(JSON.stringify({
-                        success: true,
-                        message: 'Трансакцијата е зачувана офлајн.',
-                        offline: true
-                    }), {
-                        headers: { 'Content-Type': 'application/json' }
-                    });
-                })
-        );
+    // Don't intercept authentication or dynamic routes
+    if (event.request.url.includes('/login') || 
+        event.request.url.includes('/daily-transactions')) {
         return;
     }
 
-    // Handle GET requests
+    // Handle POST requests
+    if (event.request.method === 'POST') {
+        return;
+    }
+
+    // Handle GET requests for static assets only
     if (event.request.method === 'GET') {
         event.respondWith(
             caches.match(event.request)
@@ -101,8 +65,9 @@ self.addEventListener('fetch', event => {
                     return fetch(event.request);
                 })
                 .catch(() => {
+                    // Don't try to handle navigation requests
                     if (event.request.mode === 'navigate') {
-                        return caches.match('/');
+                        return fetch(event.request);
                     }
                 })
         );

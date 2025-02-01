@@ -20,17 +20,39 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use App\Models\DailyTransaction;
 
-// Remove any previous root route and add this at the top
-Route::get('/', function () {
-    return redirect()->to('/login', 301); // 301 is permanent redirect
+// Add this at the top of your routes file
+Route::get('/debug-routes', function () {
+    $routes = Route::getRoutes();
+    foreach ($routes as $route) {
+        \Log::info('Route:', [
+            'uri' => $route->uri(),
+            'methods' => $route->methods(),
+            'name' => $route->getName()
+        ]);
+    }
 });
 
-Auth::routes();
+// Remove any previous root route and add this at the top
+Route::middleware(['web'])->group(function () {
+    // Public routes
+    Route::get('/', function () {
+        return redirect('/login');
+    });
 
-// Guest routes
-Route::middleware('guest')->group(function () {
-    Route::get('/login', [LoginController::class, 'showLoginForm'])->name('login');
+    Route::get('/login', [LoginController::class, 'showLoginForm'])
+        ->name('login')
+        ->middleware('guest');
+        
     Route::post('/login', [LoginController::class, 'login']);
+    Route::post('/logout', [LoginController::class, 'logout'])->name('logout');
+
+    // Protected routes
+    Route::middleware(['auth'])->group(function () {
+        Route::get('/daily-transactions/create', [DailyTransactionController::class, 'create'])
+            ->name('daily-transactions.create');
+        Route::post('/daily-transactions', [DailyTransactionController::class, 'store'])
+            ->name('daily-transactions.store');
+    });
 });
 
 // Authenticated routes
@@ -90,9 +112,6 @@ Route::middleware(['auth'])->group(function () {
         ->name('users.update-password');
     Route::post('/users/{user}/reset-password', [UsersController::class, 'resetPassword'])
         ->name('users.reset-password');
-    
-    // Logout route
-    Route::post('/logout', [LoginController::class, 'logout'])->name('logout');
 });
 
 Route::get('/install-app', [App\Http\Controllers\InstallController::class, 'show'])
@@ -219,5 +238,3 @@ Route::get('/debug-history', function() {
         ];
     }
 });
-
-

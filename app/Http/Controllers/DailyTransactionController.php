@@ -42,29 +42,48 @@ class DailyTransactionController extends Controller
     
     public function create()
     {
-        $user = Auth::user();
-        $companies = $user->isAdmin() ? Company::all() : $user->companies;
-        $breadTypes = BreadType::where('is_active', true)->get();
-        
-        // Get date and company_id from request
-        $date = request('date', now()->toDateString());
-        $selectedCompanyId = request('company_id');
-    
-        $existingTransactions = DailyTransaction::whereIn('company_id', $companies->pluck('id'))
-            ->whereDate('transaction_date', $date)
-            ->whereHas('breadType', function($query) {
-                $query->where('is_active', true);
-            })
-            ->get()
-            ->groupBy('company_id');
-    
-        return view('daily-transactions.create', compact(
-            'companies',
-            'breadTypes',
-            'date',
-            'existingTransactions',
-            'selectedCompanyId'
-        ));
+        \Log::info('Entering create method');
+        try {
+            $user = Auth::user();
+            \Log::info('Authenticated user:', ['user_id' => $user->id, 'role' => $user->role]);
+
+            $companies = $user->isAdmin() ? Company::all() : $user->companies;
+            \Log::info('Companies fetched:', ['count' => $companies->count()]);
+
+            $breadTypes = BreadType::where('is_active', true)->get();
+            \Log::info('Bread types fetched:', ['count' => $breadTypes->count()]);
+            
+            $date = request('date', now()->toDateString());
+            $selectedCompanyId = request('company_id');
+            
+            $existingTransactions = DailyTransaction::whereIn('company_id', $companies->pluck('id'))
+                ->whereDate('transaction_date', $date)
+                ->whereHas('breadType', function($query) {
+                    $query->where('is_active', true);
+                })
+                ->get()
+                ->groupBy('company_id');
+            
+            \Log::info('Existing transactions fetched:', [
+                'date' => $date,
+                'company_id' => $selectedCompanyId,
+                'count' => $existingTransactions->count()
+            ]);
+
+            return view('daily-transactions.create', compact(
+                'companies',
+                'breadTypes',
+                'date',
+                'existingTransactions',
+                'selectedCompanyId'
+            ));
+        } catch (\Exception $e) {
+            \Log::error('Error in create method:', [
+                'message' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            throw $e;
+        }
     }
 
 
