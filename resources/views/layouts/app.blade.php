@@ -405,20 +405,40 @@
 
     <!-- Register Service Worker -->
     <script>
-        // Immediately unregister all service workers and prevent new registrations
+        // Service Worker Registration with role-based checks
         if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.getRegistrations().then(function(registrations) {
-                for(let registration of registrations) {
-                    registration.unregister();
-                }
-            });
+            @auth
+                @if(auth()->user()->role === 'user')
+                    // Register service worker only for regular users
+                    navigator.serviceWorker.register('/sw.js')
+                        .then(registration => {
+                            console.log('ServiceWorker registered');
+                        })
+                        .catch(error => {
+                            console.log('ServiceWorker registration failed: ', error);
+                        });
+                @else
+                    // For admin and super_admin, unregister any existing service worker
+                    navigator.serviceWorker.getRegistrations().then(function(registrations) {
+                        for(let registration of registrations) {
+                            registration.unregister();
+                        }
+                    });
+                @endif
+            @endauth
         }
 
-        // Prevent future service worker registrations
-        if (window.isSecureContext) {
-            navigator.serviceWorker.register = function() {
-                return Promise.reject(new Error('Service Worker registration is disabled'));
-            };
+        // PWA navigation handling
+        if (window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true) {
+            @auth
+                @if(auth()->user()->role === 'user')
+                    // Regular users restricted to daily transactions in PWA
+                    if (!window.location.pathname.includes('daily-transactions') && 
+                        !window.location.pathname.includes('daily-report')) {
+                        window.location.href = '/daily-transactions/create';
+                    }
+                @endif
+            @endauth
         }
     </script>
 
