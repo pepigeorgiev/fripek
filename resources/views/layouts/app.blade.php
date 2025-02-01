@@ -452,11 +452,21 @@
     </script>
 
     <script>
-    // Simple PWA detection
+    // PWA navigation handling
     const isPwa = window.matchMedia('(display-mode: standalone)').matches || 
                   window.navigator.standalone === true;
 
-    // Basic navigation handler
+    // Only restrict navigation for regular users
+    @auth
+        @if(auth()->user()->role === 'user')
+            if (!window.location.pathname.includes('daily-transactions') && 
+                !window.location.pathname.includes('daily-report')) {
+                window.location.href = '/daily-transactions/create';
+            }
+        @endif
+    @endauth
+
+    // Navigation click handler
     document.addEventListener('click', function(e) {
         const link = e.target.closest('a');
         if (!link) return;
@@ -469,40 +479,9 @@
                     e.preventDefault();
                     window.location.href = '/daily-transactions/create';
                 }
-            @else
-                // Admin and Super Admin can access everything (except admin can't access users)
-                @if(auth()->user()->role === 'admin')
-                    if (link.href.includes('/users')) {
-                        e.preventDefault();
-                        return;
-                    }
-                @endif
             @endif
         @endauth
     });
-
-    // Service Worker registration
-    if ('serviceWorker' in navigator) {
-        window.addEventListener('load', function() {
-            navigator.serviceWorker.register('/sw.js')
-                .then(function(registration) {
-                    console.log('ServiceWorker registration successful');
-                })
-                .catch(function(err) {
-                    console.log('ServiceWorker registration failed: ', err);
-                });
-        });
-    }
-
-    // Initial route check for users
-    @auth
-        @if(auth()->user()->role === 'user')
-            if (!window.location.pathname.includes('daily-transactions') && 
-                !window.location.pathname.includes('daily-report')) {
-                window.location.href = '/daily-transactions/create';
-            }
-        @endif
-    @endauth
     </script>
 </body>
 </html>
