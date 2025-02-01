@@ -269,8 +269,8 @@
             </div>
 
             <nav class="mt-5">
-            @if(auth()->user()->role === 'admin-user' || auth()->user()->role === 'admin-admin')
-            <a href="{{ route('dashboard') }}" 
+                @if(auth()->user()->isAdmin())
+                    <a href="{{ route('dashboard') }}" 
                        @click="isOpen = false"
                        class="block px-4 py-2 text-gray-600 hover:bg-gray-100 {{ request()->routeIs('dashboard') ? 'bg-gray-200' : '' }}">
                         Почетна
