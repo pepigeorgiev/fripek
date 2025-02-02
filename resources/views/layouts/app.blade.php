@@ -571,5 +571,26 @@
             });
         }
     </script>
+
+    <script>
+        // Add PWA detection header to all fetch requests
+        if (window.matchMedia('(display-mode: standalone)').matches) {
+            const originalFetch = window.fetch;
+            window.fetch = function(url, options = {}) {
+                if (!options.headers) {
+                    options.headers = {};
+                }
+                options.headers['X-PWA-Request'] = 'true';
+                return originalFetch(url, options);
+            };
+        }
+
+        @auth
+            const userRole = '{{ auth()->user()->role }}';
+            console.log('Current user role:', userRole);
+            console.log('Is PWA:', window.matchMedia('(display-mode: standalone)').matches);
+            console.log('Current path:', window.location.pathname);
+        @endauth
+    </script>
 </body>
 </html>

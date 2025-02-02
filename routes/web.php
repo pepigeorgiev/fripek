@@ -245,3 +245,17 @@ Route::get('/debug-history', function() {
 Route::get('/csrf-token', function () {
     return response()->json(['token' => csrf_token()]);
 })->middleware('web');
+
+// Admin routes
+Route::middleware(['auth', 'role:admin-admin,admin_user,super_admin'])->group(function () {
+    Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
+    // Other admin routes...
+});
+
+// User routes
+Route::middleware(['auth'])->group(function () {
+    Route::get('/daily-transactions/create', [DailyTransactionController::class, 'create'])
+        ->name('daily-transactions.create');
+    Route::get('/summary', [SummaryController::class, 'index'])
+        ->name('summary.index');
+});
