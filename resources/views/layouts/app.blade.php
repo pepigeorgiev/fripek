@@ -483,91 +483,94 @@
     <!-- PWA and Navigation Script -->
     <script>
         console.log('=== Navigation Debug ===');
-        console.log('Current path:', window.location.pathname);
-        console.log('Is PWA:', window.matchMedia('(display-mode: standalone)').matches);
-
+        
         @auth
-            console.log('User role:', '{{ auth()->user()->role }}');
-        @else
-            console.log('No authenticated user');
-        @endauth
-
-        document.addEventListener('DOMContentLoaded', function() {
-            const isPWA = window.matchMedia('(display-mode: standalone)').matches;
+            const USER_ROLE = '{{ auth()->user()->role }}';
+            const BASE_URL = '{{ config('app.url') }}';
+            const IS_PWA = window.matchMedia('(display-mode: standalone)').matches;
             
-            @auth
-                const userRole = '{{ auth()->user()->role }}';
-                const baseUrl = '{{ config('app.url') }}';
+            console.log('Debug Info:', {
+                role: USER_ROLE,
+                isPWA: IS_PWA,
+                currentPath: window.location.pathname
+            });
 
-                function handleNavigation() {
-                    const currentPath = window.location.pathname;
+            function handleNavigation() {
+                const currentPath = window.location.pathname;
 
-                    if (userRole === 'user') {
-                        // Regular users are restricted to daily transactions and summary
-                        if (!currentPath.includes('/daily-transactions') && 
-                            !currentPath.includes('/summary')) {
-                            window.location.href = baseUrl + '/daily-transactions/create';
-                        }
-                    } else if ((userRole === 'admin-admin' || userRole === 'admin_user') && 
-                              (currentPath === '/' || currentPath === '')) {
-                        // Admin users default to dashboard only when at root
-                        window.location.href = baseUrl + '/dashboard';
+                // Only redirect users with 'user' role
+                if (USER_ROLE === 'user') {
+                    if (!currentPath.includes('/daily-transactions') && 
+                        !currentPath.includes('/summary')) {
+                        console.log('Redirecting user to daily transactions');
+                        window.location.href = BASE_URL + '/daily-transactions/create';
                     }
                 }
+                // Admin users only get redirected from root path
+                else if ((USER_ROLE === 'admin-admin' || USER_ROLE === 'admin_user') && 
+                         (currentPath === '/' || currentPath === '')) {
+                    console.log('Redirecting admin to dashboard');
+                    window.location.href = BASE_URL + '/dashboard';
+                }
+            }
 
-                // Initial navigation check
+            // Initial check
+            if (IS_PWA) {
                 handleNavigation();
+            }
 
-                // Handle visibility changes (app resume)
+            // Click handler
+            document.addEventListener('click', function(e) {
+                const link = e.target.closest('a');
+                if (!link) return;
+
+                console.log('Link clicked:', {
+                    href: link.href,
+                    role: USER_ROLE,
+                    isPWA: IS_PWA
+                });
+
+                // Only restrict navigation for 'user' role
+                if (USER_ROLE === 'user') {
+                    const path = new URL(link.href).pathname;
+                    if (!path.includes('/daily-transactions') && 
+                        !path.includes('/summary')) {
+                        e.preventDefault();
+                        window.location.href = BASE_URL + '/daily-transactions/create';
+                    }
+                }
+            });
+
+            // PWA specific handlers
+            if (IS_PWA) {
+                // Resume from background
                 document.addEventListener('visibilitychange', function() {
                     if (document.visibilityState === 'visible') {
                         handleNavigation();
                     }
                 });
 
-                // Handle back button
+                // Back button
                 window.addEventListener('popstate', function() {
                     handleNavigation();
                 });
 
-                // Handle focus (app resume from background)
+                // App resume
                 window.addEventListener('focus', function() {
                     handleNavigation();
                 });
-
-                // Handle click navigation
-                document.addEventListener('click', function(e) {
-                    const link = e.target.closest('a');
-                    if (!link) return;
-
-                    console.log('Link clicked:', {
-                        href: link.href,
-                        role: userRole,
-                        isPWA: isPWA
-                    });
-
-                    if (userRole === 'user') {
-                        const path = new URL(link.href).pathname;
-                        if (!path.includes('/daily-transactions') && 
-                            !path.includes('/summary')) {
-                            e.preventDefault();
-                            window.location.href = baseUrl + '/daily-transactions/create';
-                        }
-                    }
-                });
-            @endauth
-        });
+            }
+        @endauth
 
         // Service Worker Registration
         if ('serviceWorker' in navigator) {
-            window.addEventListener('load', function() {
-                navigator.serviceWorker.register('/sw.js')
-                    .then(registration => {
-                        console.log('ServiceWorker registered successfully');
-                    })
-                    .catch(error => {
-                        console.log('ServiceWorker registration failed:', error);
-                    });
+            window.addEventListener('load', async function() {
+                try {
+                    const registration = await navigator.serviceWorker.register('/sw.js');
+                    console.log('ServiceWorker registered successfully');
+                } catch (error) {
+                    console.log('ServiceWorker registration failed:', error);
+                }
             });
         }
     </script>

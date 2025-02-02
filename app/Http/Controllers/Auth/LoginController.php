@@ -3,11 +3,14 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
+use Illuminate\Foundation\Auth\AuthenticatesUsers;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
 class LoginController extends Controller
 {
+    use AuthenticatesUsers;
+
     public function showLoginForm()
     {
         return view('auth.login');
@@ -40,11 +43,22 @@ class LoginController extends Controller
         ]);
     }
 
+    protected function authenticated(Request $request, $user)
+    {
+        if ($user->role === 'user') {
+            return redirect()->route('daily-transactions.create');
+        }
+        
+        // Admin users (admin-admin, admin_user, super_admin) go to dashboard
+        return redirect()->route('dashboard');
+    }
+
     public function logout(Request $request)
     {
-        Auth::logout();
+        $this->guard()->logout();
         $request->session()->invalidate();
         $request->session()->regenerateToken();
-        return redirect('/');
+        
+        return redirect('/login');
     }
 }
