@@ -1,4 +1,4 @@
-const CACHE_NAME = 'fripek-v1';
+const CACHE_NAME = 'fripek-app-v1';
 
 self.addEventListener('install', event => {
     console.log('Service Worker installing.');
@@ -10,7 +10,10 @@ self.addEventListener('install', event => {
                     '/css/app.css',
                     '/js/app.js',
                     '/images/icon-192x192.png',
-                    '/images/icon-512x512.png'
+                    '/images/icon-512x512.png',
+                    '/dashboard',
+                    '/daily-transactions/create',
+                    '/summary'
                 ]);
             })
     );
@@ -28,11 +31,23 @@ self.addEventListener('activate', event => {
 self.addEventListener('fetch', event => {
     event.respondWith(
         caches.match(event.request)
-            .then(response => response || fetch(event.request))
+            .then(response => {
+                return response || fetch(event.request)
+                    .then(response => {
+                        if (response.status === 200) {
+                            const responseClone = response.clone();
+                            caches.open(CACHE_NAME)
+                                .then(cache => cache.put(event.request, responseClone));
+                        }
+                        return response;
+                    });
+            })
             .catch(() => {
-                if (event.request.mode === 'navigate') {
-                    return caches.match('/');
-                }
+                return new Response('Offline content not available');
             })
     );
+});
+
+self.addEventListener('navigate', event => {
+    console.log('Navigation attempt:', event.request.url);
 });
