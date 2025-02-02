@@ -215,25 +215,32 @@
         document.addEventListener('DOMContentLoaded', function() {
             // Check if running as PWA
             if (window.matchMedia('(display-mode: standalone)').matches) {
-                // Redirect to daily transactions if on home page
-                if (window.location.pathname === '/' || window.location.pathname === '/dashboard') {
-                    window.location.href = '{{ route('daily-transactions.create') }}';
-                }
+                @auth
+                    const userRole = '{{ auth()->user()->role }}';
+                    
+                    // Only redirect if user is a regular user
+                    if (userRole === 'user') {
+                        // Redirect to daily transactions if on home page
+                        if (window.location.pathname === '/' || window.location.pathname === '/dashboard') {
+                            window.location.href = 'https://fripekapp.mk/daily-transactions/create';
+                        }
 
-                // Handle when app is resumed/focused
-                document.addEventListener('visibilitychange', function() {
-                    if (document.visibilityState === 'visible' && 
-                        (window.location.pathname === '/' || window.location.pathname === '/dashboard')) {
-                        window.location.href = '{{ route('daily-transactions.create') }}';
-                    }
-                });
+                        // Handle when app is resumed/focused
+                        document.addEventListener('visibilitychange', function() {
+                            if (document.visibilityState === 'visible' && 
+                                (window.location.pathname === '/' || window.location.pathname === '/dashboard')) {
+                                window.location.href = 'https://fripekapp.mk/daily-transactions/create';
+                            }
+                        });
 
-                // Handle back button
-                window.addEventListener('popstate', function() {
-                    if (window.location.pathname === '/' || window.location.pathname === '/dashboard') {
-                        window.location.href = '{{ route('daily-transactions.create') }}';
+                        // Handle back button
+                        window.addEventListener('popstate', function() {
+                            if (window.location.pathname === '/' || window.location.pathname === '/dashboard') {
+                                window.location.href = 'https://fripekapp.mk/daily-transactions/create';
+                            }
+                        });
                     }
-                });
+                @endauth
             }
         });
 
@@ -482,92 +489,85 @@
 
     <!-- PWA and Navigation Script -->
     <script>
-        console.log('=== Navigation Debug ===');
-        console.log('Current path:', window.location.pathname);
-        console.log('Is PWA:', window.matchMedia('(display-mode: standalone)').matches);
-
-        @auth
-            console.log('User role:', '{{ auth()->user()->role }}');
-        @else
-            console.log('No authenticated user');
-        @endauth
-
-        document.addEventListener('DOMContentLoaded', function() {
-            const isPWA = window.matchMedia('(display-mode: standalone)').matches;
-            
+        // Debug information
+        const debugInfo = {
+            isPWA: window.matchMedia('(display-mode: standalone)').matches,
+            currentPath: window.location.pathname,
+            previousPath: document.referrer,
             @auth
-                const userRole = '{{ auth()->user()->role }}';
-                const baseUrl = '{{ config('app.url') }}';
-
-                function handleNavigation() {
-                    const currentPath = window.location.pathname;
-
-                    if (userRole === 'user') {
-                        // Regular users are restricted to daily transactions and summary
-                        if (!currentPath.includes('/daily-transactions') && 
-                            !currentPath.includes('/summary')) {
-                            window.location.href = baseUrl + '/daily-transactions/create';
-                        }
-                    } else if ((userRole === 'admin-admin' || userRole === 'admin_user') && 
-                              (currentPath === '/' || currentPath === '')) {
-                        // Admin users default to dashboard only when at root
-                        window.location.href = baseUrl + '/dashboard';
-                    }
-                }
-
-                // Initial navigation check
-                handleNavigation();
-
-                // Handle visibility changes (app resume)
-                document.addEventListener('visibilitychange', function() {
-                    if (document.visibilityState === 'visible') {
-                        handleNavigation();
-                    }
-                });
-
-                // Handle back button
-                window.addEventListener('popstate', function() {
-                    handleNavigation();
-                });
-
-                // Handle focus (app resume from background)
-                window.addEventListener('focus', function() {
-                    handleNavigation();
-                });
-
-                // Handle click navigation
-                document.addEventListener('click', function(e) {
-                    const link = e.target.closest('a');
-                    if (!link) return;
-
-                    console.log('Link clicked:', {
-                        href: link.href,
-                        role: userRole,
-                        isPWA: isPWA
-                    });
-
-                    if (userRole === 'user') {
-                        const path = new URL(link.href).pathname;
-                        if (!path.includes('/daily-transactions') && 
-                            !path.includes('/summary')) {
-                            e.preventDefault();
-                            window.location.href = baseUrl + '/daily-transactions/create';
-                        }
-                    }
-                });
+            userRole: '{{ auth()->user()->role }}',
             @endauth
+            timestamp: new Date().toISOString()
+        };
+
+        // Log every navigation
+        console.log('=== Navigation Debug ===', debugInfo);
+
+        // Track redirects
+        let redirectCount = 0;
+        const originalReplace = window.location.replace;
+        const originalAssign = window.location.assign;
+
+        window.location.replace = function() {
+            console.log('Redirect detected (replace):', {
+                from: window.location.pathname,
+                to: arguments[0],
+                stack: new Error().stack
+            });
+            return originalReplace.apply(this, arguments);
+        };
+
+        window.location.assign = function() {
+            console.log('Redirect detected (assign):', {
+                from: window.location.pathname,
+                to: arguments[0],
+                stack: new Error().stack
+            });
+            return originalAssign.apply(this, arguments);
+        };
+
+        // Track all click events
+        document.addEventListener('click', function(e) {
+            const link = e.target.closest('a');
+            if (link) {
+                console.log('Link clicked:', {
+                    href: link.href,
+                    text: link.textContent,
+                    timestamp: new Date().toISOString()
+                });
+            }
         });
 
-        // Service Worker Registration
+        // Track history changes
+        window.addEventListener('popstate', function(e) {
+            console.log('History changed:', {
+                state: e.state,
+                newPath: window.location.pathname,
+                timestamp: new Date().toISOString()
+            });
+        });
+
+        // Log when PWA is launched
+        window.addEventListener('load', function() {
+            console.log('App loaded:', {
+                standalone: window.matchMedia('(display-mode: standalone)').matches,
+                @auth
+                userRole: '{{ auth()->user()->role }}',
+                @endauth
+                path: window.location.pathname
+            });
+        });
+
+        // Track service worker events
         if ('serviceWorker' in navigator) {
-            window.addEventListener('load', function() {
-                navigator.serviceWorker.register('/sw.js')
-                    .then(registration => {
-                        console.log('ServiceWorker registered successfully');
-                    })
-                    .catch(error => {
-                        console.log('ServiceWorker registration failed:', error);
-                    });
+            navigator.serviceWorker.ready.then(registration => {
+                console.log('Service Worker ready:', {
+                    scope: registration.scope
+                });
+            });
+
+            navigator.serviceWorker.addEventListener('message', function(event) {
+                console.log('Service Worker message:', event.data);
             });
         }
     </script>

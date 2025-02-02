@@ -14,6 +14,7 @@ use App\Http\Controllers\UsersController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\TransactionHistoryController;
 use App\Http\Controllers\InstallController;
+use App\Http\Controllers\LogController;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -245,3 +246,5 @@ Route::get('/debug-history', function() {
 Route::get('/csrf-token', function () {
     return response()->json(['token' => csrf_token()]);
 })->middleware('web');
+
+Route::post('/pwa-log', [LogController::class, 'store'])->name('pwa.log');
