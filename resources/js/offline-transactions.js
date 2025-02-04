@@ -8,23 +8,23 @@ document.addEventListener('DOMContentLoaded', () => {
         transactionForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             
-            const formData = new FormData(transactionForm);
-            const transaction = {
-                company_id: formData.get('company_id'),
-                transaction_date: formData.get('transaction_date'),
-                bread_type_id: formData.get('bread_type_id'),
-                delivered: formData.get('delivered'),
-                returned: formData.get('returned'),
-                timestamp: new Date().toISOString()
-            };
-
             if (!navigator.onLine) {
-                // Store transaction when offline
+                const formData = new FormData(transactionForm);
+                const transaction = {
+                    company_id: formData.get('company_id'),
+                    transaction_date: formData.get('transaction_date'),
+                    bread_type_id: formData.get('bread_type_id'),
+                    delivered: formData.get('delivered'),
+                    returned: formData.get('returned'),
+                    timestamp: new Date().toISOString()
+                };
+
+                // Store transaction
                 const offlineTransactions = JSON.parse(localStorage.getItem('offlineTransactions') || '[]');
                 offlineTransactions.push(transaction);
                 localStorage.setItem('offlineTransactions', JSON.stringify(offlineTransactions));
-                
-                // Show offline save message that needs to be manually closed
+
+                // Show confirmation message
                 const message = document.createElement('div');
                 message.className = 'fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50';
                 message.innerHTML = `
@@ -36,15 +36,25 @@ document.addEventListener('DOMContentLoaded', () => {
                 
                 document.body.appendChild(message);
                 
-                // Close button handler
                 message.querySelector('button').addEventListener('click', () => {
                     message.remove();
+                    transactionForm.reset(); // Clear form after closing message
                 });
                 
                 return;
             }
 
+            // Online submission
             try {
+                const formData = new FormData(transactionForm);
+                const transaction = {
+                    company_id: formData.get('company_id'),
+                    transaction_date: formData.get('transaction_date'),
+                    bread_type_id: formData.get('bread_type_id'),
+                    delivered: formData.get('delivered'),
+                    returned: formData.get('returned')
+                };
+
                 const response = await fetch('/daily-transactions', {
                     method: 'POST',
                     headers: {

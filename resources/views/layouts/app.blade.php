@@ -394,15 +394,14 @@
 
     <!-- Replace the offline handling script -->
     <script>
+        let hasShownInitialOfflineMessage = false;
+
         function updateOnlineStatus() {
             const indicator = document.getElementById('offline-indicator');
+            
             if (!navigator.onLine) {
                 indicator.classList.remove('hidden');
-            } else {
-                indicator.classList.add('hidden');
-                // When coming back online, show sync message
-                const offlineTransactions = JSON.parse(localStorage.getItem('offlineTransactions') || '[]');
-                if (offlineTransactions.length > 0) {
+                if (!hasShownInitialOfflineMessage) {
                     const message = document.createElement('div');
                     message.className = 'fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50';
                     message.innerHTML = `
@@ -414,12 +413,19 @@
                     
                     document.body.appendChild(message);
                     
-                    // When closing the message, sync transactions
-                    message.querySelector('button').addEventListener('click', async () => {
+                    message.querySelector('button').addEventListener('click', () => {
                         message.remove();
-                        await syncOfflineTransactions();
                     });
+                    
+                    hasShownInitialOfflineMessage = true;
                 }
+            } else {
+                indicator.classList.add('hidden');
+                const offlineTransactions = JSON.parse(localStorage.getItem('offlineTransactions') || '[]');
+                if (offlineTransactions.length > 0) {
+                    syncOfflineTransactions();
+                }
+                hasShownInitialOfflineMessage = false;
             }
         }
 
@@ -427,24 +433,39 @@
             const transactions = JSON.parse(localStorage.getItem('offlineTransactions') || '[]');
             if (transactions.length === 0) return;
 
-            for (const transaction of transactions) {
-                try {
-                    const response = await fetch('/daily-transactions', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
-                        },
-                        body: JSON.stringify(transaction)
-                    });
+            const message = document.createElement('div');
+            message.className = 'fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50';
+            message.innerHTML = `
+                <div class="bg-white p-6 rounded-lg shadow-xl max-w-sm mx-4">
+                    <p class="text-gray-800 mb-4">Трансакциите ќе бидат синхронизирани.</p>
+                    <button class="text-blue-500 px-4 py-2 rounded w-full">Close</button>
+                </div>
+            `;
+            
+            document.body.appendChild(message);
+            
+            message.querySelector('button').addEventListener('click', async () => {
+                message.remove();
+                
+                for (const transaction of transactions) {
+                    try {
+                        const response = await fetch('/daily-transactions', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                            },
+                            body: JSON.stringify(transaction)
+                        });
 
-                    if (response.ok) {
-                        localStorage.removeItem('offlineTransactions');
+                        if (response.ok) {
+                            localStorage.removeItem('offlineTransactions');
+                        }
+                    } catch (error) {
+                        console.error('Sync error:', error);
                     }
-                } catch (error) {
-                    console.error('Sync error:', error);
                 }
-            }
+            });
         }
 
         // Listen for online/offline events
