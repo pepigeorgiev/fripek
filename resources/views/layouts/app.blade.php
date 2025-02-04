@@ -387,27 +387,82 @@
 
     </div>
 
-    <!-- Add this to your layout -->
-    <div id="offline-indicator" class="hidden fixed top-0 w-full bg-yellow-500 text-white p-2 text-center">
-        Вие сте офлајн. Промените ќе бидат зачувани кога ќе бидете онлајн.
+    <!-- Find and replace the offline indicator div near the end of the body -->
+    <div id="offline-indicator" class="hidden fixed top-0 left-0 right-0 bg-red-500 text-white p-4 text-center z-50">
+        Вие сте офлајн
     </div>
 
+    <!-- Find and replace the offline status script -->
     <script>
+        // Offline handling
         function updateOnlineStatus() {
             const indicator = document.getElementById('offline-indicator');
             if (!navigator.onLine) {
                 indicator.classList.remove('hidden');
             } else {
                 indicator.classList.add('hidden');
-                // Trigger sync when back online
-                navigator.serviceWorker.ready.then(registration => {
-                    registration.sync.register('sync-transactions');
-                });
+                // Check for pending transactions when back online
+                if (localStorage.getItem('offlineTransactions')) {
+                    const transactions = JSON.parse(localStorage.getItem('offlineTransactions'));
+                    if (transactions && transactions.length > 0) {
+                        showMessage('Синхронизација на офлајн трансакции...', 'info');
+                        syncOfflineTransactions();
+                    }
+                }
             }
         }
 
+        // Show message function
+        function showMessage(text, type = 'info') {
+            const message = document.createElement('div');
+            let bgColor = 'bg-blue-100 border-blue-500 text-blue-700';
+            
+            if (type === 'success') bgColor = 'bg-green-100 border-green-500 text-green-700';
+            if (type === 'error') bgColor = 'bg-red-100 border-red-500 text-red-700';
+            
+            message.className = `fixed bottom-4 right-4 ${bgColor} border-l-4 p-4 rounded shadow-lg z-50`;
+            message.textContent = text;
+            document.body.appendChild(message);
+            
+            setTimeout(() => message.remove(), 3000);
+        }
+
+        // Sync offline transactions
+        async function syncOfflineTransactions() {
+            const transactions = JSON.parse(localStorage.getItem('offlineTransactions') || '[]');
+            let successCount = 0;
+
+            for (const transaction of transactions) {
+                try {
+                    const response = await fetch('/daily-transactions', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                        },
+                        body: JSON.stringify(transaction)
+                    });
+
+                    if (response.ok) {
+                        successCount++;
+                    }
+                } catch (error) {
+                    console.error('Sync error:', error);
+                }
+            }
+
+            if (successCount > 0) {
+                localStorage.removeItem('offlineTransactions');
+                showMessage(`${successCount} трансакции успешно синхронизирани`, 'success');
+            }
+        }
+
+        // Listen for online/offline events
         window.addEventListener('online', updateOnlineStatus);
         window.addEventListener('offline', updateOnlineStatus);
+        
+        // Initial check
+        document.addEventListener('DOMContentLoaded', updateOnlineStatus);
     </script>
 
     <!-- Register Service Worker -->
