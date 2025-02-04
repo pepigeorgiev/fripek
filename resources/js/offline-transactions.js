@@ -12,12 +12,19 @@ document.addEventListener('DOMContentLoaded', () => {
     document.body.prepend(offlineIndicator);
 
     // Monitor online/offline status
-    window.addEventListener('online', handleOnlineStatus);
-    window.addEventListener('offline', handleOfflineStatus);
+    window.addEventListener('online', () => {
+        offlineIndicator.style.display = 'none';
+        // Automatically sync when coming online
+        syncOfflineTransactions();
+    });
+    
+    window.addEventListener('offline', () => {
+        offlineIndicator.style.display = 'block';
+    });
     
     // Check initial status
     if (!navigator.onLine) {
-        handleOfflineStatus();
+        offlineIndicator.style.display = 'block';
     }
 
     if (transactionForm) {
@@ -36,27 +43,23 @@ document.addEventListener('DOMContentLoaded', () => {
 
             try {
                 if (navigator.onLine) {
+                    // If online, submit directly
                     await submitTransaction(transaction);
+                    showSuccessMessage('Трансакцијата е успешно зачувана');
+                    transactionForm.reset();
                 } else {
+                    // If offline, store locally
                     await storeOfflineTransaction(transaction);
-                    showOfflineNotification();
+                    showOfflineMessage();
+                    transactionForm.reset();
                 }
             } catch (error) {
                 console.error('Error:', error);
-                showErrorNotification();
+                showErrorMessage('Се случи грешка. Ве молиме обидете се повторно.');
             }
         });
     }
 });
-
-function handleOfflineStatus() {
-    document.getElementById('offline-indicator').style.display = 'block';
-}
-
-function handleOnlineStatus() {
-    document.getElementById('offline-indicator').style.display = 'none';
-    syncOfflineTransactions();
-}
 
 async function storeOfflineTransaction(transaction) {
     const offlineTransactions = JSON.parse(localStorage.getItem(OFFLINE_STORE) || '[]');
@@ -69,25 +72,24 @@ async function syncOfflineTransactions() {
     
     if (offlineTransactions.length === 0) return;
 
-    const successfulSyncs = [];
-    
+    let successCount = 0;
+    const failedTransactions = [];
+
     for (const transaction of offlineTransactions) {
         try {
             await submitTransaction(transaction);
-            successfulSyncs.push(transaction);
+            successCount++;
         } catch (error) {
             console.error('Sync error:', error);
+            failedTransactions.push(transaction);
         }
     }
 
-    // Remove successfully synced transactions
-    if (successfulSyncs.length > 0) {
-        const remaining = offlineTransactions.filter(
-            t => !successfulSyncs.find(s => s.timestamp === t.timestamp)
-        );
-        localStorage.setItem(OFFLINE_STORE, JSON.stringify(remaining));
-        
-        showSuccessNotification(successfulSyncs.length);
+    // Update localStorage with only failed transactions
+    localStorage.setItem(OFFLINE_STORE, JSON.stringify(failedTransactions));
+
+    if (successCount > 0) {
+        showSuccessMessage(`${successCount} трансакции успешно синхронизирани`);
     }
 }
 
@@ -108,38 +110,26 @@ async function submitTransaction(transaction) {
     return response.json();
 }
 
-function showOfflineNotification() {
-    const notification = document.createElement('div');
-    notification.className = 'notification offline';
-    notification.innerHTML = `
-        <div class="bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 p-4 mb-4">
-            <p>Вие сте офлајн. Трансакцијата ќе биде зачувана и синхронизирана кога ќе бидете онлајн.</p>
-        </div>
-    `;
-    document.querySelector('.container').prepend(notification);
-    setTimeout(() => notification.remove(), 5000);
+function showOfflineMessage() {
+    const message = document.createElement('div');
+    message.className = 'fixed top-16 left-0 right-0 bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 p-4 z-50';
+    message.innerHTML = 'Трансакцијата е зачувана локално и ќе биде синхронизирана автоматски кога ќе бидете онлајн';
+    document.body.appendChild(message);
+    setTimeout(() => message.remove(), 3000);
 }
 
-function showSuccessNotification(count) {
-    const notification = document.createElement('div');
-    notification.className = 'notification success';
-    notification.innerHTML = `
-        <div class="bg-green-100 border-l-4 border-green-500 text-green-700 p-4 mb-4">
-            <p>Успешно синхронизирани ${count} трансакции.</p>
-        </div>
-    `;
-    document.querySelector('.container').prepend(notification);
-    setTimeout(() => notification.remove(), 5000);
+function showSuccessMessage(text) {
+    const message = document.createElement('div');
+    message.className = 'fixed top-16 left-0 right-0 bg-green-100 border-l-4 border-green-500 text-green-700 p-4 z-50';
+    message.innerHTML = text;
+    document.body.appendChild(message);
+    setTimeout(() => message.remove(), 3000);
 }
 
-function showErrorNotification() {
-    const notification = document.createElement('div');
-    notification.className = 'notification error';
-    notification.innerHTML = `
-        <div class="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-4">
-            <p>Се случи грешка. Ве молиме обидете се повторно.</p>
-        </div>
-    `;
-    document.querySelector('.container').prepend(notification);
-    setTimeout(() => notification.remove(), 5000);
+function showErrorMessage(text) {
+    const message = document.createElement('div');
+    message.className = 'fixed top-16 left-0 right-0 bg-red-100 border-l-4 border-red-500 text-red-700 p-4 z-50';
+    message.innerHTML = text;
+    document.body.appendChild(message);
+    setTimeout(() => message.remove(), 3000);
 } 
