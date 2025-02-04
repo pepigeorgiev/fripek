@@ -400,39 +400,50 @@
                 indicator.classList.remove('hidden');
             } else {
                 indicator.classList.add('hidden');
-                checkAndSyncTransactions();
+                // When coming back online, show sync message
+                const offlineTransactions = JSON.parse(localStorage.getItem('offlineTransactions') || '[]');
+                if (offlineTransactions.length > 0) {
+                    const message = document.createElement('div');
+                    message.className = 'fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50';
+                    message.innerHTML = `
+                        <div class="bg-white p-6 rounded-lg shadow-xl max-w-sm mx-4">
+                            <p class="text-gray-800 mb-4">Нема интернет конекција. Трансакциите ќе бидат зачувани локално.</p>
+                            <button class="text-blue-500 px-4 py-2 rounded w-full">Close</button>
+                        </div>
+                    `;
+                    
+                    document.body.appendChild(message);
+                    
+                    // When closing the message, sync transactions
+                    message.querySelector('button').addEventListener('click', async () => {
+                        message.remove();
+                        await syncOfflineTransactions();
+                    });
+                }
             }
         }
 
-        async function checkAndSyncTransactions() {
+        async function syncOfflineTransactions() {
             const transactions = JSON.parse(localStorage.getItem('offlineTransactions') || '[]');
-            if (transactions.length > 0) {
-                // Show sync message
-                const message = document.createElement('div');
-                message.className = 'fixed bottom-4 right-4 bg-green-100 border-l-4 border-green-500 text-green-700 p-4 rounded shadow-lg z-50';
-                message.textContent = 'Трансакциите се успешно синхронизирани';
-                document.body.appendChild(message);
-                
-                for (const transaction of transactions) {
-                    try {
-                        const response = await fetch('/daily-transactions', {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json',
-                                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
-                            },
-                            body: JSON.stringify(transaction)
-                        });
+            if (transactions.length === 0) return;
 
-                        if (response.ok) {
-                            localStorage.removeItem('offlineTransactions');
-                        }
-                    } catch (error) {
-                        console.error('Sync error:', error);
+            for (const transaction of transactions) {
+                try {
+                    const response = await fetch('/daily-transactions', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                        },
+                        body: JSON.stringify(transaction)
+                    });
+
+                    if (response.ok) {
+                        localStorage.removeItem('offlineTransactions');
                     }
+                } catch (error) {
+                    console.error('Sync error:', error);
                 }
-                
-                setTimeout(() => message.remove(), 3000);
             }
         }
 

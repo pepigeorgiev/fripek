@@ -29,8 +29,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 message.className = 'fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50';
                 message.innerHTML = `
                     <div class="bg-white p-6 rounded-lg shadow-xl max-w-sm mx-4">
-                        <p class="text-gray-800 mb-4">Трансакцијата ќе биде зачувана кога ќе бидете онлајн.</p>
-                        <button class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 w-full">Во ред</button>
+                        <p class="text-gray-800 mb-4">Нема интернет конекција. Трансакциите ќе бидат зачувани локално.</p>
+                        <button class="text-blue-500 px-4 py-2 rounded w-full">Close</button>
                     </div>
                 `;
                 
@@ -39,8 +39,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 // Close button handler
                 message.querySelector('button').addEventListener('click', () => {
                     message.remove();
-                    // Clear form after closing message
-                    transactionForm.reset();
                 });
                 
                 return;
@@ -57,11 +55,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
 
                 if (response.ok) {
-                    const message = document.createElement('div');
-                    message.className = 'fixed bottom-4 right-4 bg-green-100 border-l-4 border-green-500 text-green-700 p-4 rounded shadow-lg z-50';
-                    message.textContent = 'Трансакцијата е успешно зачувана';
-                    document.body.appendChild(message);
-                    setTimeout(() => message.remove(), 3000);
                     transactionForm.reset();
                 }
             } catch (error) {
