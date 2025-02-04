@@ -394,7 +394,6 @@
 
     <!-- Replace the offline handling script -->
     <script>
-        // Only show offline indicator, no popup on initial load
         function updateOnlineStatus() {
             const indicator = document.getElementById('offline-indicator');
             if (!navigator.onLine) {
@@ -405,10 +404,15 @@
             }
         }
 
-        // Check and sync stored transactions when online
         async function checkAndSyncTransactions() {
             const transactions = JSON.parse(localStorage.getItem('offlineTransactions') || '[]');
             if (transactions.length > 0) {
+                // Show sync message
+                const message = document.createElement('div');
+                message.className = 'fixed bottom-4 right-4 bg-green-100 border-l-4 border-green-500 text-green-700 p-4 rounded shadow-lg z-50';
+                message.textContent = 'Трансакциите се успешно синхронизирани';
+                document.body.appendChild(message);
+                
                 for (const transaction of transactions) {
                     try {
                         const response = await fetch('/daily-transactions', {
@@ -421,21 +425,14 @@
                         });
 
                         if (response.ok) {
-                            // Remove synced transaction from storage
-                            const remaining = transactions.filter(t => t.timestamp !== transaction.timestamp);
-                            localStorage.setItem('offlineTransactions', JSON.stringify(remaining));
-                            
-                            // Show success message only if transaction was synced
-                            const message = document.createElement('div');
-                            message.className = 'fixed bottom-4 right-4 bg-green-100 border-l-4 border-green-500 text-green-700 p-4 rounded shadow-lg z-50';
-                            message.textContent = 'Трансакцијата е успешно синхронизирана';
-                            document.body.appendChild(message);
-                            setTimeout(() => message.remove(), 3000);
+                            localStorage.removeItem('offlineTransactions');
                         }
                     } catch (error) {
                         console.error('Sync error:', error);
                     }
                 }
+                
+                setTimeout(() => message.remove(), 3000);
             }
         }
 
@@ -443,7 +440,7 @@
         window.addEventListener('online', updateOnlineStatus);
         window.addEventListener('offline', updateOnlineStatus);
         
-        // Initial check - only show indicator if offline
+        // Initial check
         document.addEventListener('DOMContentLoaded', updateOnlineStatus);
     </script>
 
