@@ -1,9 +1,6 @@
 <?php
 
 
-
-
-
 namespace App\Exports;
 
 use Maatwebsite\Excel\Concerns\FromCollection;
@@ -142,135 +139,142 @@ class MonthlySummaryExport implements FromCollection, WithHeadings, WithStyles
 
     public function styles(Worksheet $sheet)
     {
-        $lastColumn = $sheet->getHighestColumn();
-        $lastRow = $sheet->getHighestRow();
-    
-        // Set column widths even narrower
-        foreach (range('A', $lastColumn) as $col) {
-            if ($col === 'A') {
-                // Name column
-                $sheet->getColumnDimension($col)->setWidth(18);
-            } elseif ($col === 'B' || $col === $lastColumn) {
-                // Price columns
-                $sheet->getColumnDimension($col)->setWidth(8);
-            } else {
-                // Date columns
-                $sheet->getColumnDimension($col)->setWidth(4);
+        try {
+            $lastColumn = $sheet->getHighestColumn();
+            $lastRow = $sheet->getHighestRow();
+
+            // Ensure the range is valid
+            $columns = range('A', $lastColumn);
+            foreach ($columns as $col) {
+                if ($col === 'A') {
+                    $sheet->getColumnDimension($col)->setWidth(18);
+                } elseif ($col === 'B' || $col === $lastColumn) {
+                    $sheet->getColumnDimension($col)->setWidth(8);
+                } else {
+                    $sheet->getColumnDimension($col)->setWidth(4);
+                }
             }
-        }
-    
-        // Style the company name
-        $sheet->getStyle('A1')->applyFromArray([
-            'font' => [
-                'bold' => true,
-                'size' => 14
-            ],
-            'alignment' => [
-                'horizontal' => Alignment::HORIZONTAL_LEFT
-            ]
-        ]);
-        $sheet->mergeCells("A1:{$lastColumn}1");
-    
-        // Style the date range
-        $sheet->getStyle('A2')->applyFromArray([
-            'font' => [
-                'bold' => true,
-                'size' => 12
-            ],
-            'alignment' => [
-                'horizontal' => Alignment::HORIZONTAL_LEFT
-            ]
-        ]);
-        $sheet->mergeCells("A2:{$lastColumn}2");
-    
-        // Define border style
-        $borderStyle = [
-            'borders' => [
-                'allBorders' => [
-                    'borderStyle' => Border::BORDER_THIN,
-                    'color' => ['rgb' => '000000'],
+
+            // Style the company name
+            $sheet->getStyle('A1')->applyFromArray([
+                'font' => [
+                    'bold' => true,
+                    'size' => 14
                 ],
-            ],
-        ];
-    
-        // Header styles (4th row)
-        $sheet->getStyle("A4:{$lastColumn}4")->applyFromArray([
-            'font' => [
-                'bold' => true,
-                'size' => 10
-            ],
-            'fill' => [
-                'fillType' => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID,
-                'startColor' => [
-                    'rgb' => 'E0E0E0',
+                'alignment' => [
+                    'horizontal' => Alignment::HORIZONTAL_LEFT
+                ]
+            ]);
+            $sheet->mergeCells("A1:{$lastColumn}1");
+
+            // Style the date range
+            $sheet->getStyle('A2')->applyFromArray([
+                'font' => [
+                    'bold' => true,
+                    'size' => 12
                 ],
-            ],
-            'alignment' => [
-                'horizontal' => Alignment::HORIZONTAL_CENTER,
-                'vertical' => Alignment::VERTICAL_CENTER,
-            ],
-        ]);
-    
-        // Content styles
-        $contentRange = "A5:{$lastColumn}{$lastRow}";
-        $sheet->getStyle($contentRange)->applyFromArray([
-            'font' => [
-                'size' => 10
-            ],
-            'alignment' => [
-                'horizontal' => Alignment::HORIZONTAL_CENTER,
-                'vertical' => Alignment::VERTICAL_CENTER,
-            ],
-        ]);
-    
-        // First column left alignment
-        $sheet->getStyle("A4:A{$lastRow}")
-            ->getAlignment()
-            ->setHorizontal(Alignment::HORIZONTAL_LEFT);
-    
-        // Price columns right alignment
-        $priceColumns = ['B', $lastColumn];
-        foreach ($priceColumns as $col) {
-            $sheet->getStyle("{$col}4:{$col}{$lastRow}")
+                'alignment' => [
+                    'horizontal' => Alignment::HORIZONTAL_LEFT
+                ]
+            ]);
+            $sheet->mergeCells("A2:{$lastColumn}2");
+
+            // Define border style
+            $borderStyle = [
+                'borders' => [
+                    'allBorders' => [
+                        'borderStyle' => Border::BORDER_THIN,
+                        'color' => ['rgb' => '000000'],
+                    ],
+                ],
+            ];
+
+            // Header styles (4th row)
+            $sheet->getStyle("A4:{$lastColumn}4")->applyFromArray([
+                'font' => [
+                    'bold' => true,
+                    'size' => 10
+                ],
+                'fill' => [
+                    'fillType' => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID,
+                    'startColor' => [
+                        'rgb' => 'E0E0E0',
+                    ],
+                ],
+                'alignment' => [
+                    'horizontal' => Alignment::HORIZONTAL_CENTER,
+                    'vertical' => Alignment::VERTICAL_CENTER,
+                ],
+            ]);
+
+            // Content styles
+            $contentRange = "A5:{$lastColumn}{$lastRow}";
+            $sheet->getStyle($contentRange)->applyFromArray([
+                'font' => [
+                    'size' => 10
+                ],
+                'alignment' => [
+                    'horizontal' => Alignment::HORIZONTAL_CENTER,
+                    'vertical' => Alignment::VERTICAL_CENTER,
+                ],
+            ]);
+
+            // First column left alignment
+            $sheet->getStyle("A4:A{$lastRow}")
                 ->getAlignment()
-                ->setHorizontal(Alignment::HORIZONTAL_RIGHT);
-            
-            $sheet->getStyle("{$col}5:{$col}{$lastRow}")
-                ->getNumberFormat()
-                ->setFormatCode('#,##0.00');
-        }
-    
-        // Total row styles
-        $sheet->getStyle("A{$lastRow}:{$lastColumn}{$lastRow}")->applyFromArray([
-            'font' => [
-                'bold' => true,
-            ],
-            'fill' => [
-                'fillType' => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID,
-                'startColor' => [
-                    'rgb' => 'F0F0F0',
+                ->setHorizontal(Alignment::HORIZONTAL_LEFT);
+
+            // Price columns right alignment
+            $priceColumns = ['B', $lastColumn];
+            foreach ($priceColumns as $col) {
+                $sheet->getStyle("{$col}4:{$col}{$lastRow}")
+                    ->getAlignment()
+                    ->setHorizontal(Alignment::HORIZONTAL_RIGHT);
+                
+                $sheet->getStyle("{$col}5:{$col}{$lastRow}")
+                    ->getNumberFormat()
+                    ->setFormatCode('#,##0.00');
+            }
+
+            // Total row styles
+            $sheet->getStyle("A{$lastRow}:{$lastColumn}{$lastRow}")->applyFromArray([
+                'font' => [
+                    'bold' => true,
                 ],
-            ],
-        ]);
-    
-        // Apply borders to the data table only (excluding company name and date range)
-        $sheet->getStyle("A4:{$lastColumn}{$lastRow}")->applyFromArray($borderStyle);
-    
-        // Set print layout
-        $sheet->getPageSetup()
-            ->setOrientation(\PhpOffice\PhpSpreadsheet\Worksheet\PageSetup::ORIENTATION_PORTRAIT)
-            ->setPaperSize(\PhpOffice\PhpSpreadsheet\Worksheet\PageSetup::PAPERSIZE_A4)
-            ->setFitToPage(true)
-            ->setFitToWidth(1)
-            ->setFitToHeight(0);
-    
-        // Set print margins
-        $sheet->getPageMargins()
-            ->setTop(0.5)
-            ->setRight(0.5)
-            ->setLeft(0.5)
-            ->setBottom(0.5);
-    
+                'fill' => [
+                    'fillType' => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID,
+                    'startColor' => [
+                        'rgb' => 'F0F0F0',
+                    ],
+                ],
+            ]);
+
+            // Apply borders to the data table only (excluding company name and date range)
+            $sheet->getStyle("A4:{$lastColumn}{$lastRow}")->applyFromArray($borderStyle);
+
+            // Set print layout
+            $sheet->getPageSetup()
+                ->setOrientation(\PhpOffice\PhpSpreadsheet\Worksheet\PageSetup::ORIENTATION_PORTRAIT)
+                ->setPaperSize(\PhpOffice\PhpSpreadsheet\Worksheet\PageSetup::PAPERSIZE_A4)
+                ->setFitToPage(true)
+                ->setFitToWidth(1)
+                ->setFitToHeight(0);
+
+            // Set print margins
+            $sheet->getPageMargins()
+                ->setTop(0.5)
+                ->setRight(0.5)
+                ->setLeft(0.5)
+                ->setBottom(0.5);
+
+        } catch (\Exception $e) {
+            \Log::error('Error in styles method:', [
+                'message' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            throw $e; // Re-throw the exception to handle it elsewhere if needed
+        }
+
         return [
             4 => ['font' => ['bold' => true]],
         ];

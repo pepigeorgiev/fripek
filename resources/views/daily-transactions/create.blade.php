@@ -271,9 +271,7 @@ $('#transactionForm').on('submit', function(e) {
                     '&date=' + selectedDate;
             }, 1000);
         },
-        // error: function(xhr) {
-        //     alert('Грешка при зачувување. Обидете се повторно.');
-        // },
+       
         complete: function() {
             $form.find('button[type="submit"]').prop('disabled', false);
         }
