@@ -233,6 +233,7 @@ function syncOfflineTransactions() {
 // Form submission handling
 $('#transactionForm').on('submit', function(e) {
     e.preventDefault();
+    console.log('Form submitted');
     
     const selectedCompanyId = $('#company_id').val();
     const selectedDate = $('#transaction_date').val();
@@ -280,7 +281,11 @@ $('#transactionForm').on('submit', function(e) {
 });
 
 // Listen for online/offline events
-window.addEventListener('online', syncOfflineTransactions);
+window.addEventListener('online', function() {
+    console.log('Online event triggered');
+    syncOfflineTransactions();
+});
+
 window.addEventListener('offline', function() {
     console.log('Offline event triggered');
     alert('Нема интернет конекција. Трансакциите ќе бидат зачувани локално.');
@@ -288,6 +293,7 @@ window.addEventListener('offline', function() {
 
 // Check for offline transactions on page load
 $(document).ready(function() {
+    console.log('Document ready');
     if (isOnline()) {
         syncOfflineTransactions();
     }
