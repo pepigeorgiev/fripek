@@ -22,11 +22,13 @@
                                 <li>Брз пристап до извештаи</li>
                             </ul>
 
-                            <button id="pwa-install" 
-                                    class="mt-6 px-6 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors duration-200">
-                                <i class="fas fa-download mr-2"></i>
-                                Инсталирај апликација
-                            </button>
+                            <div class="flex justify-center">
+                                <button id="pwa-install" 
+                                        class="mt-6 px-6 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors duration-200">
+                                    <i class="fas fa-download mr-2"></i>
+                                    Инсталирај апликација
+                                </button>
+                            </div>
 
                             <div id="install-status" class="mt-4 text-sm text-gray-600"></div>
 
@@ -46,12 +48,9 @@
 
         window.addEventListener('beforeinstallprompt', (e) => {
             console.log('Install prompt detected');
-            // Prevent Chrome 67 and earlier from automatically showing the prompt
             e.preventDefault();
-            // Stash the event so it can be triggered later
             deferredPrompt = e;
             
-            // Show the install button
             const installButton = document.getElementById('pwa-install');
             const statusDiv = document.getElementById('install-status');
             
@@ -72,26 +71,22 @@
             }
 
             try {
-                // Show the install prompt
                 await deferredPrompt.prompt();
-                // Wait for the user to respond to the prompt
                 const choiceResult = await deferredPrompt.userChoice;
                 
                 if (choiceResult.outcome === 'accepted') {
                     statusDiv.textContent = 'Апликацијата се инсталира...';
                 } else {
                     statusDiv.textContent = 'Инсталацијата е откажана';
+                    deferredPrompt = null; // Reset to allow retry
                 }
-                
-                // Clear the deferredPrompt so it can be garbage collected
-                deferredPrompt = null;
             } catch (error) {
                 console.error('Installation error:', error);
                 statusDiv.textContent = 'Грешка при инсталација. Обидете се повторно.';
+                deferredPrompt = null; // Reset to allow retry
             }
         });
 
-        // Check if already installed
         if (window.matchMedia('(display-mode: standalone)').matches) {
             const statusDiv = document.getElementById('install-status');
             const installButton = document.getElementById('pwa-install');
