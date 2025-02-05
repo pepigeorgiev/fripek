@@ -1,72 +1,115 @@
 // Store for offline transactions
-const OFFLINE_STORAGE_KEY = 'offline_transactions';
+const OFFLINE_STORE = 'offlineTransactions';
 
-function isOnline() {
-    return navigator.onLine;
-}
+document.addEventListener('DOMContentLoaded', () => {
+    const transactionForm = document.getElementById('transaction-form');
 
-function storeOfflineTransaction(formData) {
-    const transactions = JSON.parse(localStorage.getItem(OFFLINE_STORAGE_KEY) || '[]');
-    transactions.push({
-        data: Object.fromEntries(formData),
-        timestamp: new Date().getTime()
-    });
-    localStorage.setItem(OFFLINE_STORAGE_KEY, JSON.stringify(transactions));
-}
+    if (transactionForm) {
+        transactionForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            if (!navigator.onLine) {
+                const formData = new FormData(transactionForm);
+                const transaction = {
+                    company_id: formData.get('company_id'),
+                    transaction_date: formData.get('transaction_date'),
+                    bread_type_id: formData.get('bread_type_id'),
+                    delivered: formData.get('delivered'),
+                    returned: formData.get('returned'),
+                    timestamp: new Date().toISOString()
+                };
 
-function syncOfflineTransactions() {
-    const transactions = JSON.parse(localStorage.getItem(OFFLINE_STORAGE_KEY) || '[]');
-    if (transactions.length === 0) return;
+                // Store transaction
+                const offlineTransactions = JSON.parse(localStorage.getItem('offlineTransactions') || '[]');
+                offlineTransactions.push(transaction);
+                localStorage.setItem('offlineTransactions', JSON.stringify(offlineTransactions));
 
-    transactions.forEach((transaction, index) => {
-        const formData = new FormData();
-        Object.entries(transaction.data).forEach(([key, value]) => {
-            formData.append(key, value);
-        });
+                // Show confirmation message
+                const message = document.createElement('div');
+                message.className = 'fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50';
+                message.innerHTML = `
+                    <div class="bg-white p-6 rounded-lg shadow-xl max-w-sm mx-4">
+                        <p class="text-gray-800 mb-4">Нема интернет конекција. Трансакциите ќе бидат зачувани локално.</p>
+                        <button class="text-blue-500 px-4 py-2 rounded w-full">Close</button>
+                    </div>
+                `;
+                
+                document.body.appendChild(message);
+                
+                message.querySelector('button').addEventListener('click', () => {
+                    message.remove();
+                    transactionForm.reset(); // Clear form after closing message
+                });
+                
+                return;
+            }
 
-        $.ajax({
-            url: '/daily-transactions/store',
-            type: 'POST',
-            data: formData,
-            processData: false,
-            contentType: false,
-            headers: {
-                'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
-            },
-            success: function() {
-                transactions.splice(index, 1);
-                localStorage.setItem(OFFLINE_STORAGE_KEY, JSON.stringify(transactions));
-                alert('Офлајн трансакцијата е успешно синхронизирана.');
-            },
-            error: function() {
-                console.error('Failed to sync transaction:', transaction);
+            // Online submission
+            try {
+                const formData = new FormData(transactionForm);
+                const transaction = {
+                    company_id: formData.get('company_id'),
+                    transaction_date: formData.get('transaction_date'),
+                    bread_type_id: formData.get('bread_type_id'),
+                    delivered: formData.get('delivered'),
+                    returned: formData.get('returned')
+                };
+
+                const response = await fetch('/daily-transactions', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                    },
+                    body: JSON.stringify(transaction)
+                });
+
+                if (response.ok) {
+                    transactionForm.reset();
+                }
+            } catch (error) {
+                console.error('Error:', error);
             }
         });
-    });
-}
-
-$(document).ready(function() {
-    if (isOnline()) {
-        syncOfflineTransactions();
     }
 });
 
-<div id="offline-indicator" class="hidden fixed top-0 left-0 right-0 bg-red-500 text-white p-4 text-center z-50">
-    Вие сте офлајн
-</div>
+async function syncOfflineTransactions() {
+    const offlineTransactions = JSON.parse(localStorage.getItem('offlineTransactions') || '[]');
+    if (offlineTransactions.length === 0) return;
 
-<script>
-    function updateOnlineStatus() {
-        const indicator = document.getElementById('offline-indicator');
-        if (!navigator.onLine) {
-            indicator.classList.remove('hidden');
-        } else {
-            indicator.classList.add('hidden');
-            syncOfflineTransactions();
+    for (const transaction of offlineTransactions) {
+        try {
+            const response = await fetch('/daily-transactions', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                },
+                body: JSON.stringify(transaction)
+            });
+
+            if (response.ok) {
+                // Remove synced transaction
+                const remaining = offlineTransactions.filter(t => t.timestamp !== transaction.timestamp);
+                localStorage.setItem('offlineTransactions', JSON.stringify(remaining));
+                
+                showMessage('Офлајн трансакциите се успешно синхронизирани', 'success');
+            }
+        } catch (error) {
+            console.error('Sync error:', error);
         }
     }
+}
 
-    window.addEventListener('online', updateOnlineStatus);
-    window.addEventListener('offline', updateOnlineStatus);
-    document.addEventListener('DOMContentLoaded', updateOnlineStatus);
-</script> 
+function showMessage(text, type) {
+    const message = document.createElement('div');
+    const bgColor = type === 'success' ? 'bg-green-100' : 'bg-red-100';
+    const borderColor = type === 'success' ? 'border-green-500' : 'border-red-500';
+    const textColor = type === 'success' ? 'text-green-700' : 'text-red-700';
+    
+    message.className = `fixed bottom-0 left-0 right-0 ${bgColor} border-t-4 ${borderColor} ${textColor} p-4`;
+    message.innerHTML = text;
+    document.body.appendChild(message);
+    setTimeout(() => message.remove(), 3000);
+} 

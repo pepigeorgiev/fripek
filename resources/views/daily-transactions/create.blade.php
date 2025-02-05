@@ -188,6 +188,7 @@ function isOnline() {
 
 // Store transaction offline
 function storeOfflineTransaction(formData) {
+    console.log('Storing transaction offline');
     const transactions = JSON.parse(localStorage.getItem(OFFLINE_STORAGE_KEY) || '[]');
     transactions.push({
         data: Object.fromEntries(formData),
@@ -198,6 +199,7 @@ function storeOfflineTransaction(formData) {
 
 // Sync offline transactions when back online
 function syncOfflineTransactions() {
+    console.log('Syncing offline transactions');
     const transactions = JSON.parse(localStorage.getItem(OFFLINE_STORAGE_KEY) || '[]');
     if (transactions.length === 0) return;
 
@@ -217,7 +219,6 @@ function syncOfflineTransactions() {
                 'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
             },
             success: function() {
-                // Remove synced transaction
                 transactions.splice(index, 1);
                 localStorage.setItem(OFFLINE_STORAGE_KEY, JSON.stringify(transactions));
                 alert('Офлајн трансакцијата е успешно синхронизирана.');
@@ -237,7 +238,7 @@ $('#transactionForm').on('submit', function(e) {
     const selectedDate = $('#transaction_date').val();
 
     if (!selectedCompanyId) {
-        showCustomAlert('Ве молиме изберете компанија');
+        alert('Ве молиме изберете компанија');
         return false;
     }
 
@@ -246,7 +247,7 @@ $('#transactionForm').on('submit', function(e) {
     
     if (!isOnline()) {
         storeOfflineTransaction(formData);
-        showCustomAlert('Нема интернет конекција. Трансакцијата е зачувана локално.');
+        alert('Нема интернет конекција. Трансакцијата е зачувана локално.');
         return;
     }
 
@@ -262,7 +263,7 @@ $('#transactionForm').on('submit', function(e) {
             'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
         },
         success: function(response) {
-            showCustomAlert('Успешно ажурирање на дневни трансакции.');
+            alert('Успешно ажурирање на дневни трансакции.');
             setTimeout(() => {
                 window.location.href = '/daily-transactions/create?' + 
                     'company_id=' + selectedCompanyId + 
@@ -270,10 +271,7 @@ $('#transactionForm').on('submit', function(e) {
             }, 1000);
         },
         error: function(xhr) {
-            if (xhr.status === 419) {
-                return; // Let the global handler deal with it
-            }
-            showCustomAlert('Грешка при зачувување. Обидете се повторно.');
+            alert('Грешка при зачувување. Обидете се повторно.');
         },
         complete: function() {
             $form.find('button[type="submit"]').prop('disabled', false);
@@ -284,6 +282,7 @@ $('#transactionForm').on('submit', function(e) {
 // Listen for online/offline events
 window.addEventListener('online', syncOfflineTransactions);
 window.addEventListener('offline', function() {
+    console.log('Offline event triggered');
     alert('Нема интернет конекција. Трансакциите ќе бидат зачувани локално.');
 });
 
@@ -406,10 +405,7 @@ $(document).ready(function() {
                     '&date=' + selectedDate;
             },
             error: function(xhr) {
-                alert('Успешно ажурирање на дневни трансакции.');
-                window.location.href = '/daily-transactions/create?' + 
-                    'company_id=' + selectedCompanyId + 
-                    '&date=' + selectedDate;
+                alert('Грешка при зачувување. Обидете се повторно.');
             },
             complete: function() {
                 $form.find('button[type="submit"]').prop('disabled', false);
