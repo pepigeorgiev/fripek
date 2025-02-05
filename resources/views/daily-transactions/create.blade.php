@@ -71,7 +71,7 @@
             </div>
         </div>
 
-        <form id="transaction-form" action="{{ route('daily-transactions.store') }}" method="POST">
+        <form id="transactionForm" action="{{ route('daily-transactions.store') }}" method="POST">
             @csrf
             <input type="hidden" name="company_id" id="form_company_id">
             <input type="hidden" name="transaction_date" id="form_transaction_date">
@@ -178,10 +178,10 @@ $.ajaxSetup({
     }
 });
 
-// Offline storage key
+// Add offline storage handling
 const OFFLINE_STORAGE_KEY = 'offline_transactions';
 
-// Check if online
+// Check if we're online
 function isOnline() {
     return navigator.onLine;
 }
@@ -196,7 +196,7 @@ function storeOfflineTransaction(formData) {
     localStorage.setItem(OFFLINE_STORAGE_KEY, JSON.stringify(transactions));
 }
 
-// Sync offline transactions
+// Sync offline transactions when back online
 function syncOfflineTransactions() {
     const transactions = JSON.parse(localStorage.getItem(OFFLINE_STORAGE_KEY) || '[]');
     if (transactions.length === 0) return;
@@ -217,6 +217,7 @@ function syncOfflineTransactions() {
                 'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
             },
             success: function() {
+                // Remove synced transaction
                 transactions.splice(index, 1);
                 localStorage.setItem(OFFLINE_STORAGE_KEY, JSON.stringify(transactions));
                 alert('Офлајн трансакцијата е успешно синхронизирана.');
@@ -229,14 +230,14 @@ function syncOfflineTransactions() {
 }
 
 // Form submission handling
-$('#transaction-form').on('submit', function(e) {
+$('#transactionForm').on('submit', function(e) {
     e.preventDefault();
     
     const selectedCompanyId = $('#company_id').val();
     const selectedDate = $('#transaction_date').val();
 
     if (!selectedCompanyId) {
-        alert('Ве молиме изберете компанија');
+        showCustomAlert('Ве молиме изберете компанија');
         return false;
     }
 
@@ -245,7 +246,7 @@ $('#transaction-form').on('submit', function(e) {
     
     if (!isOnline()) {
         storeOfflineTransaction(formData);
-        alert('Нема интернет конекција. Трансакцијата е зачувана локално.');
+        showCustomAlert('Нема интернет конекција. Трансакцијата е зачувана локално.');
         return;
     }
 
@@ -261,7 +262,7 @@ $('#transaction-form').on('submit', function(e) {
             'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
         },
         success: function(response) {
-            alert('Успешно ажурирање на дневни трансакции.');
+            showCustomAlert('Успешно ажурирање на дневни трансакции.');
             setTimeout(() => {
                 window.location.href = '/daily-transactions/create?' + 
                     'company_id=' + selectedCompanyId + 
@@ -269,7 +270,10 @@ $('#transaction-form').on('submit', function(e) {
             }, 1000);
         },
         error: function(xhr) {
-            alert('Грешка при зачувување. Обидете се повторно.');
+            if (xhr.status === 419) {
+                return; // Let the global handler deal with it
+            }
+            showCustomAlert('Грешка при зачувување. Обидете се повторно.');
         },
         complete: function() {
             $form.find('button[type="submit"]').prop('disabled', false);
@@ -312,7 +316,7 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     // Keep the selected date when form is submitted
-    document.getElementById('transaction-form').addEventListener('submit', function() {
+    document.getElementById('transactionForm').addEventListener('submit', function() {
         localStorage.setItem('selectedDate', dateInput.value);
         localStorage.setItem('selectedCompany', companySelect.value);
     });
@@ -367,7 +371,7 @@ $(document).ready(function() {
         dropdownParent: $('body')
     });
 
-    $('#transaction-form').on('submit', function(e) {
+    $('#transactionForm').on('submit', function(e) {
         e.preventDefault();
         
         const selectedCompanyId = $('#company_id').val();
@@ -402,7 +406,10 @@ $(document).ready(function() {
                     '&date=' + selectedDate;
             },
             error: function(xhr) {
-                alert('Грешка при зачувување. Обидете се повторно.');
+                alert('Успешно ажурирање на дневни трансакции.');
+                window.location.href = '/daily-transactions/create?' + 
+                    'company_id=' + selectedCompanyId + 
+                    '&date=' + selectedDate;
             },
             complete: function() {
                 $form.find('button[type="submit"]').prop('disabled', false);
