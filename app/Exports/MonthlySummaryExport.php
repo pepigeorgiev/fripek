@@ -143,8 +143,13 @@ class MonthlySummaryExport implements FromCollection, WithHeadings, WithStyles
             $lastColumn = $sheet->getHighestColumn();
             $lastRow = $sheet->getHighestRow();
 
-            // Ensure the range is valid
-            $columns = range('A', $lastColumn);
+            // Convert the last column to a single character if necessary
+            $columns = [];
+            for ($col = 'A'; $col !== $lastColumn; $col++) {
+                $columns[] = $col;
+            }
+            $columns[] = $lastColumn; // Include the last column
+
             foreach ($columns as $col) {
                 if ($col === 'A') {
                     $sheet->getColumnDimension($col)->setWidth(18);
