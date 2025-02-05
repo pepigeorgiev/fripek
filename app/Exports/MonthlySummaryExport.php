@@ -145,8 +145,10 @@ class MonthlySummaryExport implements FromCollection, WithHeadings, WithStyles
 
             // Convert the last column to a single character if necessary
             $columns = [];
-            for ($col = 'A'; $col !== $lastColumn; $col++) {
+            $col = 'A';
+            while ($col !== $lastColumn) {
                 $columns[] = $col;
+                $col++;
             }
             $columns[] = $lastColumn; // Include the last column
 
