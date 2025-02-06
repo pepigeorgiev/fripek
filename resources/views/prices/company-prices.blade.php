@@ -92,10 +92,10 @@
                         <tr class="border-t">
                             <td class="px-4 py-2">{{ $company->name }}</td>
                             <td class="px-4 py-2 text-right">
-                                {{ $company->pivot->getRawOriginal('price') }}
+                                {{ number_format($company->pivot->getRawOriginal('price'), 2) }}
                             </td>
                             <td class="px-4 py-2 text-right">
-                                {{ $company->pivot->getRawOriginal('old_price') }}
+                                {{ number_format($company->pivot->getRawOriginal('old_price'), 2) }}
                             </td>
                             <td class="px-4 py-2">{{ date('d.m.Y', strtotime($company->pivot->valid_from)) }}</td>
                         </tr>
