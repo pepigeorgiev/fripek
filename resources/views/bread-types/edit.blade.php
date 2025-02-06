@@ -72,6 +72,8 @@
                        name="valid_from" 
                        id="valid_from" 
                        value="{{ old('valid_from', date('Y-m-d')) }}"
+                       step="0.01"
+
                        required
                        min="{{ date('Y-m-d') }}"
                        class="w-full px-3 py-2 border rounded-lg @error('valid_from') border-red-500 @enderror">
