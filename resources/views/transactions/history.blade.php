@@ -49,7 +49,7 @@
             </div>
 
             <div class="mt-4 flex items-center">
-            <label class="inline-flex items-center">
+                <label class="inline-flex items-center">
                     <input type="checkbox" name="past_date_changes" value="1" 
                            {{ request('past_date_changes') ? 'checked' : '' }}
                            class="rounded border-gray-300 text-blue-600 shadow-sm">
@@ -59,10 +59,6 @@
                 <button type="submit" class="ml-4 bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600">
                     Филтрирај
                 </button>
-            </div>
-
-            <div class="mt-4 flex items-center">
-              
             </div>
         </form>
     </div>
@@ -85,19 +81,17 @@
                     <td class="px-6 py-4">{{ $record->created_at->format('d.m.Y H:i:s') }}</td>
                     <td class="px-6 py-4">{{ $record->user->name ?? 'N/A' }}</td>
                     <td class="px-6 py-4">
-                        @if($record->transaction->company)
-                            {{ $record->transaction->company->name }}
-                        @else
-                            <span class="text-gray-500 italic">Избришана компанија</span>
-                        @endif
+                        {{ $record->transaction->company->name ?? 'Избришана компанија' }}
                     </td>
-                    <td class="px-6 py-4">{{ $record->transaction->breadType->name }}</td>
+                    <td class="px-6 py-4">
+                        {{ $record->transaction->breadType->name ?? 'N/A' }}
+                    </td>
                     <td class="px-6 py-4">
                         <div class="text-sm">
                             @php
                                 $createdAt = \Carbon\Carbon::parse($record->created_at);
                                 $isLateNight = ($createdAt->hour >= 0 && $createdAt->hour < 5) || $createdAt->hour >= 24;
-                                $isNotCurrentDate = !$record->transaction->transaction_date->isToday();
+                                $isNotCurrentDate = $record->transaction && !$record->transaction->transaction_date->isToday();
                             @endphp
                             
                             @if($isLateNight)
