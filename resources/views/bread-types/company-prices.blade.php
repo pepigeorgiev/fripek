@@ -25,6 +25,8 @@
                        id="valid_from" 
                        value="{{ old('valid_from', date('Y-m-d')) }}"
                        required
+                       step="0.01"
+
                        min="{{ date('Y-m-d') }}"
                        class="w-full px-3 py-2 border rounded-lg">
             </div>
