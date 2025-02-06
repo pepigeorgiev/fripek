@@ -81,10 +81,10 @@
                     <td class="px-6 py-4">{{ $record->created_at->format('d.m.Y H:i:s') }}</td>
                     <td class="px-6 py-4">{{ $record->user->name ?? 'N/A' }}</td>
                     <td class="px-6 py-4">
-                        {{ $record->transaction->company->name ?? 'Избришана компанија' }}
+                        {{ optional($record->transaction->company)->name ?? 'Избришана компанија' }}
                     </td>
                     <td class="px-6 py-4">
-                        {{ $record->transaction->breadType->name ?? 'N/A' }}
+                        {{ optional($record->transaction->breadType)->name ?? 'N/A' }}
                     </td>
                     <td class="px-6 py-4">
                         <div class="text-sm">
