@@ -212,12 +212,10 @@
                     <tr>
                         <td class="border px-4 py-2 text-lg font-bold text-center">{{ $payment['company'] }}</td>
                         @foreach($breadTypes as $breadType)
+                        {{ number_format($payment['total'], 2) }}
+
                             <td class="border px-4 py-2 text-center">
-                            {{ isset($payment['breads'][$breadType->name]) 
-    ? number_format((float)$payment['breads'][$breadType->name], 2) . ' x ' . number_format((float)$breadType->price, 2) . ' = ' . number_format((float)($payment['breads'][$breadType->name] * $breadType->price), 2)
-    : '0.00 x ' . number_format((float)$breadType->price, 2) . ' = 0.00' 
-}}
-                                <!-- {{ $payment['breads'][$breadType->name] ?? '0 x ' . $breadType->price . ' = 0' }} -->
+                                {{ $payment['breads'][$breadType->name] ?? '0 x ' . $breadType->price . ' = 0' }}
                             </td>
                         @endforeach
                         <td class="border px-4 py-2 text-center">
