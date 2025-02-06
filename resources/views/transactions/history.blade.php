@@ -49,12 +49,12 @@
             </div>
 
             <div class="mt-4 flex items-center">
-                <label class="inline-flex items-center">
+                <!-- <label class="inline-flex items-center">
                     <input type="checkbox" name="past_date_changes" value="1" 
                            {{ request('past_date_changes') ? 'checked' : '' }}
                            class="rounded border-gray-300 text-blue-600 shadow-sm">
                     <span class="ml-2">Промени на минати датуми</span>
-                </label>
+                </label> -->
 
                 <button type="submit" class="ml-4 bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600">
                     Филтрирај
