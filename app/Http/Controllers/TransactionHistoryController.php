@@ -50,9 +50,7 @@ class TransactionHistoryController extends Controller
 
         // Filter past date changes
         if ($request->filled('past_date_changes')) {
-            $query->whereHas('transaction', function($q) {
-                $q->whereRaw('transaction_date < DATE(created_at)');
-            });
+            $query->where('date_change_type', 'past');
         }
 
         // Get companies and users for filters
