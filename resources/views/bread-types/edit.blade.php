@@ -2,6 +2,18 @@
 
 @section('content')
 <div class="container mx-auto px-4 py-6">
+<style>
+        /* Hide the spinners in number inputs */
+        input[type=number]::-webkit-inner-spin-button, 
+        input[type=number]::-webkit-outer-spin-button { 
+            -webkit-appearance: none; 
+            margin: 0; 
+        }
+
+        input[type=number] {
+            -moz-appearance: textfield; /* Firefox */
+        }
+    </style>
     <div class="max-w-lg mx-auto bg-white rounded-lg shadow-md p-6">
         <h2 class="text-2xl font-bold mb-6">Промени на леб</h2>
 
