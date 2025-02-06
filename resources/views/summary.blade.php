@@ -215,8 +215,6 @@
                         
                             <td class="border px-4 py-2 text-center">
                                 {{ $payment['breads'][$breadType->name] ?? '0 x ' . $breadType->price . ' = 0' }}
-                                {{ number_format($payment['total'], 2) }}
-
                             </td>
                         @endforeach
                         <td class="border px-4 py-2 text-center">
