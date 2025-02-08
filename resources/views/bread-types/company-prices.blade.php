@@ -3,7 +3,7 @@
 @section('content')
 <div class="container mx-auto px-4 py-6">
     <div class="bg-white rounded-lg shadow-md p-6">
-        <h2 class="text-2xl font-bold mb-6">Цени по компании за {{ $breadType->name }}</h2>
+        <h2 class="text-2xl font-bold mb-6">Цени по компания за {{ $breadType->name }}</h2>
 
         @if ($errors->any())
             <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
@@ -15,64 +15,79 @@
             </div>
         @endif
 
-        <form method="POST" action="{{ route('bread-types.updateCompanyPrices', $breadType) }}" class="space-y-4">
-            @csrf
-
-            <div class="mb-4">
-                <label for="valid_from" class="block text-gray-700 font-bold mb-2">Важи од датум</label>
-                <input type="date" 
-                       name="valid_from" 
-                       id="valid_from" 
-                       value="{{ old('valid_from', date('Y-m-d')) }}"
-                       required
-                       min="{{ date('Y-m-d') }}"
-                       class="w-full px-3 py-2 border rounded-lg">
+        <div class="mb-4 flex items-center space-x-4">
+            <div class="flex-1">
+                <label for="search" class="block text-gray-700 font-bold mb-2">Пребарај компании</label>
+                <div class="flex">
+                    <input type="text" 
+                           id="search" 
+                           placeholder="Внеси име на компанија"
+                           class="w-full px-3 py-2 border rounded-lg">
+                    <button type="button" 
+                            class="ml-2 bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600">
+                        Пребарај
+                    </button>
+                </div>
             </div>
+        </div>
+        
 
-            <div class="grid grid-cols-1 gap-6">
-                @foreach($companies as $company)
-                <div class="border p-4 rounded-lg">
-                    <h3 class="font-bold mb-4">{{ $company->name }}</h3>
-                    <input type="hidden" name="companies[{{ $loop->index }}][company_id]" value="{{ $company->id }}">
+        <div class="grid grid-cols-1 gap-6" id="company-list">
+            @foreach($companies as $company)
+            <form action="{{ route('bread-types.updateCompanyPrices', ['breadType' => $breadType->id, 'company' => $company->id]) }}" method="POST" class="border p-4 rounded-lg company-item">
+                @csrf
+                <h3 class="font-bold mb-4">{{ $company->name }}</h3>
+                
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-gray-700 mb-2">Цена</label>
+                        <input type="number" 
+                               name="price" 
+                               value="{{ old('price', $company->pivot->price ?? $breadType->price) }}"
+                               step="0.01"
+                               min="0"
+                               required
+                               class="w-full px-3 py-2 border rounded-lg">
+                    </div>
                     
-                    <div class="grid grid-cols-2 gap-4">
-                        <div>
-                            <label class="block text-gray-700 mb-2">Цена</label>
-                            <input type="number" 
-                                   name="companies[{{ $loop->index }}][price]" 
-                                   value="{{ old("companies.{$loop->index}.price", $company->pivot->price ?? $breadType->price) }}"
-                                   step="0.01"
-                                   min="0"
-                                   required
-                                   class="w-full px-3 py-2 border rounded-lg">
-                        </div>
-                        
-                        <div>
-                            <label class="block text-gray-700 mb-2">Стара цена</label>
-                            <input type="number" 
-                                   name="companies[{{ $loop->index }}][old_price]" 
-                                   value="{{ old("companies.{$loop->index}.old_price", $company->pivot->old_price ?? $breadType->old_price) }}"
-                                   step="0.01"
-                                   min="0"
-                                   required
-                                   class="w-full px-3 py-2 border rounded-lg">
-                        </div>
+                    <div>
+                        <label class="block text-gray-700 mb-2">Стара цена</label>
+                        <input type="number" 
+                               name="old_price" 
+                               value="{{ old('old_price', $company->pivot->old_price ?? $breadType->old_price) }}"
+                               step="0.01"
+                               min="0"
+                               required
+                               class="w-full px-3 py-2 border rounded-lg">
                     </div>
                 </div>
-                @endforeach
-            </div>
 
-            <div class="flex justify-end mt-6">
-                <a href="{{ route('bread-types.edit', $breadType) }}" 
-                   class="bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600 mr-2">
-                    Назад
-                </a>
-                <button type="submit" 
-                        class="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600">
-                    Зачувај цени
-                </button>
-            </div>
-        </form>
+                <div class="mt-4">
+                    <label class="block text-gray-700 mb-2">Важи од датум</label>
+                    <input type="date" 
+                           name="valid_from" 
+                           value="{{ old('valid_from', date('Y-m-d')) }}"
+                           required
+                           min="{{ date('Y-m-d') }}"
+                           class="w-full px-3 py-2 border rounded-lg">
+                </div>
+
+                <div class="flex justify-end mt-4">
+                    <button type="submit" 
+                            class="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600">
+                        Зачувај за {{ $company->name }}
+                    </button>
+                </div>
+            </form>
+            @endforeach
+        </div>
+
+        <div class="flex justify-end mt-6">
+            <a href="{{ route('bread-types.edit', $breadType) }}" 
+               class="bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600 mr-2">
+                Назад
+            </a>
+        </div>
 
         @if($breadType->companies->isNotEmpty())
         <div class="mt-8">
@@ -88,33 +103,34 @@
                         </tr>
                     </thead>
                     <tbody>
-                        @foreach($breadType->companies as $company)
-                        <tr class="border-t">
-                            <td class="px-4 py-2">{{ $company->name }}</td>
-                            <td class="px-4 py-2 text-right">
-                                @php
-                                    $price = DB::table('bread_type_company')
-                                        ->where('bread_type_id', $breadType->id)
-                                        ->where('company_id', $company->id)
-                                        ->orderBy('created_at', 'desc')
-                                        ->value('price');
-                                    \Log::info('Retrieved price from DB:', ['price' => $price]);
-                                    echo $price;
-                                @endphp
-                            </td>
-                            <td class="px-4 py-2 text-right">
-                                @php
-                                    $oldPrice = DB::table('bread_type_company')
-                                        ->where('bread_type_id', $breadType->id)
-                                        ->where('company_id', $company->id)
-                                        ->orderBy('created_at', 'desc')
-                                        ->value('old_price');
-                                    \Log::info('Retrieved old price from DB:', ['old_price' => $oldPrice]);
-                                    echo $oldPrice;
-                                @endphp
-                            </td>
-                            <td class="px-4 py-2">{{ date('d.m.Y', strtotime($company->pivot->valid_from)) }}</td>
-                        </tr>
+                        @foreach($breadType->companies->unique('id') as $company)
+                            @php
+                            $priceHistory = DB::table('bread_type_company')
+                                ->where('bread_type_id', $breadType->id)
+                                ->where('company_id', $company->id)
+                                ->orderBy('valid_from', 'desc')
+                                ->orderBy('created_at', 'desc')
+                                ->take(3)  // Only take last 3 changes
+                                ->get();
+                            @endphp
+                            
+                            @foreach($priceHistory as $history)
+                            <tr class="border-t hover:bg-gray-50">
+                                @if($loop->first)
+                                    <td class="px-4 py-2 align-top" rowspan="3">
+                                        <span class="font-medium">{{ $company->name }}</span>
+                                    </td>
+                                @endif
+                                <td class="px-4 py-2 text-right">{{ number_format($history->price, 2) }}</td>
+                                <td class="px-4 py-2 text-right">{{ number_format($history->old_price, 2) }}</td>
+                                <td class="px-4 py-2">{{ date('d.m.Y', strtotime($history->valid_from)) }}</td>
+                            </tr>
+                            @endforeach
+                            
+                            <!-- Add a visual separator between companies -->
+                            <tr class="h-2 bg-gray-50">
+                                <td colspan="4"></td>
+                            </tr>
                         @endforeach
                     </tbody>
                 </table>
@@ -123,4 +139,34 @@
         @endif
     </div>
 </div>
+
+<script>
+    document.getElementById('search').addEventListener('input', function() {
+        const searchValue = this.value.toLowerCase();
+        const companyItems = document.querySelectorAll('.company-item');
+
+        companyItems.forEach(item => {
+            const companyName = item.querySelector('h3').textContent.toLowerCase();
+            if (companyName.includes(searchValue)) {
+                item.style.display = 'block';
+            } else {
+                item.style.display = 'none';
+            }
+        });
+    });
+
+    document.querySelector('button[type="button"]').addEventListener('click', function() {
+        const searchValue = document.getElementById('search').value.toLowerCase();
+        const companyItems = document.querySelectorAll('.company-item');
+
+        companyItems.forEach(item => {
+            const companyName = item.querySelector('h3').textContent.toLowerCase();
+            if (companyName.includes(searchValue)) {
+                item.style.display = 'block';
+            } else {
+                item.style.display = 'none';
+            }
+        });
+    });
+</script>
 @endsection

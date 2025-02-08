@@ -156,53 +156,96 @@ class BreadTypeController extends Controller
     return view('bread-types.company-prices', compact('breadType', 'companies'));
 }
 
-public function updateCompanyPrices(Request $request, BreadType $breadType)
+
+public function updateCompanyPrices(Request $request, BreadType $breadType, Company $company)
 {
+    Log::info('Starting updateCompanyPrices', ['breadType' => $breadType->id, 'company' => $company->id]);
+
     try {
         $validated = $request->validate([
-            'companies' => 'required|array',
-            'companies.*.company_id' => 'required|exists:companies,id',
-            'companies.*.price' => 'required|numeric|min:0|regex:/^\d+(\.\d{1,5})?$/',
-            'companies.*.old_price' => 'required|numeric|min:0|regex:/^\d+(\.\d{1,5})?$/',
+            'price' => 'required|numeric|min:0|regex:/^\d+(\.\d{1,5})?$/',
+            'old_price' => 'required|numeric|min:0|regex:/^\d+(\.\d{1,5})?$/',
             'valid_from' => 'required|date|after_or_equal:today'
-        ]);
-
-        // Debug incoming values
-        \Log::info('Incoming company prices:', [
-            'request_data' => $request->all()
         ]);
 
         DB::beginTransaction();
 
-        foreach ($validated['companies'] as $companyData) {
-            // Debug before save
-            \Log::info('Before saving company price:', [
-                'company_id' => $companyData['company_id'],
-                'price' => number_format($companyData['price'], 5, '.', ''),
-                'old_price' => number_format($companyData['old_price'], 5, '.', '')
-            ]);
+        Log::info('Updating pivot table', ['company_id' => $company->id, 'price' => $validated['price']]);
 
-            $breadType->companies()->attach($companyData['company_id'], [
-                'price' => number_format($companyData['price'], 5, '.', ''),
-                'old_price' => number_format($companyData['old_price'], 5, '.', ''),
-                'valid_from' => $validated['valid_from'],
-                'created_by' => auth()->id()
-            ]);
-        }
+        $breadType->companies()->updateExistingPivot($company->id, [
+            'price' => number_format($validated['price'], 5, '.', ''),
+            'old_price' => number_format($validated['old_price'], 5, '.', ''),
+            'valid_from' => $validated['valid_from'],
+            'created_by' => auth()->id()
+        ]);
 
         DB::commit();
 
+        Log::info('Successfully updated company prices', ['company_id' => $company->id]);
+
         return redirect()
             ->back()
-            ->with('success', 'Успешно зачувани цени по компании');
+            ->with('success', 'Успешно зачувани цени за ' . $company->name);
     } catch (\Exception $e) {
         DB::rollBack();
-        \Log::error('Error updating company prices: ' . $e->getMessage());
+        Log::error('Error updating company price: ' . $e->getMessage());
         return back()
             ->withInput()
             ->with('error', 'Се појави грешка при зачувување на цените.');
     }
 }
+
+// public function updateCompanyPrices(Request $request, BreadType $breadType)
+// {
+//     try {
+//         $validated = $request->validate([
+//             'companies' => 'required|array',
+//             'companies.*.company_id' => 'required|exists:companies,id',
+//             'companies.*.price' => 'required|numeric|min:0|regex:/^\d+(\.\d{1,5})?$/',
+//             'companies.*.old_price' => 'required|numeric|min:0|regex:/^\d+(\.\d{1,5})?$/',
+//             'valid_from' => 'required|date|after_or_equal:today'
+//         ]);
+
+//         // Debug incoming values
+//         \Log::info('Incoming company prices:', [
+//             'request_data' => $request->all()
+//         ]);
+
+//         DB::beginTransaction();
+
+//         foreach ($validated['companies'] as $companyData) {
+//             $company = $breadType->companies()->find($companyData['company_id']);
+
+//             if ($company && ($company->pivot->price != $companyData['price'] || $company->pivot->old_price != $companyData['old_price'])) {
+//                 // Debug before save
+//                 \Log::info('Before saving company price:', [
+//                     'company_id' => $companyData['company_id'],
+//                     'price' => number_format($companyData['price'], 5, '.', ''),
+//                     'old_price' => number_format($companyData['old_price'], 5, '.', '')
+//                 ]);
+
+//                 $breadType->companies()->updateExistingPivot($companyData['company_id'], [
+//                     'price' => number_format($companyData['price'], 5, '.', ''),
+//                     'old_price' => number_format($companyData['old_price'], 5, '.', ''),
+//                     'valid_from' => $validated['valid_from'],
+//                     'created_by' => auth()->id()
+//                 ]);
+//             }
+//         }
+
+//         DB::commit();
+
+//         return redirect()
+//             ->back()
+//             ->with('success', 'Успешно зачувани цени по компании');
+//     } catch (\Exception $e) {
+//         DB::rollBack();
+//         \Log::error('Error updating company prices: ' . $e->getMessage());
+//         return back()
+//             ->withInput()
+//             ->with('error', 'Се појави грешка при зачувување на цените.');
+//     }
+// }
 
     public function destroy(BreadType $breadType)
     {

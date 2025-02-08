@@ -92,8 +92,10 @@ Route::middleware(['auth'])->group(function () {
     Route::resource('bread-types', BreadTypeController::class);
     Route::get('bread-types/{breadType}/company-prices', [BreadTypeController::class, 'showCompanyPrices'])
         ->name('bread-types.companyPrices');
-    Route::post('bread-types/{breadType}/company-prices', [BreadTypeController::class, 'updateCompanyPrices'])
-        ->name('bread-types.updateCompanyPrices');
+    Route::post('bread-types/{breadType}/company-prices/{company}', [BreadTypeController::class, 'updateCompanyPrices'])->name('bread-types.updateCompanyPrices');
+        
+        
+        
     
     // Invoice routes
     Route::get('/invoice-companies', [InvoiceController::class, 'index'])->name('invoice-companies.index');
