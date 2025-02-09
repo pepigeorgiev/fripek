@@ -1,6 +1,9 @@
 @extends('layouts.app')
 
 @section('content')
+
+
+
 <div class="container mx-auto p-0">
     <!-- Header Section -->
     <div class="mb-8">
@@ -28,12 +31,12 @@
             <label class="block text-sm font-medium text-gray-700 mb-2">Пребарај компанија</label>
             <div class="flex">
                 <input type="text" 
-                       name="search" 
-                       value="{{ request('search') }}"
+                       id="companySearch" 
                        placeholder="Име или шифра на компанија" 
                        class="w-full rounded-l-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500">
-                <button type="submit" 
-                        class="bg-blue-600 hover:bg-blue-700 text-white px-4 rounded-r-lg">
+                <button type="button" 
+                        class="bg-blue-600 hover:bg-blue-700 text-white px-4 rounded-r-lg"
+                        onclick="filterCompanies()">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
                     </svg>
@@ -153,49 +156,47 @@
             form.style.display = 'none';
         }
     });
+
+    document.addEventListener('DOMContentLoaded', function() {
+        const translitMap = {
+        'a': 'а', 'b': 'б', 'v': 'в', 'g': 'г', 'd': 'д', 'e': 'е', 'zh': 'ж', 'z': 'з', 
+        'i': 'и', 'j': 'ј', 'k': 'к', 'l': 'л', 'm': 'м', 'n': 'н', 'o': 'о', 'p': 'п', 
+        'r': 'р', 's': 'с', 't': 'т', 'u': 'у', 'f': 'ф', 'h': 'х', 'c': 'ц', 'ch': 'ч', 
+        'sh': 'ш', 'dj': 'џ', 'gj': 'ѓ', 'kj': 'ќ', 'z': 'ж', 'c': 'ч', 's':'ш' 
+    };
+
+        function transliterate(input) {
+            return input.toLowerCase().replace(/ch|sh|dj|gj|kj|zh|[a-z]/g, function(match) {
+                return translitMap[match] || match;
+            });
+        }
+
+        window.filterCompanies = function() {
+            const searchInput = document.getElementById('companySearch').value;
+            const transliteratedSearch = transliterate(searchInput);
+            const companies = document.querySelectorAll('.company-card');
+
+            companies.forEach(company => {
+                const companyName = company.querySelector('.company-name').textContent.toLowerCase();
+                const transliteratedName = transliterate(companyName);
+
+                if (transliteratedName.includes(transliteratedSearch) || companyName.includes(transliteratedSearch)) {
+                    company.style.display = 'block';
+                } else {
+                    company.style.display = 'none';
+                }
+            });
+        };
+    });
 </script>
-
-<!-- <div class="bg-white rounded-lg shadow-md p-6 mb-8">
-    <h2 class="text-xl font-semibold text-gray-800 mb-4">Префрли компании на друг корисник</h2>
-    <form action="{{ route('companies.bulk-assign-user') }}" method="POST">
-        @csrf
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-                <label class="block text-sm font-medium text-gray-700 mb-2">Од корисник</label>
-                <select name="from_user_id" required class="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500">
-                    <option value="">Изберете корисник</option>
-                    @foreach($users as $user)
-                        <option value="{{ $user->id }}">{{ $user->name }}</option>
-                    @endforeach
-                </select>
-            </div>
-
-            <div>
-                <label class="block text-sm font-medium text-gray-700 mb-2">До корисник</label>
-                <select name="to_user_id" required class="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500">
-                    <option value="">Изберете корисник</option>
-                    @foreach($users as $user)
-                        <option value="{{ $user->id }}">{{ $user->name }}</option>
-                    @endforeach
-                </select>
-            </div>
-        </div>
-
-        <div class="flex justify-end mt-4">
-            <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg">
-                Префрли компании
-            </button>
-        </div>
-    </form>
-</div> -->
 
 
     <!-- Companies Grid -->
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         @foreach($companies as $company)
-        <div class="bg-white rounded-lg shadow-md overflow-hidden">
+        <div class="company-card bg-white rounded-lg shadow-md overflow-hidden">
             <div class="border-b border-gray-200 bg-gray-50 px-4 py-3 bg-blue-500">
-                <h3 class="text-lg font-semibold text-gray-800">{{ $company->name }}</h3>
+                <h3 class="company-name text-lg font-semibold text-gray-800">{{ $company->name }}</h3>
             </div>
 
             <form action="{{ route('companies.update', $company) }}" method="POST" class="p-4">
@@ -224,20 +225,7 @@
         </div>
 
             
-            <!-- <form action="{{ route('companies.update', $company) }}" method="POST" class="p-4">
-                @csrf
-                @method('PUT')
-                
-                <div class="space-y-4">
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">
-                            Име на компанијата
-                        </label>
-                        <input type="text" 
-                               name="name" 
-                               value="{{ $company->name }}" 
-                               class="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500">
-                    </div> -->
+           
 
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">
@@ -292,4 +280,7 @@
         @endforeach
     </div>
 </div>
+
+
+
 @endsection

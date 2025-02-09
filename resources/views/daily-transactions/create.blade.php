@@ -366,14 +366,14 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 </script>
 
-<script>
+<!-- <script>
 $(document).ready(function() {
     // Mapping of Latin to Cyrillic letters for Macedonian
     const translitMap = {
         'a': 'а', 'b': 'б', 'v': 'в', 'g': 'г', 'd': 'д', 'e': 'е', 'zh': 'ж', 'z': 'з', 
         'i': 'и', 'j': 'ј', 'k': 'к', 'l': 'л', 'm': 'м', 'n': 'н', 'o': 'о', 'p': 'п', 
         'r': 'р', 's': 'с', 't': 'т', 'u': 'у', 'f': 'ф', 'h': 'х', 'c': 'ц', 'ch': 'ч', 
-        'sh': 'ш', 'dj': 'џ', 'gj': 'ѓ', 'kj': 'ќ'
+        'sh': 'ш', 'dj': 'џ', 'gj': 'ѓ', 'kj': 'ќ', 'z': 'ж', 'c': 'ч', 's':'ш' 
     };
 
     // Function to convert Latin to Cyrillic
@@ -411,6 +411,9 @@ $(document).ready(function() {
         matcher: customMatcher
     });
 });
-</script>
+</script> -->
+
+<script src="{{ asset('js/transliteration.js') }}"></script>
+
 
 @endsection

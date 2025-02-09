@@ -141,32 +141,39 @@
 </div>
 
 <script>
-    document.getElementById('search').addEventListener('input', function() {
-        const searchValue = this.value.toLowerCase();
-        const companyItems = document.querySelectorAll('.company-item');
+    document.addEventListener('DOMContentLoaded', function() {
+        const translitMap = {
+        'a': 'а', 'b': 'б', 'v': 'в', 'g': 'г', 'd': 'д', 'e': 'е', 'zh': 'ж', 'z': 'з', 
+        'i': 'и', 'j': 'ј', 'k': 'к', 'l': 'л', 'm': 'м', 'n': 'н', 'o': 'о', 'p': 'п', 
+        'r': 'р', 's': 'с', 't': 'т', 'u': 'у', 'f': 'ф', 'h': 'х', 'c': 'ц', 'ch': 'ч', 
+        'sh': 'ш', 'dj': 'џ', 'gj': 'ѓ', 'kj': 'ќ', 'z': 'ж', 'c': 'ч', 's':'ш' 
+    };
 
-        companyItems.forEach(item => {
-            const companyName = item.querySelector('h3').textContent.toLowerCase();
-            if (companyName.includes(searchValue)) {
-                item.style.display = 'block';
-            } else {
-                item.style.display = 'none';
-            }
-        });
-    });
+        function transliterate(input) {
+            return input.toLowerCase().replace(/ch|sh|dj|gj|kj|zh|[a-z]/g, function(match) {
+                return translitMap[match] || match;
+            });
+        }
 
-    document.querySelector('button[type="button"]').addEventListener('click', function() {
-        const searchValue = document.getElementById('search').value.toLowerCase();
-        const companyItems = document.querySelectorAll('.company-item');
+        function filterCompanies() {
+            const searchValue = document.getElementById('search').value.toLowerCase();
+            const transliteratedSearch = transliterate(searchValue);
+            const companyItems = document.querySelectorAll('.company-item');
 
-        companyItems.forEach(item => {
-            const companyName = item.querySelector('h3').textContent.toLowerCase();
-            if (companyName.includes(searchValue)) {
-                item.style.display = 'block';
-            } else {
-                item.style.display = 'none';
-            }
-        });
+            companyItems.forEach(item => {
+                const companyName = item.querySelector('h3').textContent.toLowerCase();
+                const transliteratedName = transliterate(companyName);
+
+                if (transliteratedName.includes(transliteratedSearch) || companyName.includes(transliteratedSearch)) {
+                    item.style.display = 'block';
+                } else {
+                    item.style.display = 'none';
+                }
+            });
+        }
+
+        document.getElementById('search').addEventListener('input', filterCompanies);
+        document.querySelector('button[type="button"]').addEventListener('click', filterCompanies);
     });
 </script>
 @endsection
