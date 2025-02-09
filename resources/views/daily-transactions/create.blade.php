@@ -44,6 +44,9 @@
 
 @section('content')
 
+<!-- Include Select2 CSS and JS -->
+<link href="https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.13/css/select2.min.css" rel="stylesheet" />
+<script src="https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.13/js/select2.min.js"></script>
 
 <!-- Remove container padding for mobile -->
 <div class="mx-auto md:p-0">
@@ -363,178 +366,8 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 </script>
 
-
-
 <script>
 $(document).ready(function() {
-    $('#company_id').select2({
-        placeholder: 'Пребарувај компанија...',
-        allowClear: true,
-        width: '100%',
-        minimumInputLength: 0,
-        dropdownParent: $('body')
-    });
-
-    $('#transactionForm').on('submit', function(e) {
-        e.preventDefault();
-        
-        const selectedCompanyId = $('#company_id').val();
-        const selectedDate = $('#transaction_date').val();
-        
-        $('#form_company_id').val(selectedCompanyId);
-        $('#form_transaction_date').val(selectedDate);
-
-        if (!selectedCompanyId) {
-            alert('Ве молиме изберете компанија');
-            return false;
-        }
-
-        const $form = $(this);
-        const formData = $form.serialize();
-        const url = $form.attr('action');
-
-        $form.find('button[type="submit"]').prop('disabled', true);
-
-        $.ajax({
-            url: url,
-            type: 'POST',
-            data: formData,
-            dataType: 'json',
-            headers: {
-                'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
-            },
-            success: function(response) {
-                alert('Успешно ажурирање на дневни трансакции.');
-                window.location.href = '/daily-transactions/create?' + 
-                    'company_id=' + selectedCompanyId + 
-                    '&date=' + selectedDate;
-            },
-            error: function(xhr) {
-                alert('Грешка при зачувување. Обидете се повторно.');
-            },
-            complete: function() {
-                $form.find('button[type="submit"]').prop('disabled', false);
-            }
-        });
-    });
-});
-
-// Latin to Cyrillic mapping for Macedonian
-const latinToCyrillic = {
-    'a': 'а', 'b': 'б', 'v': 'в', 'g': 'г', 'd': 'д',
-    'gj': 'ѓ', 'e': 'е', 'zh': 'ж', 'z': 'з', 'dz': 'ѕ',
-    'i': 'и', 'j': 'ј', 'k': 'к', 'l': 'л', 'lj': 'љ',
-    'm': 'м', 'n': 'н', 'nj': 'њ', 'o': 'о', 'p': 'п',
-    'r': 'р', 's': 'с', 't': 'т', 'kj': 'ќ', 'u': 'у',
-    'f': 'ф', 'h': 'х', 'c': 'ц', 'ch': 'ч', 'dzh': 'џ',
-    'sh': 'ш'
-};
-
-document.addEventListener('DOMContentLoaded', function() {
-    const select = document.getElementById('company_id');
-    let searchBuffer = '';
-    let searchTimeout;
-
-    // Store original options for filtering
-    const originalOptions = Array.from(select.options);
-
-    // Function to convert Latin text to Cyrillic
-    function convertLatinToCyrillic(text) {
-        text = text.toLowerCase();
-        let result = '';
-        for (let i = 0; i < text.length; i++) {
-            // Check for two-character combinations first
-            let twoChar = text.slice(i, i + 2);
-            if (latinToCyrillic[twoChar]) {
-                result += latinToCyrillic[twoChar];
-                i++; // Skip next character
-            } else {
-                // Check single characters
-                let oneChar = text[i];
-                result += latinToCyrillic[oneChar] || oneChar;
-            }
-        }
-        return result;
-    }
-
-    // Function to normalize text for comparison
-    function normalizeText(text) {
-        // Convert to lowercase and handle both Latin and Cyrillic
-        const latinVersion = text.toLowerCase();
-        const cyrillicVersion = convertLatinToCyrillic(latinVersion);
-        return [latinVersion, cyrillicVersion];
-    }
-
-    // Function to filter and display matching options
-    function filterOptions(searchText) {
-        const [latinSearch, cyrillicSearch] = normalizeText(searchText);
-        
-        // Clear current options
-        select.options.length = 0;
-        
-        // Add default option
-        select.add(new Option('Изберете компанија', ''));
-        
-        // Filter and add matching options
-        originalOptions.forEach(option => {
-            if (option.value === '') return; // Skip default option
-            
-            const [latinOption, cyrillicOption] = normalizeText(option.text);
-            
-            if (latinOption.includes(latinSearch) || 
-                cyrillicOption.includes(cyrillicSearch) ||
-                latinOption.includes(cyrillicSearch) ||
-                cyrillicOption.includes(latinSearch)) {
-                select.add(new Option(option.text, option.value, false, false));
-            }
-        });
-    }
-
-    // Handle keyboard input
-    select.addEventListener('keydown', function(e) {
-        // Only handle alphanumeric keys and space
-        if (e.key.match(/^[a-zA-Z0-9\s]$/)) {
-            e.preventDefault(); // Prevent default select behavior
-            
-            searchBuffer += e.key;
-            
-            // Clear previous timeout
-            if (searchTimeout) {
-                clearTimeout(searchTimeout);
-            }
-            
-            // Filter options immediately
-            filterOptions(searchBuffer);
-            
-            // Clear search buffer after 1 second of no input
-            searchTimeout = setTimeout(() => {
-                searchBuffer = '';
-            }, 1000);
-        } else if (e.key === 'Backspace') {
-            e.preventDefault();
-            searchBuffer = searchBuffer.slice(0, -1);
-            filterOptions(searchBuffer);
-        }
-    });
-
-    // Reset options when focus is lost
-    select.addEventListener('blur', function() {
-        setTimeout(() => {
-            searchBuffer = '';
-            select.options.length = 0;
-            originalOptions.forEach(option => {
-                select.add(new Option(option.text, option.value));
-            });
-        }, 200);
-    });
-});
-
-document.addEventListener("DOMContentLoaded", function () {
-    const selectBox = document.getElementById("company_id");
-
-    // Save original options to restore later
-    const options = Array.from(selectBox.options);
-
     // Mapping of Latin to Cyrillic letters for Macedonian
     const translitMap = {
         'a': 'а', 'b': 'б', 'v': 'в', 'g': 'г', 'd': 'д', 'e': 'е', 'zh': 'ж', 'z': 'з', 
@@ -550,32 +383,34 @@ document.addEventListener("DOMContentLoaded", function () {
         });
     }
 
-    // Event listener to filter options when typing
-    selectBox.addEventListener("input", function () {
-        const query = transliterate(this.value); // Convert to Cyrillic
-        selectBox.innerHTML = ""; // Clear existing options
+    // Custom matcher for Select2
+    function customMatcher(params, data) {
+        if ($.trim(params.term) === '') {
+            return data;
+        }
 
-        // Add "Select a company" option first
-        const defaultOption = document.createElement("option");
-        defaultOption.value = "";
-        defaultOption.textContent = "Изберете компанија";
-        selectBox.appendChild(defaultOption);
+        const term = transliterate(params.term);
+        const text = transliterate(data.text);
 
-        options.forEach(option => {
-            const companyName = option.textContent.toLowerCase();
-            if (companyName.includes(query) || option.value === "") {
-                selectBox.appendChild(option);
-            }
-        });
+        console.log('Searching for:', term, 'in:', text);
+
+        if (text.includes(term)) {
+            return data;
+        }
+
+        return null;
+    }
+
+    // Initialize Select2 with custom matcher
+    $('#company_id').select2({
+        placeholder: 'Пребарувај компанија...',
+        allowClear: true,
+        width: '100%',
+        minimumInputLength: 0,
+        dropdownParent: $('body'),
+        matcher: customMatcher
     });
 });
-
 </script>
-
-
-
-
-
-
 
 @endsection
