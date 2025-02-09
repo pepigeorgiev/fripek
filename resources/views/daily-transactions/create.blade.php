@@ -114,21 +114,30 @@
                                     name="transactions[{{ $index }}][delivered]" 
                                     class="delivered-input block w-full rounded border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-center text-base md:text-lg" 
                                     data-row="{{ $index }}"
-                                    min="0" value="0">
+                                    min="0" value="0"
+                                    inputmode="numeric"
+                                    pattern="[0-9]*">
                             </td>
                             <td class="px-1 md:px-6 py-2 md:py-4">
                                 <input type="number" 
                                     name="transactions[{{ $index }}][returned]" 
                                     class="returned-input block w-full rounded border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-center text-base md:text-lg" 
                                     data-row="{{ $index }}"
-                                    min="0" value="0">
+                                    min="0" 
+                                    value="0"
+                                    inputmode="numeric"
+                                    pattern="[0-9]*">
+                                    
                             </td>
                             <td class="px-1 md:px-6 py-2 md:py-4">
                                 <input type="number" 
                                     name="transactions[{{ $index }}][gratis]" 
                                     class="gratis-input block w-full rounded border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-center text-base md:text-lg" 
                                     data-row="{{ $index }}"
-                                    min="0" value="0">
+                                    min="0" value="0"
+                                    inputmode="numeric"
+                                    pattern="[0-9]*">
+                                    
                             </td>
                             <td class="px-1 md:px-6 py-2 md:py-4 text-center">
                                 <span class="total text-base md:text-lg font-bold" id="total-{{ $index }}">0</span>
