@@ -67,7 +67,7 @@
             </div>
 
             <div class="mb-4">
-                <label for="old_price" class="block text-gray-700 font-bold mb-2">Стара цена за продажба</label>
+                <label for="old_price" class="block text-gray-700 font-bold mb-2">Цена за продажба на вчерашен леб</label>
                 <input type="number" 
                        name="old_price" 
                        id="old_price" 

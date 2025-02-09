@@ -214,6 +214,8 @@ private function recordPaymentHistory($transaction, $oldValues, $newValues)
 
 
 
+
+
     public function updateDailyTransaction(Request $request, Company $company)
     {
         $data = $request->validate([
@@ -317,4 +319,6 @@ private function recordPaymentHistory($transaction, $oldValues, $newValues)
         ]);
     }
     
+    
 }
+

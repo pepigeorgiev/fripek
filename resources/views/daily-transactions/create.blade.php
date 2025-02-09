@@ -43,6 +43,8 @@
 </style>
 
 @section('content')
+
+
 <!-- Remove container padding for mobile -->
 <div class="mx-auto md:p-0">
     <h1 class="text-xl md:text-2xl font-bold mb-2 md:mb-4 px-2 md:px-0">Дневни Трансакции</h1>
@@ -60,10 +62,9 @@
             </option>
         @endforeach
     </select>
-</div>
+        </div>
 
-
-            <div>
+<div>
                 <label for="transaction_date" class="block text-sm font-medium text-gray-700">Дата</label>
                 <input type="date" id="transaction_date" name="transaction_date" 
                     class="mt-1 block w-full text-sm md:text-base rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
@@ -106,21 +107,21 @@
                                 <input type="hidden" name="transactions[{{ $index }}][bread_type_id]" value="{{ $breadType->id }}">
                             </td>
                             <td class="px-1 md:px-6 py-2 md:py-4">
-                                <input type="tel" 
+                                <input type="number" 
                                     name="transactions[{{ $index }}][delivered]" 
                                     class="delivered-input block w-full rounded border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-center text-base md:text-lg" 
                                     data-row="{{ $index }}"
                                     min="0" value="0">
                             </td>
                             <td class="px-1 md:px-6 py-2 md:py-4">
-                                <input type="tel" 
+                                <input type="number" 
                                     name="transactions[{{ $index }}][returned]" 
                                     class="returned-input block w-full rounded border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-center text-base md:text-lg" 
                                     data-row="{{ $index }}"
                                     min="0" value="0">
                             </td>
                             <td class="px-1 md:px-6 py-2 md:py-4">
-                                <input type="tel" 
+                                <input type="number" 
                                     name="transactions[{{ $index }}][gratis]" 
                                     class="gratis-input block w-full rounded border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-center text-base md:text-lg" 
                                     data-row="{{ $index }}"
@@ -417,6 +418,158 @@ $(document).ready(function() {
         });
     });
 });
+
+// Latin to Cyrillic mapping for Macedonian
+const latinToCyrillic = {
+    'a': 'а', 'b': 'б', 'v': 'в', 'g': 'г', 'd': 'д',
+    'gj': 'ѓ', 'e': 'е', 'zh': 'ж', 'z': 'з', 'dz': 'ѕ',
+    'i': 'и', 'j': 'ј', 'k': 'к', 'l': 'л', 'lj': 'љ',
+    'm': 'м', 'n': 'н', 'nj': 'њ', 'o': 'о', 'p': 'п',
+    'r': 'р', 's': 'с', 't': 'т', 'kj': 'ќ', 'u': 'у',
+    'f': 'ф', 'h': 'х', 'c': 'ц', 'ch': 'ч', 'dzh': 'џ',
+    'sh': 'ш'
+};
+
+document.addEventListener('DOMContentLoaded', function() {
+    const select = document.getElementById('company_id');
+    let searchBuffer = '';
+    let searchTimeout;
+
+    // Store original options for filtering
+    const originalOptions = Array.from(select.options);
+
+    // Function to convert Latin text to Cyrillic
+    function convertLatinToCyrillic(text) {
+        text = text.toLowerCase();
+        let result = '';
+        for (let i = 0; i < text.length; i++) {
+            // Check for two-character combinations first
+            let twoChar = text.slice(i, i + 2);
+            if (latinToCyrillic[twoChar]) {
+                result += latinToCyrillic[twoChar];
+                i++; // Skip next character
+            } else {
+                // Check single characters
+                let oneChar = text[i];
+                result += latinToCyrillic[oneChar] || oneChar;
+            }
+        }
+        return result;
+    }
+
+    // Function to normalize text for comparison
+    function normalizeText(text) {
+        // Convert to lowercase and handle both Latin and Cyrillic
+        const latinVersion = text.toLowerCase();
+        const cyrillicVersion = convertLatinToCyrillic(latinVersion);
+        return [latinVersion, cyrillicVersion];
+    }
+
+    // Function to filter and display matching options
+    function filterOptions(searchText) {
+        const [latinSearch, cyrillicSearch] = normalizeText(searchText);
+        
+        // Clear current options
+        select.options.length = 0;
+        
+        // Add default option
+        select.add(new Option('Изберете компанија', ''));
+        
+        // Filter and add matching options
+        originalOptions.forEach(option => {
+            if (option.value === '') return; // Skip default option
+            
+            const [latinOption, cyrillicOption] = normalizeText(option.text);
+            
+            if (latinOption.includes(latinSearch) || 
+                cyrillicOption.includes(cyrillicSearch) ||
+                latinOption.includes(cyrillicSearch) ||
+                cyrillicOption.includes(latinSearch)) {
+                select.add(new Option(option.text, option.value, false, false));
+            }
+        });
+    }
+
+    // Handle keyboard input
+    select.addEventListener('keydown', function(e) {
+        // Only handle alphanumeric keys and space
+        if (e.key.match(/^[a-zA-Z0-9\s]$/)) {
+            e.preventDefault(); // Prevent default select behavior
+            
+            searchBuffer += e.key;
+            
+            // Clear previous timeout
+            if (searchTimeout) {
+                clearTimeout(searchTimeout);
+            }
+            
+            // Filter options immediately
+            filterOptions(searchBuffer);
+            
+            // Clear search buffer after 1 second of no input
+            searchTimeout = setTimeout(() => {
+                searchBuffer = '';
+            }, 1000);
+        } else if (e.key === 'Backspace') {
+            e.preventDefault();
+            searchBuffer = searchBuffer.slice(0, -1);
+            filterOptions(searchBuffer);
+        }
+    });
+
+    // Reset options when focus is lost
+    select.addEventListener('blur', function() {
+        setTimeout(() => {
+            searchBuffer = '';
+            select.options.length = 0;
+            originalOptions.forEach(option => {
+                select.add(new Option(option.text, option.value));
+            });
+        }, 200);
+    });
+});
+
+document.addEventListener("DOMContentLoaded", function () {
+    const selectBox = document.getElementById("company_id");
+
+    // Save original options to restore later
+    const options = Array.from(selectBox.options);
+
+    // Mapping of Latin to Cyrillic letters for Macedonian
+    const translitMap = {
+        'a': 'а', 'b': 'б', 'v': 'в', 'g': 'г', 'd': 'д', 'e': 'е', 'zh': 'ж', 'z': 'з', 
+        'i': 'и', 'j': 'ј', 'k': 'к', 'l': 'л', 'm': 'м', 'n': 'н', 'o': 'о', 'p': 'п', 
+        'r': 'р', 's': 'с', 't': 'т', 'u': 'у', 'f': 'ф', 'h': 'х', 'c': 'ц', 'ch': 'ч', 
+        'sh': 'ш', 'dj': 'џ', 'gj': 'ѓ', 'kj': 'ќ'
+    };
+
+    // Function to convert Latin to Cyrillic
+    function transliterate(input) {
+        return input.toLowerCase().replace(/ch|sh|dj|gj|kj|zh|[a-z]/g, function(match) {
+            return translitMap[match] || match;
+        });
+    }
+
+    // Event listener to filter options when typing
+    selectBox.addEventListener("input", function () {
+        const query = transliterate(this.value); // Convert to Cyrillic
+        selectBox.innerHTML = ""; // Clear existing options
+
+        // Add "Select a company" option first
+        const defaultOption = document.createElement("option");
+        defaultOption.value = "";
+        defaultOption.textContent = "Изберете компанија";
+        selectBox.appendChild(defaultOption);
+
+        options.forEach(option => {
+            const companyName = option.textContent.toLowerCase();
+            if (companyName.includes(query) || option.value === "") {
+                selectBox.appendChild(option);
+            }
+        });
+    });
+});
+
 </script>
 
 
