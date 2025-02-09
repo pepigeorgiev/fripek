@@ -66,6 +66,7 @@ Route::middleware(['auth'])->group(function () {
     Route::resource('companies', CompanyController::class);
     Route::get('/companies/{company}/confirm-delete', [CompanyController::class, 'confirmDelete'])
         ->name('companies.confirm-delete');
+    Route::post('companies/bulk-assign-user', [CompanyController::class, 'bulkAssignUser'])->name('companies.bulk-assign-user');    
     
     // Monthly Summary routes
     Route::get('/monthly-summaries', [MonthlySummaryController::class, 'index'])

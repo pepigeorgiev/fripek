@@ -43,6 +43,9 @@
     </form>
 </div>
 
+    
+
+
     <!-- Add New Company Card -->
     <div class="bg-white rounded-lg shadow-md p-6 mb-8">
     <h2 class="text-xl font-semibold text-gray-800 mb-4">Додади нова компанија</h2>
@@ -103,6 +106,88 @@
     </form>
 </div>
 
+
+<div class="bg-white rounded-lg shadow-md p-6 mb-8">
+    <!-- <h2 class="text-xl font-semibold text-gray-800 mb-4">Префрли компании на друг корисник</h2> -->
+    <button id="toggleFormButton" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg mb-4">
+    Префрли компании на друг корисник
+    </button>
+    <form id="bulkAssignForm" action="{{ route('companies.bulk-assign-user') }}" method="POST" style="display: none;">
+        @csrf
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Од корисник</label>
+                <select name="from_user_id" required class="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500">
+                    <option value="">Изберете корисник</option>
+                    @foreach($users as $user)
+                        <option value="{{ $user->id }}">{{ $user->name }}</option>
+                    @endforeach
+                </select>
+            </div>
+
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">До корисник</label>
+                <select name="to_user_id" required class="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500">
+                    <option value="">Изберете корисник</option>
+                    @foreach($users as $user)
+                        <option value="{{ $user->id }}">{{ $user->name }}</option>
+                    @endforeach
+                </select>
+            </div>
+        </div>
+
+        <div class="flex justify-end mt-4">
+            <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg">
+                Префрли компании
+            </button>
+        </div>
+    </form>
+</div>
+
+<script>
+    document.getElementById('toggleFormButton').addEventListener('click', function() {
+        const form = document.getElementById('bulkAssignForm');
+        if (form.style.display === 'none' || form.style.display === '') {
+            form.style.display = 'block';
+        } else {
+            form.style.display = 'none';
+        }
+    });
+</script>
+
+<!-- <div class="bg-white rounded-lg shadow-md p-6 mb-8">
+    <h2 class="text-xl font-semibold text-gray-800 mb-4">Префрли компании на друг корисник</h2>
+    <form action="{{ route('companies.bulk-assign-user') }}" method="POST">
+        @csrf
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Од корисник</label>
+                <select name="from_user_id" required class="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500">
+                    <option value="">Изберете корисник</option>
+                    @foreach($users as $user)
+                        <option value="{{ $user->id }}">{{ $user->name }}</option>
+                    @endforeach
+                </select>
+            </div>
+
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">До корисник</label>
+                <select name="to_user_id" required class="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500">
+                    <option value="">Изберете корисник</option>
+                    @foreach($users as $user)
+                        <option value="{{ $user->id }}">{{ $user->name }}</option>
+                    @endforeach
+                </select>
+            </div>
+        </div>
+
+        <div class="flex justify-end mt-4">
+            <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg">
+                Префрли компании
+            </button>
+        </div>
+    </form>
+</div> -->
 
 
     <!-- Companies Grid -->

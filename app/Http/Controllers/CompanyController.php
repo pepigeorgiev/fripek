@@ -38,12 +38,11 @@ class CompanyController extends Controller
 {
     $messages = [
         'name.unique' => 'Имате внесено компанија со исто име.',
-        'code.unique' => 'Имате внесено иста шифра.',
     ];
 
     $validated = $request->validate([
         'name' => 'required|string|max:255|unique:companies,name',
-        'code' => 'required|string|max:50|unique:companies,code',
+        'code' => 'required|string|max:50',
         'type' => 'required|in:invoice,cash',
         'user_ids' => 'required|exists:users,id'
     ], $messages);
@@ -69,12 +68,11 @@ class CompanyController extends Controller
 
     $messages = [
         'name.unique' => 'Имате внесено компанија со исто име.',
-        'code.unique' => 'Имате внесено иста шифра.',
     ];
 
     $validated = $request->validate([
         'name' => 'required|string|max:255|unique:companies,name,'.$company->id,
-        'code' => 'required|string|max:50|unique:companies,code,'.$company->id,
+        'code' => 'required|string|max:50',
         'type' => 'required|in:invoice,cash',
         'user_ids' => 'required|exists:users,id'
     ],$messages);
@@ -109,5 +107,24 @@ class CompanyController extends Controller
             return redirect()->route('companies.index')
                 ->with('error', 'Не можете да ја избришете компанијата. Веке имате зачувано трансакции на истата');
         }
+    }
+
+    public function bulkAssignUser(Request $request)
+    {
+        $validated = $request->validate([
+            'from_user_id' => 'required|exists:users,id',
+            'to_user_id' => 'required|exists:users,id|different:from_user_id',
+        ]);
+
+        $companies = Company::whereHas('users', function($query) use ($validated) {
+            $query->where('users.id', $validated['from_user_id']);
+        })->get();
+
+        foreach ($companies as $company) {
+            $company->users()->sync([$validated['to_user_id']]);
+        }
+
+        return redirect()->route('companies.index')
+            ->with('success', 'Компаниите се префрлени на новиот корисник.');
     }
 }
