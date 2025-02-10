@@ -53,6 +53,7 @@ Route::middleware(['web'])->group(function () {
             ->name('daily-transactions.create');
         Route::post('/daily-transactions', [DailyTransactionController::class, 'store'])
             ->name('daily-transactions.store');
+            Route::post('bread-types/{breadType}/company-prices/{company}', [BreadTypeController::class, 'updateCompanyPrices']);
     });
 });
 
@@ -94,6 +95,7 @@ Route::middleware(['auth'])->group(function () {
     Route::get('bread-types/{breadType}/company-prices', [BreadTypeController::class, 'showCompanyPrices'])
         ->name('bread-types.companyPrices');
     Route::post('bread-types/{breadType}/company-prices/{company}', [BreadTypeController::class, 'updateCompanyPrices'])->name('bread-types.updateCompanyPrices');
+    
         
         
         

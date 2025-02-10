@@ -401,4 +401,23 @@
 </div>
 
 
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Function to clear input on focus if the value is zero
+        function clearInputOnFocus(event) {
+            if (event.target.value === '0') {
+                event.target.value = '';
+            }
+        }
+
+        // Select all relevant input fields in both tables
+        const inputsToClear = document.querySelectorAll('input[type="number"]');
+
+        // Attach the focus event listener to each input
+        inputsToClear.forEach(input => {
+            input.addEventListener('focus', clearInputOnFocus);
+        });
+    });
+</script>
+
 @endsection

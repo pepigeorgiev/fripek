@@ -34,16 +34,18 @@
 
         <div class="grid grid-cols-1 gap-6" id="company-list">
             @foreach($companies as $company)
-            <form action="{{ route('bread-types.updateCompanyPrices', ['breadType' => $breadType->id, 'company' => $company->id]) }}" method="POST" class="border p-4 rounded-lg company-item">
+            <form action="{{ route('bread-types.index', ['breadType' => $breadType->id]) }}" method="POST">
                 @csrf
+                <input type="hidden" name="companies[{{ $company->id }}][company_id]" value="{{ $company->id }}">
+                
                 <h3 class="font-bold mb-4">{{ $company->name }}</h3>
                 
                 <div class="grid grid-cols-2 gap-4">
                     <div>
                         <label class="block text-gray-700 mb-2">Цена</label>
                         <input type="number" 
-                               name="price" 
-                               value="{{ old('price', $company->pivot->price ?? $breadType->price) }}"
+                               name="companies[{{ $company->id }}][price]" 
+                               value="{{ old('companies.' . $company->id . '.price', $company->pivot->price ?? $breadType->price) }}"
                                step="0.01"
                                min="0"
                                required
@@ -53,8 +55,8 @@
                     <div>
                         <label class="block text-gray-700 mb-2">Стара цена</label>
                         <input type="number" 
-                               name="old_price" 
-                               value="{{ old('old_price', $company->pivot->old_price ?? $breadType->old_price) }}"
+                               name="companies[{{ $company->id }}][old_price]" 
+                               value="{{ old('companies.' . $company->id . '.old_price', $company->pivot->old_price ?? $breadType->old_price) }}"
                                step="0.01"
                                min="0"
                                required
@@ -175,5 +177,7 @@
         document.getElementById('search').addEventListener('input', filterCompanies);
         document.querySelector('button[type="button"]').addEventListener('click', filterCompanies);
     });
+
+    
 </script>
 @endsection

@@ -76,9 +76,14 @@
         </div>
 
         <form id="transactionForm" action="{{ route('daily-transactions.store') }}" method="POST">
+    @csrf
+    <input type="hidden" name="company_id" id="form_company_id" value="">
+    <input type="hidden" name="transaction_date" id="form_transaction_date" value="">
+
+        <!-- <form id="transactionForm" action="{{ route('daily-transactions.store') }}" method="POST">
             @csrf
             <input type="hidden" name="company_id" id="form_company_id">
-            <input type="hidden" name="transaction_date" id="form_transaction_date">
+            <input type="hidden" name="transaction_date" id="form_transaction_date"> -->
             
             <!-- Mobile-optimized table -->
             <div class="overflow-x-auto -mx-2 md:mx-0">
@@ -246,18 +251,43 @@ function syncOfflineTransactions() {
 // Form submission handling
 $('#transactionForm').on('submit', function(e) {
     e.preventDefault();
-    console.log('Form submitted');
     
     const selectedCompanyId = $('#company_id').val();
     const selectedDate = $('#transaction_date').val();
 
+    console.log('Selected Company ID:', selectedCompanyId);
+    
+    // Validation with early return
     if (!selectedCompanyId) {
         alert('Ве молиме изберете компанија');
         return false;
     }
 
+    // Explicitly set the hidden input values before form submission
+    $('#form_company_id').val(selectedCompanyId);
+    $('#form_transaction_date').val(selectedDate);
+
     const $form = $(this);
     const formData = new FormData(this);
+
+    // Debug check
+    console.log('Form Company ID value:', formData.get('company_id'));
+// $('#transactionForm').on('submit', function(e) {
+//     e.preventDefault();
+    
+//     const selectedCompanyId = $('#company_id').val();
+//     const selectedDate = $('#transaction_date').val();
+
+//     console.log('Selected Company ID:', selectedCompanyId);
+//     console.log('Selected Date:', selectedDate);
+
+//     if (!selectedCompanyId) {
+//         alert('Ве молиме изберете компанија');
+//         return false;
+//     }
+
+//     const $form = $(this);
+//     const formData = new FormData(this);
     
     if (!isOnline()) {
         storeOfflineTransaction(formData);
@@ -284,7 +314,10 @@ $('#transactionForm').on('submit', function(e) {
                     '&date=' + selectedDate;
             }, 1000);
         },
-       
+        error: function(xhr) {
+            console.error('Error response:', xhr);
+            alert('Грешка при зачувување. Обидете се повторно.');
+        },
         complete: function() {
             $form.find('button[type="submit"]').prop('disabled', false);
         }
@@ -312,24 +345,45 @@ $(document).ready(function() {
 </script>
 
 <script>
-document.addEventListener('DOMContentLoaded', function() {
+    document.addEventListener('DOMContentLoaded', function() {
     const companySelect = document.getElementById('company_id');
     const dateInput = document.getElementById('transaction_date');
     const formCompanyId = document.getElementById('form_company_id');
     const formTransactionDate = document.getElementById('form_transaction_date');
 
-    // Set initial values
+    // Set initial values when page loads
     formCompanyId.value = companySelect.value;
     formTransactionDate.value = dateInput.value;
 
-    // Update hidden form fields when selections change
+    // Update hidden input when company selection changes
     companySelect.addEventListener('change', function() {
+        console.log('Company changed to:', this.value);
         formCompanyId.value = this.value;
     });
 
+    // Update hidden input when date changes
     dateInput.addEventListener('change', function() {
         formTransactionDate.value = this.value;
     });
+});
+// document.addEventListener('DOMContentLoaded', function() {
+//     const companySelect = document.getElementById('company_id');
+//     const dateInput = document.getElementById('transaction_date');
+//     const formCompanyId = document.getElementById('form_company_id');
+//     const formTransactionDate = document.getElementById('form_transaction_date');
+
+//     // Set initial values
+//     formCompanyId.value = companySelect.value;
+//     formTransactionDate.value = dateInput.value;
+
+//     // Update hidden form fields when selections change
+//     companySelect.addEventListener('change', function() {
+//         formCompanyId.value = this.value;
+//     });
+
+//     dateInput.addEventListener('change', function() {
+//         formTransactionDate.value = this.value;
+//     });
 
     // Keep the selected date when form is submitted
     document.getElementById('transactionForm').addEventListener('submit', function() {

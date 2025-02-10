@@ -160,6 +160,11 @@ class BreadTypeController extends Controller
 public function updateCompanyPrices(Request $request, BreadType $breadType, Company $company)
 {
     Log::info('Starting updateCompanyPrices', ['breadType' => $breadType->id, 'company' => $company->id]);
+    Log::info('Company received', [
+        'breadType_id' => $breadType->id, 
+        'company_id' => $company->id,
+        'request_data' => $request->all()
+    ]);
 
     try {
         $validated = $request->validate([
