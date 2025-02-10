@@ -1,19 +1,5 @@
 @extends('layouts.app')
 
-
-<style>
-    /* Default styles for desktop */
-    .text-center-desktop {
-        text-align: center;
-    }
-
-    /* Media query for mobile devices */
-    @media (max-width: 768px) {
-        .text-center-desktop {
-            text-align: left;
-        }
-    }
-</style>
 @section('content')
 <div class="container mx-auto">
     <h1 class="text-2xl font-bold mb-4">Денешен преглед - Сите компании</h1>
@@ -58,17 +44,17 @@
             @if($currentUser->isAdmin() || $currentUser->role === 'super_admin')
                 <input type="hidden" name="selected_user_id" value="{{ $selectedUserId }}">
             @endif
-            <table class="w-full bg-white shadow-md rounded ">
+            <table class="w-full bg-white shadow-md rounded">
                 <thead>
                     <tr>
-                        <th class="px-4 py-2 text-lg font-bold ">Име на лебот</th>
-                        <th class="px-4 py-2 text-lg font-bold ">Продаден</th>
-                        <th class="px-4 py-2 text-lg font-bold ">Задолжен</th>
-                        <th class="px-4 py-2 text-lg font-bold ">Разлика</th>
-                        <th class="px-4 py-2 text-lg font-bold ">Продаден</th>
-                        <th class="px-4 py-2 text-lg font-bold ">Разлика</th>
-                        <th class="px-4 py-2 text-lg font-bold ">Цена</th>
-                        <th class="px-4 py-2 text-lg font-bold ">Вкупно</th>
+                        <th class="px-4 py-2 text-lg font-bold text-center-desktop">Име на лебот</th>
+                        <th class="px-4 py-2 text-lg font-bold text-center-desktop">Продаден</th>
+                        <th class="px-4 py-2 text-lg font-bold text-center-desktop">Задолжен</th>
+                        <th class="px-4 py-2 text-lg font-bold text-center-desktop">Разлика</th>
+                        <th class="px-4 py-2 text-lg font-bold text-center-desktop">Продаден</th>
+                        <th class="px-4 py-2 text-lg font-bold text-center-desktop">Разлика</th>
+                        <th class="px-4 py-2 text-lg font-bold text-center-desktop">Цена</th>
+                        <th class="px-4 py-2 text-lg font-bold text-center-desktop">Вкупно</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -158,14 +144,14 @@
         <table class="w-full bg-white shadow-md rounded">
             <thead>
                 <tr>
-                    <th class="px-4 py-2 text-lg font-bold ">Тип на лебот</th>
-                    <th class="px-4 py-2 text-lg font-bold ">Евидентиран</th>
-                    <th class="px-4 py-2 text-lg font-bold ">Продаден</th>
-                    <th class="px-4 py-2 text-lg font-bold ">Разлика</th>
-                    <th class="px-4 py-2 text-lg font-bold ">Вратен</th>
-                    <th class="px-4 py-2 text-lg font-bold ">Разлика повторно</th>
-                    <th class="px-4 py-2 text-lg font-bold ">Цена</th>
-                    <th class="px-4 py-2 text-lg font-bold ">Вкупно</th>
+                    <th class="px-4 py-2 text-lg font-bold text-center-desktop">Тип на лебот</th>
+                    <th class="px-4 py-2 text-lg font-bold text-center-desktop">Евидентиран</th>
+                    <th class="px-4 py-2 text-lg font-bold text-center-desktop">Продаден</th>
+                    <th class="px-4 py-2 text-lg font-bold text-center-desktop">Разлика</th>
+                    <th class="px-4 py-2 text-lg font-bold text-center-desktop">Вратен</th>
+                    <th class="px-4 py-2 text-lg font-bold text-center-desktop">Разлика повторно</th>
+                    <th class="px-4 py-2 text-lg font-bold text-center-desktop">Цена</th>
+                    <th class="px-4 py-2 text-lg font-bold text-center-desktop">Вкупно</th>
                 </tr>
             </thead>
             <tbody>
@@ -214,11 +200,11 @@
         <table class="w-full bg-white shadow-md rounded text-lg font-bold ">
             <thead>
                 <tr>
-                    <th class="px-4 py-2 text-lg font-bold text-center">Име на компанија</th>
+                    <th class="px-4 py-2 text-lg font-bold text-center-desktop">Име на компанија</th>
                     @foreach($breadTypes as $breadType)
-                        <th class="px-4 py-2 text-lg font-bold text-center">{{ $breadType->name }}</th>
+                        <th class="px-4 py-2 text-lg font-bold text-center-desktop">{{ $breadType->name }}</th>
                     @endforeach
-                    <th class="px-4 py-2 text-lg font-bold text-center">Вкупно</th>
+                    <th class="px-4 py-2 text-lg font-bold text-center-desktop">Вкупно</th>
                 </tr>
             </thead>
             <tbody>
@@ -258,11 +244,11 @@
             <table class="w-full bg-white shadow-md rounded">
                 <thead>
                     <tr>
-                        <th class="px-4 py-2 text-lg font-bold text-center">Име на компанија</th>
+                        <th class="px-4 py-2 text-lg font-bold text-center-desktop">Име на компанија</th>
                         @foreach($breadTypes as $breadType)
-                            <th class="px-4 py-2 text-lg font-bold text-center">{{ $breadType->name }}</th>
+                            <th class="px-4 py-2 text-lg font-bold text-center-desktop">{{ $breadType->name }}</th>
                         @endforeach
-                        <th class="px-4 py-2 text-lg font-bold text-center">Вкупно</th>
+                        <th class="px-4 py-2 text-lg font-bold text-center-desktop">Вкупно</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -307,12 +293,12 @@
         <table class="w-full bg-white shadow-md rounded">
             <thead>
                 <tr>
-                    <th class="px-4 py-2 text-xl font-bold text-lg font-bold text-center">Име на компанија</th>
+                    <th class="px-4 py-2 text-xl font-bold text-lg font-bold text-center-desktop">Име на компанија</th>
                     @foreach($breadTypes as $breadType)
-                        <th class="px-4 py-2 text-xl font-bold text-lg font-bold text-center">{{ $breadType->name }}</th>
+                        <th class="px-4 py-2 text-xl font-bold text-lg font-bold text-center-desktop">{{ $breadType->name }}</th>
                     @endforeach
-                    <th class="px-4 py-2 text-xl font-bold text-lg font-bold text-center">Вкупно</th>
-                    <th class="px-4 py-2 text-xl font-bold text-lg font-bold text-center">Акции</th>
+                    <th class="px-4 py-2 text-xl font-bold text-lg font-bold text-center-desktop">Вкупно</th>
+                    <th class="px-4 py-2 text-xl font-bold text-lg font-bold text-center-desktop">Акции</th>
                 </tr>
             </thead>
             <tbody>
@@ -433,5 +419,19 @@
         });
     });
 </script>
+
+<style>
+    /* Default styles for desktop */
+    .text-center-desktop {
+        text-align: center;
+    }
+
+    /* Media query for mobile devices */
+    @media (max-width: 768px) {
+        .text-center-desktop {
+            text-align: left;
+        }
+    }
+</style>
 
 @endsection
