@@ -131,109 +131,111 @@
     </div>
 
     {{-- Second Table: Yesterday's Returned Bread --}}
-<div class="mb-8">
-    <h2 class="text-xl font-semibold mb-2">Вчерашен леб вратен</h2>
-    <form method="POST" action="{{ route('summary.updateAdditional') }}">
-        @csrf
-        <input type="hidden" name="date" value="{{ $date }}">
-        @if($currentUser->isAdmin() || $currentUser->role === 'super_admin')
-    <input type="hidden" name="selected_user_id" value="{{ $selectedUserId }}">
-@endif
-        <table class="w-full bg-white shadow-md rounded">
-            <thead>
-                <tr>
-                    <th class="px-4 py-2 text-lg font-bold ">Тип на лебот</th>
-                    <th class="px-4 py-2 text-lg font-bold ">Евидентиран</th>
-                    <th class="px-4 py-2 text-lg font-bold ">Продаден</th>
-                    <th class="px-4 py-2 text-lg font-bold ">Разлика</th>
-                    <th class="px-4 py-2 text-lg font-bold ">Вратен</th>
-                    <th class="px-4 py-2 text-lg font-bold ">Разлика повторно</th>
-                    <th class="px-4 py-2 text-lg font-bold ">Цена</th>
-                    <th class="px-4 py-2 text-lg font-bold ">Вкупно</th>
-                </tr>
-            </thead>
-            <tbody>
-                @foreach($additionalTableData['data'] as $breadType => $data)
-                    <tr>
-                        <td class="border px-4 py-2 text-lg font-bold text-center">{{ $breadType }}</td>
-                        <td class="border px-4 py-2 text-lg font-bold text-center">{{ $data['returned'] ?? 0 }}</td>
-                        <td class="border px-4 py-2 text-lg font-bold text-center">
-                            <input type="number" 
-                                   name="sold[{{ $breadType }}]" 
-                                   value="{{ old('sold['.$breadType.']', $data['sold'] ?? 0) }}" 
-                                   class="w-full px-2 py-1 border rounded text-center">
-                        </td>
-                        <td class="border px-4 py-2 text-lg font-bold text-center">{{ $data['difference'] ?? 0 }}</td>
-                        <td class="border px-4 py-2 text-lg font-bold text-center">
-                            <input type="number" 
-                                   name="returned1[{{ $breadType }}]" 
-                                   value="{{ old('returned1['.$breadType.']', $data['returned1'] ?? 0) }}" 
-                                   class="w-full px-2 py-1 border rounded text-center">
-                        </td>
-                        <td class="border px-4 py-2 text-lg font-bold text-center">{{ $data['difference1'] ?? 0 }}</td>
-                        <td class="border px-4 py-2 text-lg font-bold text-center">{{ $data['price'] ?? 0 }}</td>
-                        <td class="border px-4 py-2 text-lg font-bold text-center">{{ number_format($data['total'] ?? 0, 2) }}</td>
-                    </tr>
-                @endforeach
-            </tbody>
-            <tfoot>
-                <tr>
-                    <td colspan="7" class="border px-4 py-2 font-bold text-right text-lg font-bold ">Вкупно:</td>
-                    <td class="border px-4 py-2 font-bold text-lg text-center">{{ number_format($additionalTableData['totalPrice'], 2) }}</td>
-                </tr>
-            </tfoot>
-        </table>
-        <div class="mt-4">
-            <button type="submit" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
-                Ажурирај ја табелата за продажба на вчерашен леб
-            </button>
-        </div>
-    </form>
-</div>
-
-{{-- Third Table: Cash Payments --}}
-@if(!empty($cashPayments))
     <div class="mb-8">
-        <h2 class="text-xl font-semibold mb-2 text-xl font-bold  ">Табела за дневен преглед на компании за плаќање во ќеш</h2>
-        <table class="w-full bg-white shadow-md rounded text-lg font-bold ">
-            <thead>
-                <tr>
-                    <th class="px-4 py-2 text-lg font-bold text-center">Име на компанија</th>
-                    @foreach($breadTypes as $breadType)
-                        <th class="px-4 py-2 text-lg font-bold text-center">{{ $breadType->name }}</th>
-                    @endforeach
-                    <th class="px-4 py-2 text-lg font-bold text-center">Вкупно</th>
-                </tr>
-            </thead>
-            <tbody>
-                @foreach($cashPayments as $payment)
-                    <tr>
-                        <td class="border px-4 py-2 text-lg font-bold text-center">{{ $payment['company'] }}</td>
-                        @foreach($breadTypes as $breadType)
-                        
-                            <td class="border px-4 py-2 text-center">
-                                {{ $payment['breads'][$breadType->name] ?? '0 x ' . $breadType->price . ' = 0' }}
-                            </td>
+        <h2 class="text-xl font-semibold mb-2">Вчерашен леб вратен</h2>
+        <form method="POST" action="{{ route('summary.updateAdditional') }}">
+            @csrf
+            <input type="hidden" name="date" value="{{ $date }}">
+            @if($currentUser->isAdmin() || $currentUser->role === 'super_admin')
+                <input type="hidden" name="selected_user_id" value="{{ $selectedUserId }}">
+            @endif
+            <div class="responsive-table">
+                <table class="w-full bg-white shadow-md rounded">
+                    <thead>
+                        <tr>
+                            <th class="px-4 py-2 text-lg font-bold text-center-desktop">Тип на лебот</th>
+                            <th class="px-4 py-2 text-lg font-bold text-center-desktop">Евидентиран</th>
+                            <th class="px-4 py-2 text-lg font-bold text-center-desktop">Продаден</th>
+                            <th class="px-4 py-2 text-lg font-bold text-center-desktop">Разлика</th>
+                            <th class="px-4 py-2 text-lg font-bold text-center-desktop">Вратен</th>
+                            <th class="px-4 py-2 text-lg font-bold text-center-desktop">Разлика повторно</th>
+                            <th class="px-4 py-2 text-lg font-bold text-center-desktop">Цена</th>
+                            <th class="px-4 py-2 text-lg font-bold text-center-desktop">Вкупно</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach($additionalTableData['data'] as $breadType => $data)
+                            <tr>
+                                <td class="border px-4 py-2 text-lg font-bold text-center-desktop">{{ $breadType }}</td>
+                                <td class="border px-4 py-2 text-lg font-bold text-center-desktop">{{ $data['returned'] ?? 0 }}</td>
+                                <td class="border px-4 py-2 text-lg font-bold text-center-desktop">
+                                    <input type="number" 
+                                           name="sold[{{ $breadType }}]" 
+                                           value="{{ old('sold['.$breadType.']', $data['sold'] ?? 0) }}" 
+                                           class="w-full px-2 py-1 border rounded text-center-desktop">
+                                </td>
+                                <td class="border px-4 py-2 text-lg font-bold text-center-desktop">{{ $data['difference'] ?? 0 }}</td>
+                                <td class="border px-4 py-2 text-lg font-bold text-center-desktop">
+                                    <input type="number" 
+                                           name="returned1[{{ $breadType }}]" 
+                                           value="{{ old('returned1['.$breadType.']', $data['returned1'] ?? 0) }}" 
+                                           class="w-full px-2 py-1 border rounded text-center-desktop">
+                                </td>
+                                <td class="border px-4 py-2 text-lg font-bold text-center-desktop">{{ $data['difference1'] ?? 0 }}</td>
+                                <td class="border px-4 py-2 text-lg font-bold text-center-desktop">{{ $data['price'] ?? 0 }}</td>
+                                <td class="border px-4 py-2 text-lg font-bold text-center-desktop">{{ number_format($data['total'] ?? 0, 2) }}</td>
+                            </tr>
                         @endforeach
-                        <td class="border px-4 py-2 text-center">
-                            {{ number_format($payment['total'], 2) }}
+                    </tbody>
+                    <tfoot>
+                        <tr>
+                            <td colspan="7" class="border px-4 py-2 font-bold text-right text-lg font-bold text-center-desktop">Вкупно:</td>
+                            <td class="border px-4 py-2 font-bold text-lg text-center-desktop">{{ number_format($additionalTableData['totalPrice'], 2) }}</td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+            <div class="mt-4">
+                <button type="submit" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
+                    Ажурирај ја табелата за продажба на вчерашен леб
+                </button>
+            </div>
+        </form>
+    </div>
+
+    {{-- Third Table: Cash Payments --}}
+    @if(!empty($cashPayments))
+        <div class="mb-8">
+            <h2 class="text-xl font-semibold mb-2 text-xl font-bold  ">Табела за дневен преглед на компании за плаќање во ќеш</h2>
+            <table class="w-full bg-white shadow-md rounded text-lg font-bold ">
+                <thead>
+                    <tr>
+                        <th class="px-4 py-2 text-lg font-bold text-center">Име на компанија</th>
+                        @foreach($breadTypes as $breadType)
+                            <th class="px-4 py-2 text-lg font-bold text-center">{{ $breadType->name }}</th>
+                        @endforeach
+                        <th class="px-4 py-2 text-lg font-bold text-center">Вкупно</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach($cashPayments as $payment)
+                        <tr>
+                            <td class="border px-4 py-2 text-lg font-bold text-center">{{ $payment['company'] }}</td>
+                            @foreach($breadTypes as $breadType)
+                            
+                                <td class="border px-4 py-2 text-center">
+                                    {{ $payment['breads'][$breadType->name] ?? '0 x ' . $breadType->price . ' = 0' }}
+                                </td>
+                            @endforeach
+                            <td class="border px-4 py-2 text-center">
+                                {{ number_format($payment['total'], 2) }}
+                            </td>
+                        </tr>
+                    @endforeach
+                </tbody>
+                <tfoot>
+                    <tr>
+                        <td colspan="{{ count($breadTypes) + 1 }}" class="border px-4 py-2 font-bold text-right">
+                            Вкупно во кеш:
+                        </td>
+                        <td class="border px-4 py-2 font-bold text-center">
+                            {{ number_format($overallTotal, 2) }}
                         </td>
                     </tr>
-                @endforeach
-            </tbody>
-            <tfoot>
-                <tr>
-                    <td colspan="{{ count($breadTypes) + 1 }}" class="border px-4 py-2 font-bold text-right">
-                        Вкупно во кеш:
-                    </td>
-                    <td class="border px-4 py-2 font-bold text-center">
-                        {{ number_format($overallTotal, 2) }}
-                    </td>
-                </tr>
-            </tfoot>
-        </table>
-    </div>
-@endif
+                </tfoot>
+            </table>
+        </div>
+    @endif
 
     {{-- Fourth Table: Invoice Payments --}}
     @if(!empty($invoicePayments))
@@ -428,6 +430,13 @@
     @media (max-width: 768px) {
         .text-center-desktop {
             text-align: left;
+        }
+
+        /* Make the table scrollable on smaller screens */
+        .responsive-table {
+            overflow-x: auto;
+            display: block;
+            width: 100%;
         }
     }
 </style>
