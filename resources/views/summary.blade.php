@@ -437,6 +437,7 @@
             overflow-x: auto;
             display: block;
             width: 100%;
+            -webkit-overflow-scrolling: touch; /* Smooth scrolling for iOS */
         }
     }
 </style>
