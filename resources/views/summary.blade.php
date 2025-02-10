@@ -1,5 +1,19 @@
 @extends('layouts.app')
 
+
+<style>
+    /* Default styles for desktop */
+    .text-center-desktop {
+        text-align: center;
+    }
+
+    /* Media query for mobile devices */
+    @media (max-width: 768px) {
+        .text-center-desktop {
+            text-align: left;
+        }
+    }
+</style>
 @section('content')
 <div class="container mx-auto">
     <h1 class="text-2xl font-bold mb-4">Денешен преглед - Сите компании</h1>
