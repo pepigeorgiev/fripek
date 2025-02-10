@@ -34,10 +34,9 @@
 
         <div class="grid grid-cols-1 gap-6" id="company-list">
             @foreach($companies as $company)
-            <form action="{{ route('bread-types.index', ['breadType' => $breadType->id]) }}" method="POST">
+            <form action="{{ route('bread-types.updateCompanyPrices', ['breadType' => $breadType->id, 'company' => $company->id]) }}" method="POST" class="border p-4 rounded-lg company-item">
                 @csrf
                 <input type="hidden" name="companies[{{ $company->id }}][company_id]" value="{{ $company->id }}">
-                
                 <h3 class="font-bold mb-4">{{ $company->name }}</h3>
                 
                 <div class="grid grid-cols-2 gap-4">

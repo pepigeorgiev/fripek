@@ -26,6 +26,8 @@ class BreadTypeController extends Controller
 
     public function store(Request $request)
     {
+        \Log::info('Received request to create bread type', ['request_data' => $request->all()]);
+
         try {
             $validated = $request->validate([
                 'name' => 'required|string|max:255|unique:bread_types',
@@ -67,7 +69,7 @@ class BreadTypeController extends Controller
                 ->with('success', 'Успешно додавање на лебот');
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::error('Error creating bread type: ' . $e->getMessage());
+            \Log::error('Error creating bread type: ' . $e->getMessage());
             return back()
                 ->withInput()
                 ->with('error', 'Се појави грешка при додавање на лебот.');
@@ -157,100 +159,52 @@ class BreadTypeController extends Controller
 }
 
 
-public function updateCompanyPrices(Request $request, BreadType $breadType, Company $company)
+public function updateCompanyPrices(Request $request, BreadType $breadType)
 {
-    Log::info('Starting updateCompanyPrices', ['breadType' => $breadType->id, 'company' => $company->id]);
-    Log::info('Company received', [
-        'breadType_id' => $breadType->id, 
-        'company_id' => $company->id,
-        'request_data' => $request->all()
-    ]);
-
     try {
         $validated = $request->validate([
-            'price' => 'required|numeric|min:0|regex:/^\d+(\.\d{1,5})?$/',
-            'old_price' => 'required|numeric|min:0|regex:/^\d+(\.\d{1,5})?$/',
+            'companies' => 'required|array',
+            'companies.*.company_id' => 'required|exists:companies,id',
+            'companies.*.price' => 'required|numeric|min:0|regex:/^\d+(\.\d{1,5})?$/',
+            'companies.*.old_price' => 'required|numeric|min:0|regex:/^\d+(\.\d{1,5})?$/',
             'valid_from' => 'required|date|after_or_equal:today'
         ]);
 
         DB::beginTransaction();
 
-        Log::info('Updating pivot table', ['company_id' => $company->id, 'price' => $validated['price']]);
+        foreach ($validated['companies'] as $companyData) {
+            $existingPivot = $breadType->companies()->where('company_id', $companyData['company_id'])->exists();
 
-        $breadType->companies()->updateExistingPivot($company->id, [
-            'price' => number_format($validated['price'], 5, '.', ''),
-            'old_price' => number_format($validated['old_price'], 5, '.', ''),
-            'valid_from' => $validated['valid_from'],
-            'created_by' => auth()->id()
-        ]);
+            if ($existingPivot) {
+                $breadType->companies()->updateExistingPivot($companyData['company_id'], [
+                    'price' => number_format($companyData['price'], 5, '.', ''),
+                    'old_price' => number_format($companyData['old_price'], 5, '.', ''),
+                    'valid_from' => $validated['valid_from'],
+                    'created_by' => auth()->id()
+                ]);
+            } else {
+                $breadType->companies()->attach($companyData['company_id'], [
+                    'price' => number_format($companyData['price'], 5, '.', ''),
+                    'old_price' => number_format($companyData['old_price'], 5, '.', ''),
+                    'valid_from' => $validated['valid_from'],
+                    'created_by' => auth()->id()
+                ]);
+            }
+        }
 
         DB::commit();
 
-        Log::info('Successfully updated company prices', ['company_id' => $company->id]);
-
         return redirect()
             ->back()
-            ->with('success', 'Успешно зачувани цени за ' . $company->name);
+            ->with('success', 'Успешно зачувани цени по компании');
     } catch (\Exception $e) {
         DB::rollBack();
-        Log::error('Error updating company price: ' . $e->getMessage());
+        \Log::error('Error updating company prices: ' . $e->getMessage());
         return back()
             ->withInput()
             ->with('error', 'Се појави грешка при зачувување на цените.');
     }
 }
-
-// public function updateCompanyPrices(Request $request, BreadType $breadType)
-// {
-//     try {
-//         $validated = $request->validate([
-//             'companies' => 'required|array',
-//             'companies.*.company_id' => 'required|exists:companies,id',
-//             'companies.*.price' => 'required|numeric|min:0|regex:/^\d+(\.\d{1,5})?$/',
-//             'companies.*.old_price' => 'required|numeric|min:0|regex:/^\d+(\.\d{1,5})?$/',
-//             'valid_from' => 'required|date|after_or_equal:today'
-//         ]);
-
-//         // Debug incoming values
-//         \Log::info('Incoming company prices:', [
-//             'request_data' => $request->all()
-//         ]);
-
-//         DB::beginTransaction();
-
-//         foreach ($validated['companies'] as $companyData) {
-//             $company = $breadType->companies()->find($companyData['company_id']);
-
-//             if ($company && ($company->pivot->price != $companyData['price'] || $company->pivot->old_price != $companyData['old_price'])) {
-//                 // Debug before save
-//                 \Log::info('Before saving company price:', [
-//                     'company_id' => $companyData['company_id'],
-//                     'price' => number_format($companyData['price'], 5, '.', ''),
-//                     'old_price' => number_format($companyData['old_price'], 5, '.', '')
-//                 ]);
-
-//                 $breadType->companies()->updateExistingPivot($companyData['company_id'], [
-//                     'price' => number_format($companyData['price'], 5, '.', ''),
-//                     'old_price' => number_format($companyData['old_price'], 5, '.', ''),
-//                     'valid_from' => $validated['valid_from'],
-//                     'created_by' => auth()->id()
-//                 ]);
-//             }
-//         }
-
-//         DB::commit();
-
-//         return redirect()
-//             ->back()
-//             ->with('success', 'Успешно зачувани цени по компании');
-//     } catch (\Exception $e) {
-//         DB::rollBack();
-//         \Log::error('Error updating company prices: ' . $e->getMessage());
-//         return back()
-//             ->withInput()
-//             ->with('error', 'Се појави грешка при зачувување на цените.');
-//     }
-// }
 
     public function destroy(BreadType $breadType)
     {
