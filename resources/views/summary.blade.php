@@ -1,6 +1,18 @@
 @extends('layouts.app')
 
 @section('content')
+<style>
+        /* Hide the spinners in number inputs */
+        input[type=number]::-webkit-inner-spin-button, 
+        input[type=number]::-webkit-outer-spin-button { 
+            -webkit-appearance: none; 
+            margin: 0; 
+        }
+
+        input[type=number] {
+            -moz-appearance: textfield; /* Firefox */
+        }
+    </style>
 <div class="container mx-auto">
     <h1 class="text-2xl font-bold mb-4">Денешен преглед - Сите компании</h1>
     <div class="container mx-auto px-0 py-6">
@@ -441,5 +453,20 @@
         }
     }
 </style>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Select all number input fields
+        const numberInputs = document.querySelectorAll('input[type="number"]');
+
+        // Add focus event listener to each input
+        numberInputs.forEach(input => {
+            input.addEventListener('focus', function() {
+                // Ensure the numeric keypad is shown
+                this.setAttribute('inputmode', 'numeric');
+            });
+        });
+    });
+</script>
 
 @endsection

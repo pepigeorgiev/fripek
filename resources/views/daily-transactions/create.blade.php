@@ -272,22 +272,7 @@ $('#transactionForm').on('submit', function(e) {
 
     // Debug check
     console.log('Form Company ID value:', formData.get('company_id'));
-// $('#transactionForm').on('submit', function(e) {
-//     e.preventDefault();
-    
-//     const selectedCompanyId = $('#company_id').val();
-//     const selectedDate = $('#transaction_date').val();
 
-//     console.log('Selected Company ID:', selectedCompanyId);
-//     console.log('Selected Date:', selectedDate);
-
-//     if (!selectedCompanyId) {
-//         alert('Ве молиме изберете компанија');
-//         return false;
-//     }
-
-//     const $form = $(this);
-//     const formData = new FormData(this);
     
     if (!isOnline()) {
         storeOfflineTransaction(formData);
@@ -366,24 +351,7 @@ $(document).ready(function() {
         formTransactionDate.value = this.value;
     });
 });
-// document.addEventListener('DOMContentLoaded', function() {
-//     const companySelect = document.getElementById('company_id');
-//     const dateInput = document.getElementById('transaction_date');
-//     const formCompanyId = document.getElementById('form_company_id');
-//     const formTransactionDate = document.getElementById('form_transaction_date');
 
-//     // Set initial values
-//     formCompanyId.value = companySelect.value;
-//     formTransactionDate.value = dateInput.value;
-
-//     // Update hidden form fields when selections change
-//     companySelect.addEventListener('change', function() {
-//         formCompanyId.value = this.value;
-//     });
-
-//     dateInput.addEventListener('change', function() {
-//         formTransactionDate.value = this.value;
-//     });
 
     // Keep the selected date when form is submitted
     document.getElementById('transactionForm').addEventListener('submit', function() {
@@ -429,52 +397,6 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 </script>
 
-<!-- <script>
-$(document).ready(function() {
-    // Mapping of Latin to Cyrillic letters for Macedonian
-    const translitMap = {
-        'a': 'а', 'b': 'б', 'v': 'в', 'g': 'г', 'd': 'д', 'e': 'е', 'zh': 'ж', 'z': 'з', 
-        'i': 'и', 'j': 'ј', 'k': 'к', 'l': 'л', 'm': 'м', 'n': 'н', 'o': 'о', 'p': 'п', 
-        'r': 'р', 's': 'с', 't': 'т', 'u': 'у', 'f': 'ф', 'h': 'х', 'c': 'ц', 'ch': 'ч', 
-        'sh': 'ш', 'dj': 'џ', 'gj': 'ѓ', 'kj': 'ќ', 'z': 'ж', 'c': 'ч', 's':'ш' 
-    };
-
-    // Function to convert Latin to Cyrillic
-    function transliterate(input) {
-        return input.toLowerCase().replace(/ch|sh|dj|gj|kj|zh|[a-z]/g, function(match) {
-            return translitMap[match] || match;
-        });
-    }
-
-    // Custom matcher for Select2
-    function customMatcher(params, data) {
-        if ($.trim(params.term) === '') {
-            return data;
-        }
-
-        const term = transliterate(params.term);
-        const text = transliterate(data.text);
-
-        console.log('Searching for:', term, 'in:', text);
-
-        if (text.includes(term)) {
-            return data;
-        }
-
-        return null;
-    }
-
-    // Initialize Select2 with custom matcher
-    $('#company_id').select2({
-        placeholder: 'Пребарувај компанија...',
-        allowClear: true,
-        width: '100%',
-        minimumInputLength: 0,
-        dropdownParent: $('body'),
-        matcher: customMatcher
-    });
-});
-</script> -->
 
 <script src="{{ asset('js/transliteration.js') }}"></script>
 
