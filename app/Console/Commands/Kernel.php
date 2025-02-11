@@ -1,38 +1,37 @@
 <?php
 
-namespace App\Console;
+namespace App\Http;
 
-use Illuminate\Console\Scheduling\Schedule;
-use Illuminate\Foundation\Console\Kernel as ConsoleKernel;
+use Illuminate\Foundation\Http\Kernel as HttpKernel;
 
-
-class Kernel extends ConsoleKernel
+class Kernel extends HttpKernel
 {
-    protected $commands = [
-        Commands\GenerateMonthlySummaries::class,
+    /**
+     * The application's middleware aliases.
+     *
+     * @var array<string, class-string|string>
+     */
+    protected $middlewareAliases = [
+        'auth' => \App\Http\Middleware\Authenticate::class,
+        'auth.basic' => \Illuminate\Auth\Middleware\AuthenticateWithBasicAuth::class,
+        'cache.headers' => \Illuminate\Http\Middleware\SetCacheHeaders::class,
+        'can' => \Illuminate\Auth\Middleware\Authorize::class,
+        'guest' => \App\Http\Middleware\RedirectIfAuthenticated::class,
+        'password.confirm' => \Illuminate\Auth\Middleware\RequirePassword::class,
+        'signed' => \Illuminate\Routing\Middleware\ValidateSignature::class,
+        'throttle' => \Illuminate\Routing\Middleware\ThrottleRequests::class,
+        'verified' => \Illuminate\Auth\Middleware\EnsureEmailIsVerified::class,
     ];
 
-    protected function schedule(Schedule $schedule)
-    {
-        $schedule->command('summaries:generate')->monthly();
-        
-    }
-    protected $commands1 = [
-        Commands\ClearDailyTransactions::class,
-    ];
-
-    protected function commands()
-    {
-        $this->load(__DIR__.'/Commands');
-
-        require base_path('routes/console.php');
-    }
-
+    /**
+     * The application's route middleware.
+     *
+     * These middleware may be assigned to groups or used individually.
+     *
+     * @var array<string, class-string|string>
+     */
     protected $routeMiddleware = [
-        // ...
-        'role' => \App\Http\Middleware\CheckRole::class,
         'admin' => \App\Http\Middleware\AdminMiddleware::class,
-        
-
+        'role' => \App\Http\Middleware\CheckRole::class, // Moved from Console Kernel
     ];
 }
