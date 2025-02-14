@@ -105,7 +105,10 @@ class SummaryController extends Controller
 
         // If regular user, show only their data
         if (!$currentUser->isAdmin() && $currentUser->role !== 'super_admin') {
-            $breadSales->whereIn('company_id', $currentUser->companies->pluck('id'));
+            $breadSales->where(function($query) use ($currentUser) {
+                $query->whereIn('company_id', $currentUser->companies->pluck('id'))
+                      ->orWhereNull('company_id'); // This allows old bread sales to be visible
+            });
         }
 
         // If admin and specific user selected
@@ -115,34 +118,17 @@ class SummaryController extends Controller
         } 
         // If admin and no specific user selected (All Users view)
         elseif ($currentUser->isAdmin() || $currentUser->role === 'super_admin') {
-            // Get the latest records for each company and bread type
-            $latestIds = BreadSale::whereDate('transaction_date', $selectedDate)
-                ->select(DB::raw('MAX(id) as id'))
-                ->groupBy('company_id', 'bread_type_id')
-                ->pluck('id');
-
-            $breadSales = BreadSale::whereIn('id', $latestIds)
+            // Get fresh aggregated totals for TODAY only
+            $breadSales = BreadSale::whereDate('transaction_date', Carbon::today())
                 ->select('bread_type_id')
-                ->selectRaw('SUM(returned_amount) as returned_amount')
-                ->selectRaw('SUM(sold_amount) as sold_amount')
-                ->selectRaw('SUM(old_bread_sold) as old_bread_sold')
-                ->selectRaw('SUM(returned_amount_1) as returned_amount_1')
+                ->selectRaw('SUM(CASE WHEN DATE(transaction_date) = ? THEN returned_amount ELSE 0 END) as returned_amount', [$selectedDate])
+                ->selectRaw('SUM(CASE WHEN DATE(transaction_date) = ? THEN sold_amount ELSE 0 END) as sold_amount', [$selectedDate])
+                ->selectRaw('SUM(CASE WHEN DATE(transaction_date) = ? THEN old_bread_sold ELSE 0 END) as old_bread_sold', [$selectedDate])
+                ->selectRaw('SUM(CASE WHEN DATE(transaction_date) = ? THEN returned_amount_1 ELSE 0 END) as returned_amount_1', [$selectedDate])
                 ->groupBy('bread_type_id');
-
-            Log::info('All users query', [
-                'sql' => $breadSales->toSql(),
-                'bindings' => $breadSales->getBindings(),
-                'latestIds' => $latestIds
-            ]);
         }
 
-        $results = $breadSales->get();
-        Log::info('Query results:', [
-            'count' => $results->count(),
-            'data' => $results->toArray()
-        ]);
-
-        $breadSales = $results->keyBy('bread_type_id');
+        $breadSales = $breadSales->get()->keyBy('bread_type_id');
     
         $breadCounts = $this->calculateBreadCounts($transactions, $selectedDate, $breadSales);
         
@@ -369,7 +355,71 @@ class SummaryController extends Controller
     }
     
 
+    public function getAdditionalTableData($date, $selectedUserId = null)
+{
+    $data = [];
+    $totalPrice = 0;
+
+    // Get bread types
+    $breadTypes = BreadType::all();
     
+    // Get daily transactions for the previous day
+    $previousDate = Carbon::parse($date)->subDay()->format('Y-m-d');
+    
+    // Query builder for transactions
+    $query = DailyTransaction::where('transaction_date', $previousDate);
+    if ($selectedUserId) {
+        $query->where('user_id', $selectedUserId);
+    }
+    $previousDayTransactions = $query->get();
+
+    // Query for old bread sales from the current day
+    $currentDayQuery = DailyTransaction::where('transaction_date', $date);
+    if ($selectedUserId) {
+        $currentDayQuery->where('user_id', $selectedUserId);
+    }
+    $currentDayTransactions = $currentDayQuery->get();
+
+    foreach ($breadTypes as $breadType) {
+        $previousDayTransaction = $previousDayTransactions
+            ->where('bread_type_id', $breadType->id)
+            ->first();
+
+        $currentDayTransaction = $currentDayTransactions
+            ->where('bread_type_id', $breadType->id)
+            ->first();
+
+        if ($previousDayTransaction) {
+            $returned = $previousDayTransaction->returned_amount ?? 0;
+            $sold = $currentDayTransaction->old_bread_sold ?? 0; // Get old bread sales
+            $returned1 = $previousDayTransaction->returned1 ?? 0;
+            $price = $breadType->price;
+
+            // Calculate differences
+            $difference = $returned - $sold;
+            $difference1 = $difference - $returned1;
+
+            // Calculate total
+            $total = $sold * $price;
+            $totalPrice += $total;
+
+            $data[$breadType->name] = [
+                'returned' => $returned,
+                'sold' => $sold,
+                'difference' => $difference,
+                'returned1' => $returned1,
+                'difference1' => $difference1,
+                'price' => $price,
+                'total' => $total
+            ];
+        }
+    }
+
+    return [
+        'data' => $data,
+        'totalPrice' => $totalPrice
+    ];
+}
 
     private function calculateAdditionalData($date, $breadCounts, $prices)
     {
@@ -397,71 +447,71 @@ class SummaryController extends Controller
     }
 
 
-    private function calculateAdditionalTableData($date, $breadTypes, $breadSales)
-{
-    $data = [];
-    $totalPrice = 0;
-    $user = Auth::user();
-    
-    // Get the appropriate company based on user role
-    if ($user->isAdmin() || $user->role === 'super_admin') {
-        $selectedUserId = request('user_id');
-        if ($selectedUserId) {
-            $selectedUser = User::find($selectedUserId);
-            $companies = $selectedUser->companies;
-        } else {
-            $companies = Company::all();
-        }
-    } else {
-        $companies = $user->companies;
-    }
-
-    $dailyTransactions = DailyTransaction::with('breadType')
-        ->whereNotNull('bread_type_id')
-        ->whereHas('breadType')
-        ->whereDate('transaction_date', $date)
-        ->whereIn('company_id', $companies->pluck('id'))
-        ->get()
-        ->groupBy('bread_type_id');
-
-    foreach ($breadTypes as $breadType) {
-        if (!$breadType->available_for_daily) {
-            continue;
-        }
-
-        $breadSale = $breadSales->get($breadType->id);
+    public function calculateAdditionalTableData($date, $breadTypes, $breadSales)
+    {
+        $data = [];
+        $totalPrice = 0;
+        $user = Auth::user();
         
-        $returnedToday = 0;
-        if (isset($dailyTransactions[$breadType->id])) {
-            $returnedToday = $dailyTransactions[$breadType->id]->sum('returned');
+        // Get the appropriate company based on user role
+        if ($user->isAdmin() || $user->role === 'super_admin') {
+            $selectedUserId = request('user_id');
+            if ($selectedUserId) {
+                $selectedUser = User::find($selectedUserId);
+                $companies = $selectedUser->companies;
+            } else {
+                $companies = Company::all();
+            }
+        } else {
+            $companies = $user->companies;
         }
 
-        $soldOldBread = $breadSale ? $breadSale->old_bread_sold : 0;
-        $returned1 = $breadSale ? $breadSale->returned_amount_1 : 0;
-        $price = $breadType->old_price;
+        $dailyTransactions = DailyTransaction::with('breadType')
+            ->whereNotNull('bread_type_id')
+            ->whereHas('breadType')
+            ->whereDate('transaction_date', $date)
+            ->whereIn('company_id', $companies->pluck('id'))
+            ->get()
+            ->groupBy('bread_type_id');
 
-        $difference = $returnedToday - $soldOldBread;
-        $difference1 = $difference - $returned1;
-        $total = $soldOldBread * $price;
+        foreach ($breadTypes as $breadType) {
+            if (!$breadType->available_for_daily) {
+                continue;
+            }
 
-        $data[$breadType->name] = [
-            'returned' => $returnedToday,
-            'sold' => $soldOldBread,
-            'difference' => $difference,
-            'returned1' => $returned1,
-            'difference1' => $difference1,
-            'price' => $price,
-            'total' => $total
+            $breadSale = $breadSales->get($breadType->id);
+            
+            $returnedToday = 0;
+            if (isset($dailyTransactions[$breadType->id])) {
+                $returnedToday = $dailyTransactions[$breadType->id]->sum('returned');
+            }
+
+            $soldOldBread = $breadSale ? $breadSale->old_bread_sold : 0;
+            $returned1 = $breadSale ? $breadSale->returned_amount_1 : 0;
+            $price = $breadType->old_price;
+
+            $difference = $returnedToday - $soldOldBread;
+            $difference1 = $difference - $returned1;
+            $total = $soldOldBread * $price;
+
+            $data[$breadType->name] = [
+                'returned' => $returnedToday,
+                'sold' => $soldOldBread,
+                'difference' => $difference,
+                'returned1' => $returned1,
+                'difference1' => $difference1,
+                'price' => $price,
+                'total' => $total
+            ];
+
+            $totalPrice += $total;
+        }
+
+        return [
+            'data' => $data,
+            'totalPrice' => $totalPrice
         ];
-
-        $totalPrice += $total;
     }
-
-    return [
-        'data' => $data,
-        'totalPrice' => $totalPrice
-    ];
-}
 
 
     
@@ -565,11 +615,11 @@ public function updateAdditional(Request $request)
         $date = $request->input('date');
         $sold = $request->input('sold', []);
         $returned1 = $request->input('returned1', []);
-        $selectedUserId = $request->input('selected_user_id'); // New parameter
+        $selectedUserId = $request->input('selected_user_id');
         
         $user = Auth::user();
         
-        // Get the appropriate company based on user role
+        // Determine the company based on user role
         if ($user->isAdmin() || $user->role === 'super_admin') {
             if ($selectedUserId) {
                 $selectedUser = User::find($selectedUserId);
@@ -577,15 +627,11 @@ public function updateAdditional(Request $request)
                     throw new \Exception('Selected user not found.');
                 }
                 $company = $selectedUser->companies()->first();
-                $effectiveUser = $selectedUser; // Use selected user for bread sales
             } else {
-                // If no user selected, use the first company
                 $company = Company::first();
-                $effectiveUser = $user;
             }
         } else {
             $company = $user->companies()->first();
-            $effectiveUser = $user;
         }
         
         if (!$company) {
@@ -632,8 +678,9 @@ public function updateAdditional(Request $request)
                 [
                     'bread_type_id' => $breadType->id,
                     'transaction_date' => $date,
-                    'user_id' => $effectiveUser->id, // Changed from $user->id to $effectiveUser->id
-                    'company_id' => $company->id
+                    'user_id' => $user->id,
+                    'company_id' => null // This will ensure it stays NULL
+
                 ],
                 $updateData
             );
@@ -760,4 +807,82 @@ public function updateAdditional(Request $request)
             'totalInPrice' => $totalInPrice
         ];
     }
+
+    public function showAdditionalTable(Request $request)
+{
+    $date = $request->input('date', Carbon::yesterday()->toDateString());
+    $currentUser = Auth::user();
+    $selectedUserId = $request->input('selected_user_id');
+
+    // Get the appropriate companies based on user role
+    if ($currentUser->isAdmin() || $currentUser->role === 'super_admin') {
+        if ($selectedUserId) {
+            $selectedUser = User::find($selectedUserId);
+            $companies = $selectedUser->companies;
+        } else {
+            $companies = Company::all();
+        }
+    } else {
+        $companies = $currentUser->companies;
+    }
+
+    // Get bread sales data
+    $breadSales = BreadSale::whereDate('transaction_date', $date)
+        ->whereIn('company_id', $companies->pluck('id'))
+        ->get()
+        ->keyBy('bread_type_id');
+
+    // Get daily transactions
+    $dailyTransactions = DailyTransaction::with('breadType')
+        ->whereNotNull('bread_type_id')
+        ->whereHas('breadType')
+        ->whereDate('transaction_date', $date)
+        ->whereIn('company_id', $companies->pluck('id'))
+        ->get()
+        ->groupBy('bread_type_id');
+
+    $additionalTableData = [];
+    $totalPrice = 0;
+
+    // Get all bread types that are available for daily
+    $breadTypes = BreadType::where('available_for_daily', true)->get();
+
+    foreach ($breadTypes as $breadType) {
+        $transactions = $dailyTransactions->get($breadType->id, collect());
+        $breadSale = $breadSales->get($breadType->id);
+        
+        $returnedToday = $transactions->sum('returned');
+        $soldOldBread = $breadSale ? $breadSale->old_bread_sold : 0;
+        $returned1 = $breadSale ? $breadSale->returned_amount_1 : 0;
+        $price = $breadType->old_price;
+
+        $difference = $returnedToday - $soldOldBread;
+        $difference1 = $difference - $returned1;
+        $total = $soldOldBread * $price;
+
+        $additionalTableData[$breadType->name] = [
+            'returned' => $returnedToday,
+            'sold' => $soldOldBread,
+            'difference' => $difference,
+            'returned1' => $returned1,
+            'difference1' => $difference1,
+            'price' => $price,
+            'total' => $total
+        ];
+
+        $totalPrice += $total;
+    }
+
+    return view('daily-transactions.index', [
+        'additionalTableData' => [
+            'data' => $additionalTableData,
+            'totalPrice' => $totalPrice,
+        ],
+        'date' => $date,
+        'selectedUserId' => $selectedUserId,
+        'currentUser' => $currentUser
+    ]);
 }
+}
+
+

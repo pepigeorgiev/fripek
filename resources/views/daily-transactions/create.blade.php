@@ -75,95 +75,144 @@
             </div>
         </div>
 
-        <form id="transactionForm" action="{{ route('daily-transactions.store') }}" method="POST">
-    @csrf
-    <input type="hidden" name="company_id" id="form_company_id" value="">
-    <input type="hidden" name="transaction_date" id="form_transaction_date" value="">
+        <!-- Toggle buttons -->
+        <div class="mt-4 px-2 md:px-0 flex space-x-4">
+            <button type="button" id="dailyTransactionsButton" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 text-sm md:text-base">
+                Дневни Трансакции
+            </button>
+            <button type="button" id="oldBreadSalesButton" class="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600 text-sm md:text-base">
+                Продажба на стар леб
+            </button>
+        </div>
 
-        <!-- <form id="transactionForm" action="{{ route('daily-transactions.store') }}" method="POST">
-            @csrf
-            <input type="hidden" name="company_id" id="form_company_id">
-            <input type="hidden" name="transaction_date" id="form_transaction_date"> -->
-            
-            <!-- Mobile-optimized table -->
-            <div class="overflow-x-auto -mx-2 md:mx-0">
-                <table class="w-full divide-y divide-gray-200">
-                    <thead>
-                        <tr>
-                            <th class="px-2 md:px-6 py-2 md:py-3 bg-gray-50 text-left text-xs md:text-sm font-bold text-gray-700 uppercase">
-                                Тип
-                            </th>
-                            <th class="px-2 md:px-6 py-2 md:py-3 bg-gray-50 text-center text-xs md:text-sm font-bold text-gray-700 uppercase">
-                                Исп
-                            </th>
-                            <th class="px-2 md:px-6 py-2 md:py-3 bg-gray-50 text-center text-xs md:text-sm font-bold text-gray-700 uppercase">
-                                Пов
-                            </th>
-                            <th class="px-2 md:px-6 py-2 md:py-3 bg-gray-50 text-center text-xs md:text-sm font-bold text-gray-700 uppercase">
-                                Гра
-                            </th>
-                            <th class="px-2 md:px-6 py-2 md:py-3 bg-gray-50 text-center text-xs md:text-sm font-bold text-gray-700 uppercase">
-                                Вк
-                            </th>
-                        </tr>
-                    </thead>
-                    <tbody class="bg-white divide-y divide-gray-200">
-                        @foreach($breadTypes as $index => $breadType)
-                        <tr>
-                            <td class="px-2 md:px-6 py-2 md:py-4 text-sm md:text-lg font-medium text-gray-900">
-                                {{ $breadType->name }}
-                                <input type="hidden" name="transactions[{{ $index }}][bread_type_id]" value="{{ $breadType->id }}">
-                            </td>
-                            <td class="px-1 md:px-6 py-2 md:py-4">
-                                <input type="number" 
-                                    name="transactions[{{ $index }}][delivered]" 
-                                    class="delivered-input block w-full rounded border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-center text-base md:text-lg" 
-                                    data-row="{{ $index }}"
-                                    min="0" value="0"
-                                    inputmode="numeric"
-                                    pattern="[0-9]*">
-                            </td>
-                            <td class="px-1 md:px-6 py-2 md:py-4">
-                                <input type="number" 
-                                    name="transactions[{{ $index }}][returned]" 
-                                    class="returned-input block w-full rounded border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-center text-base md:text-lg" 
-                                    data-row="{{ $index }}"
-                                    min="0" 
-                                    value="0"
-                                    inputmode="numeric"
-                                    pattern="[0-9]*">
-                                    
-                            </td>
-                            <td class="px-1 md:px-6 py-2 md:py-4">
-                                <input type="number" 
-                                    name="transactions[{{ $index }}][gratis]" 
-                                    class="gratis-input block w-full rounded border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-center text-base md:text-lg" 
-                                    data-row="{{ $index }}"
-                                    min="0" value="0"
-                                    inputmode="numeric"
-                                    pattern="[0-9]*">
-                                    
-                            </td>
-                            <td class="px-1 md:px-6 py-2 md:py-4 text-center">
-                                <span class="total text-base md:text-lg font-bold" id="total-{{ $index }}">0</span>
-                            </td>
-                        </tr>
-                        @endforeach
-                    </tbody>
-                </table>
-            </div>
+        <!-- Daily Transactions Section -->
+        <div id="dailyTransactionsSection" class="mt-4 px-2 md:px-0">
+            <form id="transactionForm" action="{{ route('daily-transactions.store') }}" method="POST">
+                @csrf
+                <input type="hidden" name="company_id" id="form_company_id" value="">
+                <input type="hidden" name="transaction_date" id="form_transaction_date" value="">
 
-            <div class="flex items-center mt-4 mb-4 px-2 md:px-0">
-                <input type="checkbox" name="is_paid" id="is_paid" class="mr-2">
-                <label for="is_paid" class="text-sm md:text-lg text-gray-700">Не е платена трансакцијата</label>
-            </div>
+                <div class="overflow-x-auto -mx-2 md:mx-0">
+                    <table class="w-full divide-y divide-gray-200">
+                        <thead>
+                            <tr>
+                                <th class="px-2 md:px-6 py-2 md:py-3 bg-gray-50 text-left text-xs md:text-sm font-bold text-gray-700 uppercase">
+                                    Тип
+                                </th>
+                                <th class="px-2 md:px-6 py-2 md:py-3 bg-gray-50 text-center text-xs md:text-sm font-bold text-gray-700 uppercase">
+                                    Исп
+                                </th>
+                                <th class="px-2 md:px-6 py-2 md:py-3 bg-gray-50 text-center text-xs md:text-sm font-bold text-gray-700 uppercase">
+                                    Пов
+                                </th>
+                                <th class="px-2 md:px-6 py-2 md:py-3 bg-gray-50 text-center text-xs md:text-sm font-bold text-gray-700 uppercase">
+                                    Гра
+                                </th>
+                                <th class="px-2 md:px-6 py-2 md:py-3 bg-gray-50 text-center text-xs md:text-sm font-bold text-gray-700 uppercase">
+                                    Вк
+                                </th>
+                            </tr>
+                        </thead>
+                        <tbody class="bg-white divide-y divide-gray-200">
+                            @foreach($breadTypes as $index => $breadType)
+                            <tr>
+                                <td class="px-2 md:px-6 py-2 md:py-4 text-sm md:text-lg font-medium text-gray-900">
+                                    {{ $breadType->name }}
+                                    <input type="hidden" name="transactions[{{ $index }}][bread_type_id]" value="{{ $breadType->id }}">
+                                </td>
+                                <td class="px-1 md:px-6 py-2 md:py-4">
+                                    <input type="number" 
+                                        name="transactions[{{ $index }}][delivered]" 
+                                        class="delivered-input block w-full rounded border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-center text-base md:text-lg" 
+                                        data-row="{{ $index }}"
+                                        min="0" value="0"
+                                        inputmode="numeric"
+                                        pattern="[0-9]*">
+                                </td>
+                                <td class="px-1 md:px-6 py-2 md:py-4">
+                                    <input type="number" 
+                                        name="transactions[{{ $index }}][returned]" 
+                                        class="returned-input block w-full rounded border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-center text-base md:text-lg" 
+                                        data-row="{{ $index }}"
+                                        min="0" 
+                                        value="0"
+                                        inputmode="numeric"
+                                        pattern="[0-9]*">
+                                        
+                                </td>
+                                <td class="px-1 md:px-6 py-2 md:py-4">
+                                    <input type="number" 
+                                        name="transactions[{{ $index }}][gratis]" 
+                                        class="gratis-input block w-full rounded border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-center text-base md:text-lg" 
+                                        data-row="{{ $index }}"
+                                        min="0" value="0"
+                                        inputmode="numeric"
+                                        pattern="[0-9]*">
+                                        
+                                </td>
+                                <td class="px-1 md:px-6 py-2 md:py-4 text-center">
+                                    <span class="total text-base md:text-lg font-bold" id="total-{{ $index }}">0</span>
+                                </td>
+                            </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
 
-            <div class="mt-4 px-2 md:px-0">
-                <button type="submit" class="w-full md:w-auto bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 text-sm md:text-base">
-                    Зачувај Трансакции
-                </button>
-            </div>
-        </form>
+                <div class="flex items-center mt-4 mb-4 px-2 md:px-0">
+                    <input type="checkbox" name="is_paid" id="is_paid" class="mr-2">
+                    <label for="is_paid" class="text-sm md:text-lg text-gray-700">Не е платена трансакцијата</label>
+                </div>
+
+                <div class="mt-4 px-2 md:px-0">
+                    <button type="submit" class="w-full md:w-auto bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 text-sm md:text-base">
+                        Зачувај Трансакции
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <!-- Old Bread Sales Section -->
+        <div id="oldBreadSalesSection" class="hidden mt-4 px-2 md:px-0">
+            <form id="oldBreadSalesForm" action="{{ route('old-bread-sales.store') }}" method="POST">
+                @csrf
+                <input type="hidden" name="transaction_date" value="{{ $date }}">
+
+                <div class="overflow-x-auto -mx-2 md:mx-0">
+                    <table class="w-full divide-y divide-gray-200">
+                        <thead>
+                            <tr>
+                                <th class="px-4 py-2 text-lg font-bold text-center-desktop">Тип на лебот</th>
+                                <th class="px-4 py-2 text-lg font-bold text-center-desktop">Продаден</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach($breadTypes as $breadType)
+                                @if($breadType->available_for_daily)
+                                    <tr>
+                                        <td class="border px-4 py-2 text-lg font-bold text-center-desktop">{{ $breadType->name }}</td>
+                                        <td class="border px-4 py-2 text-lg font-bold text-center-desktop">
+                                            <input type="number" 
+                                                   name="old_bread_sold[{{ $breadType->id }}][sold]" 
+                                                   value="{{ old('old_bread_sold.'.$breadType->id.'.sold', $additionalTableData[$breadType->id]['sold'] ?? 0) }}" 
+                                                   class="w-full px-2 py-1 border rounded text-center-desktop">
+                                            <input type="hidden" 
+                                                   name="old_bread_sold[{{ $breadType->id }}][bread_type_id]" 
+                                                   value="{{ $breadType->id }}">
+                                        </td>
+                                    </tr>
+                                @endif
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
+                <div class="mt-4">
+                    <button type="submit" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
+                        Зачувај
+                    </button>
+                </div>
+            </form>
+        </div>
     </div>
 </div>
 
@@ -400,5 +449,35 @@ document.addEventListener('DOMContentLoaded', function() {
 
 <script src="{{ asset('js/transliteration.js') }}"></script>
 
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const dailyTransactionsButton = document.getElementById('dailyTransactionsButton');
+    const oldBreadSalesButton = document.getElementById('oldBreadSalesButton');
+    const dailyTransactionsSection = document.getElementById('dailyTransactionsSection');
+    const oldBreadSalesSection = document.getElementById('oldBreadSalesSection');
+
+    // Show daily transactions table by default
+    dailyTransactionsSection.classList.remove('hidden');
+    oldBreadSalesSection.classList.add('hidden');
+
+    // Toggle to show daily transactions
+    dailyTransactionsButton.addEventListener('click', function() {
+        dailyTransactionsSection.classList.remove('hidden');
+        oldBreadSalesSection.classList.add('hidden');
+    });
+
+    // Toggle to show old bread sales
+    oldBreadSalesButton.addEventListener('click', function() {
+        oldBreadSalesSection.classList.remove('hidden');
+        dailyTransactionsSection.classList.add('hidden');
+    });
+
+    // Handle save button for old bread sales
+    document.getElementById('saveOldBreadSales').addEventListener('click', function() {
+        // Implement save logic for old bread sales here
+        alert('Продажба на стар леб е зачувана.');
+    });
+});
+</script>
 
 @endsection

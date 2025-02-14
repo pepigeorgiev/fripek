@@ -20,7 +20,8 @@ class DailyTransaction extends Model
         'delivered',
         'returned',
         'gratis',
-        'is_paid'
+        'is_paid',
+        'old_bread_sold'
     ];
 
     protected $dates = ['transaction_date'];
@@ -29,6 +30,8 @@ class DailyTransaction extends Model
         'transaction_date' => 'date',
     ];
 
+
+    
     protected static function boot()
     {
         parent::boot();

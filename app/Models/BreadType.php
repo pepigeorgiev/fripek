@@ -13,6 +13,7 @@ class BreadType extends Model
         'price',
         'old_price',
         'is_active',
+        'old_bread_sold',
         'available_for_daily',
     ];
 
@@ -20,6 +21,7 @@ class BreadType extends Model
         'price' => 'decimal:2',
         'old_price' => 'decimal:2',
         'is_active' => 'boolean',
+        'old_bread_sold' => 'decimal:2',
         'available_for_daily' => 'boolean',
     ];
 
@@ -79,6 +81,11 @@ class BreadType extends Model
     public function scopeAvailableForDaily($query)
     {
         return $query->where('available_for_daily', true);
+    }
+
+    public function breadSales()
+    {
+        return $this->hasMany(BreadSale::class);
     }
 }
 

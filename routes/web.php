@@ -15,6 +15,8 @@ use App\Http\Controllers\UserController;
 use App\Http\Controllers\TransactionHistoryController;
 use App\Http\Controllers\InstallController;
 use App\Http\Controllers\LogController;
+use App\Http\Controllers\DailyTransactionsController;
+use App\Http\Controllers\OldBreadSalesController;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -49,11 +51,12 @@ Route::middleware(['web'])->group(function () {
 
     // Protected routes
     Route::middleware(['auth'])->group(function () {
-        Route::get('/daily-transactions/create', [DailyTransactionController::class, 'create'])
+        Route::get('/daily-transactions/create', [DailyTransactionsController::class, 'create'])
             ->name('daily-transactions.create');
         Route::post('/daily-transactions', [DailyTransactionController::class, 'store'])
             ->name('daily-transactions.store');
-            Route::post('bread-types/{breadType}/company-prices/{company}', [BreadTypeController::class, 'updateCompanyPrices']);
+            Route::post('bread-types/{breadType}/company-prices/{company}', [BreadTypeController::class, 'updateCompanyPrices'])
+            ;
     });
 });
 
@@ -253,3 +256,5 @@ Route::get('/csrf-token', function () {
 })->middleware('web');
 
 Route::post('/pwa-log', [LogController::class, 'store'])->name('pwa.log');
+
+Route::post('/old-bread-sales/store', [OldBreadSalesController::class, 'store'])->name('old-bread-sales.store');

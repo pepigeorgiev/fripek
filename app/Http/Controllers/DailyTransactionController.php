@@ -49,6 +49,7 @@ class DailyTransactionController extends Controller
         // Get date and company_id from request
         $date = request('date', now()->toDateString());
         $selectedCompanyId = request('company_id');
+        
     
         $existingTransactions = DailyTransaction::whereIn('company_id', $companies->pluck('id'))
             ->whereDate('transaction_date', $date)
@@ -57,6 +58,8 @@ class DailyTransactionController extends Controller
             })
             ->get()
             ->groupBy('company_id');
+            
+            
     
         return view('daily-transactions.create', compact(
             'companies',
@@ -65,6 +68,7 @@ class DailyTransactionController extends Controller
             'existingTransactions',
             'selectedCompanyId'
         ));
+        
     }
 
 

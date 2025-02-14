@@ -8,6 +8,8 @@ use App\Models\TransactionHistory;
 
 trait TracksHistory
 {
+    protected $originalValues = [];
+
     protected static function bootTracksHistory()
     {
         Log::info('TracksHistory trait booted');
@@ -59,7 +61,6 @@ trait TracksHistory
 
         // Keep the existing update handlers
         static::updating(function ($transaction) {
-            // For updates, get the original values from the database
             $originalTransaction = \DB::table('daily_transactions')
                 ->where('company_id', $transaction->company_id)
                 ->where('bread_type_id', $transaction->bread_type_id)
@@ -92,7 +93,7 @@ trait TracksHistory
                 ]);
 
                 if (!empty($changes)) {
-                    $historyRecord = static::createHistoryRecord(
+                    static::createHistoryRecord(
                         $transaction, 
                         $oldValues, 
                         $changes,
