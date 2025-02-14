@@ -208,7 +208,7 @@
                 </div>
                 <div class="mt-4">
                     <button type="submit" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
-                        Зачувај
+                        Зачувај без да внесуваш компанија
                     </button>
                 </div>
             </form>
@@ -475,9 +475,30 @@ document.addEventListener('DOMContentLoaded', function() {
     // Handle save button for old bread sales
     document.getElementById('saveOldBreadSales').addEventListener('click', function() {
         // Implement save logic for old bread sales here
-        alert('Продажба на стар леб е зачувана.');
+        alert('Продажбата на стар леб е зачувана.');
     });
 });
 </script>
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const oldBreadInputs = document.querySelectorAll('input[name^="old_bread_sold"][name$="[sold]"]');
+
+        oldBreadInputs.forEach(function (input) {
+            input.addEventListener('focus', function () {
+                if (input.value === '0') {
+                    input.value = '';
+                }
+            });
+
+            input.addEventListener('blur', function () {
+                if (input.value === '') {
+                    input.value = '';
+                }
+            });
+        });
+    });
+</script>
+
+
 
 @endsection

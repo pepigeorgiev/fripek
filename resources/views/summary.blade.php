@@ -173,7 +173,16 @@
                         <tr>
                             <td class="border px-4 py-2 text-lg font-bold text-center-desktop">{{ $breadType }}</td>
                             <td class="border px-4 py-2 text-lg font-bold text-center-desktop">{{ $data['returned'] ?? 0 }}</td>
-                            <td class="border px-4 py-2 text-lg font-bold text-center-desktop">{{ $data['sold'] ?? 0 }}</td>
+                            <td class="border px-4 py-2 text-lg font-bold text-center-desktop">
+                                @if($currentUser->isAdmin() || $currentUser->role === 'super_admin')
+                                    <input type="number" 
+                                           name="sold[{{ $breadType }}]" 
+                                           value="{{ old('sold.'.$breadType, $data['sold'] ?? 0) }}" 
+                                           class="w-full px-2 py-1 border rounded text-center-desktop">
+                                @else
+                                    {{ $data['sold'] ?? 0 }}
+                                @endif
+                            </td>
                             <td class="border px-4 py-2 text-lg font-bold text-center-desktop">{{ $data['difference'] ?? 0 }}</td>
                             <td class="border px-4 py-2 text-lg font-bold text-center-desktop">
                                 <input type="number" 
@@ -181,9 +190,6 @@
                                        value="{{ old('returned1.'.$breadType, $data['returned1'] ?? 0) }}" 
                                        class="w-full px-2 py-1 border rounded text-center-desktop">
                             </td>
-                            <td class="border px-4 py-2 text-lg font-bold text-center-desktop">
-    {{ $data['sold'] ?? $breadSales->get($breadType->id)?->old_bread_sold ?? 0 }}
-</td>
                             <td class="border px-4 py-2 text-lg font-bold text-center-desktop">{{ $data['difference1'] ?? 0 }}</td>
                             <td class="border px-4 py-2 text-lg font-bold text-center-desktop">{{ $data['price'] ?? 0 }}</td>
                             <td class="border px-4 py-2 text-lg font-bold text-center-desktop">{{ number_format($data['total'] ?? 0, 2) }}</td>
@@ -433,7 +439,6 @@
     </div>
 @endif
 
-   
 
 {{-- Final Summary Section --}}
 <div class="mb-8">
