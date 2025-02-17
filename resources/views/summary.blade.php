@@ -93,9 +93,7 @@
                value="{{ $breadSale->returned_amount ?? $counts['returned'] ?? 0 }}" 
                class="w-full px-2 py-1 border rounded text-center-desktop accumulating-input"
                data-original-value="{{ $breadSale->returned_amount ?? $counts['returned'] ?? 0 }}"
-               data-previous-values="{{ $breadSale->returned_amount ?? $counts['returned'] ?? 0 }}"
-               min="0"
-               onchange="handleAccumulatingInput(this)">
+               min="0">
     @endif
 </td>
                            
@@ -495,84 +493,68 @@
 </style>
 
 <script>
-    function handleAccumulatingInput(input) {
-        // Get the new value entered
-        let newValue = parseInt(input.value) || 0;
-        
-        // Get the previous values array
-        let previousValues = input.getAttribute('data-previous-values')
-            .split(',')
-            .map(v => parseInt(v) || 0);
-            
-        if (newValue === 0) {
-            // If entering 0, reset everything
-            input.value = 0;
-            input.setAttribute('data-previous-values', '0');
-        } else {
-            // Add new value to the array of previous values
-            previousValues.push(newValue);
-            
-            // Calculate sum
-            let sum = previousValues.reduce((a, b) => a + b, 0);
-            
-            // Update input value
-            input.value = sum;
-            
-            // Store updated previous values
-            input.setAttribute('data-previous-values', previousValues.join(','));
-        }
-
-        // Update the hidden input if it exists
-        let hiddenInput = input.nextElementSibling;
-        if (hiddenInput && hiddenInput.type === 'hidden') {
-            hiddenInput.value = input.value;
-        }
-    }
-
-    // Add event listener to clear input on focus if value is zero
-    document.addEventListener('DOMContentLoaded', function() {
-        const inputs = document.querySelectorAll('.accumulating-input');
-        inputs.forEach(input => {
-            input.addEventListener('focus', function() {
-                if (this.value === '0') {
-                    this.value = '';
-                }
-            });
-        });
-    });
-
-
-    document.addEventListener('DOMContentLoaded', function() {
-    // Handle sold inputs in the second table
-    const soldInputs = document.querySelectorAll('input[name^="sold["]');
     
-    soldInputs.forEach(function(input) {
-        // Clear value on focus if it's zero
+// Keep track of running totals for each input
+const runningTotals = {};
+
+function handleAccumulatingInput(input) {
+    // Get input identifier (using the input's name)
+    const inputId = input.name;
+    
+    // Get the new entered value
+    let newValue = parseInt(input.value) || 0;
+    
+    // If this is the first time seeing this input, initialize its total
+    if (!runningTotals[inputId]) {
+        runningTotals[inputId] = parseInt(input.getAttribute('data-original-value')) || 0;
+    }
+    
+    if (newValue === 0) {
+        // Reset if zero entered
+        runningTotals[inputId] = 0;
+        input.value = 0;
+    } else {
+        // Add new value to running total
+        runningTotals[inputId] += newValue;
+        input.value = runningTotals[inputId];
+    }
+    
+    // Store current total
+    input.setAttribute('data-original-value', runningTotals[inputId]);
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    const inputs = document.querySelectorAll('.accumulating-input');
+    
+    inputs.forEach(input => {
+        // Initialize running total
+        const inputId = input.name;
+        runningTotals[inputId] = parseInt(input.value) || 0;
+        
+        // Store initial value
+        input.setAttribute('data-original-value', input.value);
+        
+        // On focus, clear for new input
         input.addEventListener('focus', function() {
-            if (this.value === '0') {
-                this.value = '';
-            }
+            const currentTotal = runningTotals[inputId];
+            input.setAttribute('data-original-value', currentTotal);
+            input.value = '';
         });
-
-        // Handle input validation and formatting
-        input.addEventListener('input', function() {
-            // Remove any non-numeric characters
-            this.value = this.value.replace(/[^\d]/g, '');
-            
-            // Ensure the value is not negative
-            let value = parseInt(this.value) || 0;
-            if (value < 0) {
-                this.value = 0;
-            }
-        });
-
-        // Reset empty values to zero on blur
+        
+        // On blur, handle accumulation
         input.addEventListener('blur', function() {
-            if (this.value === '' || isNaN(this.value)) {
-                this.value = '0';
+            if (input.value === '') {
+                // If no new value entered, restore the current total
+                input.value = input.getAttribute('data-original-value');
+            } else {
+                handleAccumulatingInput(this);
             }
         });
     });
+});
+</script>
+
+<script>
     
 
     document.addEventListener('DOMContentLoaded', function() {
