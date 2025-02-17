@@ -71,7 +71,6 @@ class DailyTransactionController extends Controller
         
     }
 
-
     public function store(Request $request)
 {
     $validatedData = $request->validate([
@@ -90,56 +89,45 @@ class DailyTransactionController extends Controller
             $isPaid = !$request->has('is_paid');
             $shouldTrackPayment = $company->type === 'cash';
             
-            // Get existing transactions before deletion for history
+            // Get existing transactions for history
             $existingTransactions = DailyTransaction::where([
                 'company_id' => $validatedData['company_id'],
                 'transaction_date' => $validatedData['transaction_date']
             ])->get()->keyBy('bread_type_id');
-            
-            // First, delete existing transactions for this company and date
-            DailyTransaction::where([
-                'company_id' => $validatedData['company_id'],
-                'transaction_date' => $validatedData['transaction_date']
-            ])->delete();
 
-            // Create new transactions
             foreach ($validatedData['transactions'] as $transaction) {
                 $breadType = BreadType::find($transaction['bread_type_id']);
                 if ($breadType && $breadType->is_active) {
                     $transactionIsPaid = $shouldTrackPayment ? $isPaid : true;
                     $paidDate = $transactionIsPaid ? now()->toDateString() : null;
-                    
-                    $newTransaction = DailyTransaction::create([
-                        'company_id' => $validatedData['company_id'],
-                        'transaction_date' => $validatedData['transaction_date'],
-                        'bread_type_id' => $transaction['bread_type_id'],
-                        'delivered' => $transaction['delivered'],
-                        'returned' => $transaction['returned'],
-                        'gratis' => $transaction['gratis'],
-                        'is_paid' => $transactionIsPaid,
-                        'paid_date' => $paidDate,
-                    ]);
+
+                    // Create new transaction without affecting old_bread_sold
+                    $newTransaction = DailyTransaction::updateOrCreate(
+                        [
+                            'company_id' => $validatedData['company_id'],
+                            'transaction_date' => $validatedData['transaction_date'],
+                            'bread_type_id' => $transaction['bread_type_id']
+                        ],
+                        [
+                            'delivered' => $transaction['delivered'],
+                            'returned' => $transaction['returned'],
+                            'gratis' => $transaction['gratis'],
+                            'is_paid' => $transactionIsPaid,
+                            'paid_date' => $paidDate
+                        ]
+                    );
 
                     // Record history if there was an existing transaction
                     if (isset($existingTransactions[$transaction['bread_type_id']])) {
                         $oldTransaction = $existingTransactions[$transaction['bread_type_id']];
-                        
-                        // Use TransactionHistory::create directly
-                        TransactionHistory::create([
-                            'transaction_id' => $newTransaction->id,
-                            'user_id' => auth()->id(),
-                            'action' => 'update',
-                            'old_values' => [
-                                'delivered' => $oldTransaction->delivered,
-                                'returned' => $oldTransaction->returned,
-                                'gratis' => $oldTransaction->gratis
-                            ],
-                            'new_values' => [
-                                'delivered' => $transaction['delivered'],
-                                'returned' => $transaction['returned'],
-                                'gratis' => $transaction['gratis']
-                            ],
-                            'ip_address' => request()->ip()
+                        $this->recordHistory($newTransaction, [
+                            'delivered' => $oldTransaction->delivered,
+                            'returned' => $oldTransaction->returned,
+                            'gratis' => $oldTransaction->gratis
+                        ], [
+                            'delivered' => $transaction['delivered'],
+                            'returned' => $transaction['returned'],
+                            'gratis' => $transaction['gratis']
                         ]);
                     }
                 }
@@ -160,6 +148,8 @@ class DailyTransactionController extends Controller
         ], 500);
     }
 }
+
+
 
 
 

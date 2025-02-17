@@ -17,6 +17,7 @@ class DailyTransaction extends Model
         'company_id',
         'bread_type_id',
         'transaction_date',
+        'user_id',
         'delivered',
         'returned',
         'gratis',
@@ -58,6 +59,7 @@ class DailyTransaction extends Model
                     'old_values' => $oldValues
                 ]);
 
+                
                 // Create history record if it's late night or not current date
                 if ($isLateNightEdit || $isNotCurrentDate) {
                     try {
@@ -130,6 +132,10 @@ class DailyTransaction extends Model
         return $query->where('is_paid', true);
     }
 
+    public function user()
+{
+    return $this->belongsTo(User::class);
+}
     // Modify the getTotalPriceAttribute to consider payment status
     public function getTotalPriceAttribute()
     {

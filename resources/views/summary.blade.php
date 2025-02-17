@@ -78,21 +78,27 @@
                         <tr>
                             <td class="border px-4 py-2 text-lg font-bold text-center-desktop">{{ $breadType }}</td>
                             <td class="border px-4 py-2 text-lg font-bold text-center-desktop">{{ $counts['sent'] }}</td>
+                            
                             <td class="border px-4 py-2 text-lg font-bold text-center-desktop">
-                                @if(auth()->user()->role === 'user')
-                                    <div class="text-lg font-bold">
-                                        {{ $breadSale->returned_amount ?? $counts['returned'] ?? 0 }}
-                                        <input type="hidden" 
-                                               name="returned[{{ $breadType }}]" 
-                                               value="{{ $breadSale->returned_amount ?? $counts['returned'] ?? 0 }}">
-                                    </div>
-                                @else
-                                    <input type="number" 
-                                           name="returned[{{ $breadType }}]" 
-                                           value="{{ $breadSale->returned_amount ?? $counts['returned'] ?? 0 }}" 
-                                           class="w-full px-2 py-1 border rounded text-center-desktop">
-                                @endif
-                            </td>
+    @if(auth()->user()->role === 'user')
+        <div class="text-lg font-bold">
+            {{ $breadSale->returned_amount ?? $counts['returned'] ?? 0 }}
+            <input type="hidden" 
+                   name="returned[{{ $breadType }}]" 
+                   value="{{ $breadSale->returned_amount ?? $counts['returned'] ?? 0 }}">
+        </div>
+    @else
+        <input type="number" 
+               name="returned[{{ $breadType }}]" 
+               value="{{ $breadSale->returned_amount ?? $counts['returned'] ?? 0 }}" 
+               class="w-full px-2 py-1 border rounded text-center-desktop accumulating-input"
+               data-original-value="{{ $breadSale->returned_amount ?? $counts['returned'] ?? 0 }}"
+               data-previous-values="{{ $breadSale->returned_amount ?? $counts['returned'] ?? 0 }}"
+               min="0"
+               onchange="handleAccumulatingInput(this)">
+    @endif
+</td>
+                           
                             <td class="border px-4 py-2 text-lg font-bold text-center-desktop">
                                 @php
                                     $firstDifference = $counts['sent'] - ($breadSale->returned_amount ?? $counts['returned'] ?? 0);
@@ -173,15 +179,27 @@
                         <tr>
                             <td class="border px-4 py-2 text-lg font-bold text-center-desktop">{{ $breadType }}</td>
                             <td class="border px-4 py-2 text-lg font-bold text-center-desktop">{{ $data['returned'] ?? 0 }}</td>
-                            <td class="border px-4 py-2 text-lg font-bold text-center-desktop">
-                                @if($currentUser->isAdmin() || $currentUser->role === 'super_admin')
-                                    <input type="number" 
-                                           name="sold[{{ $breadType }}]" 
-                                           value="{{ old('sold.'.$breadType, $data['sold'] ?? 0) }}" 
-                                           class="w-full px-2 py-1 border rounded text-center-desktop">
-                                @else
-                                    {{ $data['sold'] ?? 0 }}
-                                @endif
+                        <td class="border px-4 py-2 text-lg font-bold text-center-desktop">
+    @php
+        $breadTypeObj = $breadTypes->firstWhere('name', $breadType);
+        $soldValue = isset($data['sold']) ? $data['sold'] : 0;
+        $canEdit = ($currentUser->role === 'user' && $data['user_id'] === $currentUser->id) || 
+                   (($currentUser->isAdmin() || $currentUser->role === 'super_admin') && !$selectedUserId);
+    @endphp
+    <form id="oldBreadSalesForm" action="{{ route('old-bread-sales.store') }}" method="POST">
+    @csrf
+    <input type="hidden" name="transaction_date" value="{{ $date }}">
+    <input type="hidden" 
+           name="sold[{{ $breadType }}][bread_type_id]" 
+           value="{{ $breadTypeObj->id }}">
+           
+    <input type="number" 
+           name="sold[{{ $breadType }}][sold]" 
+           value="{{ $soldValue }}" 
+           class="w-full px-2 py-1 border rounded text-center-desktop"
+           @unless($canEdit) readonly @endunless
+           min="0">
+</td>
                             </td>
                             <td class="border px-4 py-2 text-lg font-bold text-center-desktop">{{ $data['difference'] ?? 0 }}</td>
                             <td class="border px-4 py-2 text-lg font-bold text-center-desktop">
@@ -211,156 +229,110 @@
         </div>
     </form>
 </div>
-    <!-- {{-- Second Table: Yesterday's Returned Bread --}}
-    <div class="mb-8">
-        <h2 class="text-xl font-semibold mb-2">Вчерашен леб вратен</h2>
-        <form method="POST" action="{{ route('summary.updateAdditional') }}">
-            @csrf
-            <input type="hidden" name="date" value="{{ $date }}">
-            @if($currentUser->isAdmin() || $currentUser->role === 'super_admin')
-                <input type="hidden" name="selected_user_id" value="{{ $selectedUserId }}">
-            @endif
-            <div class="responsive-table">
-                <table class="w-full bg-white shadow-md rounded">
-                    <thead>
-                        <tr>
-                            <th class="px-4 py-2 text-lg font-bold text-center-desktop">Тип на лебот</th>
-                            <th class="px-4 py-2 text-lg font-bold text-center-desktop">Евидентиран</th>
-                            <th class="px-4 py-2 text-lg font-bold text-center-desktop">Продаден</th>
-                            <th class="px-4 py-2 text-lg font-bold text-center-desktop">Разлика</th>
-                            <th class="px-4 py-2 text-lg font-bold text-center-desktop">Вратен</th>
-                            <th class="px-4 py-2 text-lg font-bold text-center-desktop">Разлика повторно</th>
-                            <th class="px-4 py-2 text-lg font-bold text-center-desktop">Цена</th>
-                            <th class="px-4 py-2 text-lg font-bold text-center-desktop">Вкупно</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @foreach($additionalTableData['data'] as $breadType => $data)
-                            <tr>
-                                <td class="border px-4 py-2 text-lg font-bold text-center-desktop">{{ $breadType }}</td>
-                                <td class="border px-4 py-2 text-lg font-bold text-center-desktop">{{ $data['returned'] ?? 0 }}</td>
-                                <td class="border px-4 py-2 text-lg font-bold text-center-desktop">
-                                    <input type="number" 
-                                           name="sold[{{ $breadType }}]" 
-                                           value="{{ old('sold['.$breadType.']', $data['sold'] ?? 0) }}" 
-                                           class="w-full px-2 py-1 border rounded text-center-desktop">
-                                </td>
-                                <td class="border px-4 py-2 text-lg font-bold text-center-desktop">{{ $data['difference'] ?? 0 }}</td>
-                                <td class="border px-4 py-2 text-lg font-bold text-center-desktop">
-                                    <input type="number" 
-                                           name="returned1[{{ $breadType }}]" 
-                                           value="{{ old('returned1['.$breadType.']', $data['returned1'] ?? 0) }}" 
-                                           class="w-full px-2 py-1 border rounded text-center-desktop">
-                                </td>
-                                <td class="border px-4 py-2 text-lg font-bold text-center-desktop">{{ $data['difference1'] ?? 0 }}</td>
-                                <td class="border px-4 py-2 text-lg font-bold text-center-desktop">{{ $data['price'] ?? 0 }}</td>
-                                <td class="border px-4 py-2 text-lg font-bold text-center-desktop">{{ number_format($data['total'] ?? 0, 2) }}</td>
-                            </tr>
-                        @endforeach
-                    </tbody>
-                    <tfoot>
-                        <tr>
-                            <td colspan="7" class="border px-4 py-2 font-bold text-right text-lg font-bold text-center-desktop">Вкупно:</td>
-                            <td class="border px-4 py-2 font-bold text-lg text-center-desktop">{{ number_format($additionalTableData['totalPrice'], 2) }}</td>
-                        </tr>
-                    </tfoot>
-                </table>
-            </div>
-            <div class="mt-4">
-                <button type="submit" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
-                    Ажурирај ја табелата за продажба на вчерашен леб
-                </button>
-            </div>
-        </form>
-    </div> -->
+    
 
     {{-- Third Table: Cash Payments --}}
-    @if(!empty($cashPayments))
-        <div class="mb-8">
-            <h2 class="text-xl font-semibold mb-2 text-xl font-bold  ">Табела за дневен преглед на компании за плаќање во ќеш</h2>
-            <table class="w-full bg-white shadow-md rounded text-lg font-bold ">
-                <thead>
+@if(!empty($cashPayments))
+    <div class="mb-8">
+        <h2 class="text-xl font-semibold mb-2 text-xl font-bold">Табела за дневен преглед на компании за плаќање во ќеш</h2>
+        <table class="w-full bg-white shadow-md rounded text-lg font-bold">
+            <thead>
+                <tr>
+                    <th class="px-4 py-2 text-lg font-bold text-center">Име на компанија</th>
+                    @foreach($breadTypes as $breadType)
+                        <th class="px-4 py-2 text-lg font-bold text-center">{{ $breadType->name }}</th>
+                    @endforeach
+                    <th class="px-4 py-2 text-lg font-bold text-center">Вкупно</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach($cashPayments as $payment)
                     <tr>
-                        <th class="px-4 py-2 text-lg font-bold text-center">Име на компанија</th>
+                        <td class="border px-4 py-2 text-lg font-bold text-center">{{ $payment['company'] }}</td>
                         @foreach($breadTypes as $breadType)
-                            <th class="px-4 py-2 text-lg font-bold text-center">{{ $breadType->name }}</th>
-                        @endforeach
-                        <th class="px-4 py-2 text-lg font-bold text-center">Вкупно</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach($cashPayments as $payment)
-                        <tr>
-                            <td class="border px-4 py-2 text-lg font-bold text-center">{{ $payment['company'] }}</td>
-                            @foreach($breadTypes as $breadType)
-                            
-                                <td class="border px-4 py-2 text-center">
-                                    {{ $payment['breads'][$breadType->name] ?? '0 x ' . $breadType->price . ' = 0' }}
-                                </td>
-                            @endforeach
                             <td class="border px-4 py-2 text-center">
-                                {{ number_format($payment['total'], 2) }}
+                                @php
+                                    $breadInfo = $payment['breads'][$breadType->name] ?? null;
+                                    if ($breadInfo) {
+                                        echo $breadInfo;
+                                    } else {
+                                        $price = $breadType->getPriceForCompany($payment['company_id'], $date)['price'];
+                                        echo "0 x {$price} = 0.00";
+                                    }
+                                @endphp
                             </td>
-                        </tr>
-                    @endforeach
-                </tbody>
-                <tfoot>
-                    <tr>
-                        <td colspan="{{ count($breadTypes) + 1 }}" class="border px-4 py-2 font-bold text-right">
-                            Вкупно во кеш:
-                        </td>
-                        <td class="border px-4 py-2 font-bold text-center">
-                            {{ number_format($overallTotal, 2) }}
-                        </td>
-                    </tr>
-                </tfoot>
-            </table>
-        </div>
-    @endif
-
-    {{-- Fourth Table: Invoice Payments --}}
-    @if(!empty($invoicePayments))
-        <div class="mb-8">
-            <h2 class="text-xl font-semibold mb-2 text-xl font-bold ">Табела за дневен преглед на компании за плаќање на фактура</h2>
-            <table class="w-full bg-white shadow-md rounded">
-                <thead>
-                    <tr>
-                        <th class="px-4 py-2 text-lg font-bold text-center">Име на компанија</th>
-                        @foreach($breadTypes as $breadType)
-                            <th class="px-4 py-2 text-lg font-bold text-center">{{ $breadType->name }}</th>
                         @endforeach
-                        <th class="px-4 py-2 text-lg font-bold text-center">Вкупно</th>
+                        <td class="border px-4 py-2 text-center">
+                            {{ number_format($payment['total'], 2) }}
+                        </td>
                     </tr>
-                </thead>
-                <tbody>
-                    @foreach($invoicePayments as $payment)
-                        <tr>
-                            <td class="border px-4 py-2 text-lg font-bold text-center">{{ $payment['company'] }}</td>
-                            @foreach($breadTypes as $breadType)
-                                <td class="border px-4 py-2 text-lg font-bold text-center">
-                                   {{ $payment['breads'][$breadType->name] ?? '0 x ' . $breadType->price . ' = 0' }}
-                                   
-                                </td>
-                            @endforeach
-                            <td class="border px-4 py-2 text-lg font-bold text-center">
-                                {{ number_format($payment['total'], 2) }}
-                            </td>
-                        </tr>
+                @endforeach
+            </tbody>
+            <tfoot>
+                <tr>
+                    <td colspan="{{ count($breadTypes) + 1 }}" class="border px-4 py-2 font-bold text-right">
+                        Вкупно во кеш:
+                    </td>
+                    <td class="border px-4 py-2 font-bold text-center">
+                        {{ number_format($overallTotal, 2) }}
+                    </td>
+                </tr>
+            </tfoot>
+        </table>
+    </div>
+@endif
+
+{{-- Fourth Table: Invoice Payments --}}
+@if(!empty($invoicePayments))
+    <div class="mb-8">
+        <h2 class="text-xl font-semibold mb-2 text-xl font-bold">Табела за дневен преглед на компании за плаќање на фактура</h2>
+        <table class="w-full bg-white shadow-md rounded">
+            <thead>
+                <tr>
+                    <th class="px-4 py-2 text-lg font-bold text-center">Име на компанија</th>
+                    @foreach($breadTypes as $breadType)
+                        <th class="px-4 py-2 text-lg font-bold text-center">{{ $breadType->name }}</th>
                     @endforeach
-                </tbody>
-                <tfoot>
+                    <th class="px-4 py-2 text-lg font-bold text-center">Вкупно</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach($invoicePayments as $payment)
                     <tr>
-                        <td colspan="{{ count($breadTypes) + 1 }}" class="border px-4 py-2 font-bold text-right text-lg font-bold ">
-                            Вкупно на фактура:
-                        </td>
-                        <td class="border px-4 py-2 font-bold text-lg text-center">
-                            {{ number_format($overallInvoiceTotal, 2) }}
+                        <td class="border px-4 py-2 text-lg font-bold text-center">{{ $payment['company'] }}</td>
+                        @foreach($breadTypes as $breadType)
+                            <td class="border px-4 py-2 text-lg font-bold text-center">
+                                @php
+                                    $breadInfo = $payment['breads'][$breadType->name] ?? null;
+                                    if ($breadInfo) {
+                                        echo $breadInfo;
+                                    } else {
+                                        $price = $breadType->getPriceForCompany($payment['company_id'], $date)['price'];
+                                        echo "0 x {$price} = 0.00";
+                                    }
+                                @endphp
+                            </td>
+                        @endforeach
+                        <td class="border px-4 py-2 text-lg font-bold text-center">
+                            {{ number_format($payment['total'], 2) }}
                         </td>
                     </tr>
-                </tfoot>
-            </table>
-        </div>
-    @endif
+                @endforeach
+            </tbody>
+            <tfoot>
+                <tr>
+                    <td colspan="{{ count($breadTypes) + 1 }}" class="border px-4 py-2 font-bold text-right text-lg font-bold">
+                        Вкупно на фактура:
+                    </td>
+                    <td class="border px-4 py-2 font-bold text-lg text-center">
+                        {{ number_format($overallInvoiceTotal, 2) }}
+                    </td>
+                </tr>
+            </tfoot>
+        </table>
+    </div>
+@endif
+   
 
 
     @if(!empty($unpaidTransactions))
@@ -523,6 +495,161 @@
 </style>
 
 <script>
+    function handleAccumulatingInput(input) {
+        // Get the new value entered
+        let newValue = parseInt(input.value) || 0;
+        
+        // Get the previous values array
+        let previousValues = input.getAttribute('data-previous-values')
+            .split(',')
+            .map(v => parseInt(v) || 0);
+            
+        if (newValue === 0) {
+            // If entering 0, reset everything
+            input.value = 0;
+            input.setAttribute('data-previous-values', '0');
+        } else {
+            // Add new value to the array of previous values
+            previousValues.push(newValue);
+            
+            // Calculate sum
+            let sum = previousValues.reduce((a, b) => a + b, 0);
+            
+            // Update input value
+            input.value = sum;
+            
+            // Store updated previous values
+            input.setAttribute('data-previous-values', previousValues.join(','));
+        }
+
+        // Update the hidden input if it exists
+        let hiddenInput = input.nextElementSibling;
+        if (hiddenInput && hiddenInput.type === 'hidden') {
+            hiddenInput.value = input.value;
+        }
+    }
+
+    // Add event listener to clear input on focus if value is zero
+    document.addEventListener('DOMContentLoaded', function() {
+        const inputs = document.querySelectorAll('.accumulating-input');
+        inputs.forEach(input => {
+            input.addEventListener('focus', function() {
+                if (this.value === '0') {
+                    this.value = '';
+                }
+            });
+        });
+    });
+
+
+    document.addEventListener('DOMContentLoaded', function() {
+    // Handle sold inputs in the second table
+    const soldInputs = document.querySelectorAll('input[name^="sold["]');
+    
+    soldInputs.forEach(function(input) {
+        // Clear value on focus if it's zero
+        input.addEventListener('focus', function() {
+            if (this.value === '0') {
+                this.value = '';
+            }
+        });
+
+        // Handle input validation and formatting
+        input.addEventListener('input', function() {
+            // Remove any non-numeric characters
+            this.value = this.value.replace(/[^\d]/g, '');
+            
+            // Ensure the value is not negative
+            let value = parseInt(this.value) || 0;
+            if (value < 0) {
+                this.value = 0;
+            }
+        });
+
+        // Reset empty values to zero on blur
+        input.addEventListener('blur', function() {
+            if (this.value === '' || isNaN(this.value)) {
+                this.value = '0';
+            }
+        });
+    });
+    
+
+    document.addEventListener('DOMContentLoaded', function() {
+    // Handle sold inputs in the second table
+    const soldInputs = document.querySelectorAll('input[name^="sold["]');
+    
+    soldInputs.forEach(function(input) {
+        // Clear value on focus if it's zero
+        input.addEventListener('focus', function() {
+            if (this.value === '0') {
+                this.value = '';
+            }
+        });
+
+        // Handle input validation and formatting
+        input.addEventListener('input', function() {
+            // Remove any non-numeric characters
+            this.value = this.value.replace(/[^\d]/g, '');
+            
+            // Ensure the value is not negative
+            let value = parseInt(this.value) || 0;
+            if (value < 0) {
+                this.value = 0;
+            }
+        });
+
+        // Reset empty values to zero on blur
+        input.addEventListener('blur', function() {
+            if (this.value === '' || isNaN(this.value)) {
+                this.value = '0';
+            }
+        });
+    });
+});
+
+    // Handle form submission for the second table
+const oldBreadForm = document.querySelector('form[action*="updateAdditional"]');
+if (oldBreadForm) {
+    oldBreadForm.addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        const formData = new FormData(this);
+
+        $.ajax({
+            url: oldBreadForm.action,
+            type: 'POST',
+            data: formData,
+            processData: false,
+            contentType: false,
+            headers: {
+                'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
+            },
+            success: function(response) {
+                if (response.success) {
+                    alert('Успешно ажурирање на табелата.');
+                    // Redirect to daily transactions create page
+                    window.location.href = '/daily-transactions/create';
+                } else {
+                    alert('Грешка при зачувување. Обидете се повторно.');
+                }
+            },
+            error: function(xhr) {
+                console.error('Error response:', xhr);
+                alert('Грешка при зачувување. Обидете се повторно.');
+            }
+        });
+    });
+}
+
+
+
+    
+</script>
+
+
+
+<!-- <script>
     document.addEventListener('DOMContentLoaded', function() {
         // Select all number input fields
         const numberInputs = document.querySelectorAll('input[type="number"]');
@@ -535,6 +662,6 @@
             });
         });
     });
-</script>
+</script> -->
 
 @endsection
