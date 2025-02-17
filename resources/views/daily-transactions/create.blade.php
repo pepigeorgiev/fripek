@@ -499,6 +499,35 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 </script>
 
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Select all number input fields
+    const numberInputs = document.querySelectorAll('input[type="number"]');
+
+    // Add mobile-friendly attributes to each input
+    numberInputs.forEach(input => {
+        input.addEventListener('focus', function() {
+            // Ensure the numeric keypad is shown
+            this.setAttribute('inputmode', 'numeric');
+            this.setAttribute('pattern', '[0-9]*');
+        });
+    });
+});
+</script>
+
+<style>
+/* Hide spinner buttons for number inputs */
+input[type=number]::-webkit-inner-spin-button, 
+input[type=number]::-webkit-outer-spin-button { 
+    -webkit-appearance: none; 
+    margin: 0; 
+}
+
+input[type=number] {
+    -moz-appearance: textfield; /* Firefox */
+}
+</style>
+
 
 
 @endsection
