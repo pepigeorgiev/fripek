@@ -44,7 +44,9 @@ class CompanyController extends Controller
         'name' => 'required|string|max:255|unique:companies,name',
         'code' => 'required|string|max:50',
         'type' => 'required|in:invoice,cash',
-        'user_ids' => 'required|exists:users,id'
+        'user_ids' => 'required|exists:users,id',
+        'mygpm_business_unit' => 'nullable|string|max:255'  
+
     ], $messages);
 
  
@@ -52,7 +54,9 @@ class CompanyController extends Controller
         $company = Company::create([
             'name' => $validated['name'],
             'code' => $validated['code'],
-            'type' => $validated['type']
+            'type' => $validated['type'],
+            'mygpm_business_unit' => $validated['mygpm_business_unit']  
+
         ]);
 
         // Attach single user
@@ -74,14 +78,18 @@ class CompanyController extends Controller
         'name' => 'required|string|max:255|unique:companies,name,'.$company->id,
         'code' => 'required|string|max:50',
         'type' => 'required|in:invoice,cash',
-        'user_ids' => 'required|exists:users,id'
+        'user_ids' => 'required|exists:users,id',
+        'mygpm_business_unit' => 'nullable|string|max:255'  
+
     ],$messages);
 
 
         $company->update([
             'name' => $validated['name'],
             'code' => $validated['code'],
-            'type' => $validated['type']
+            'type' => $validated['type'],
+            'mygpm_business_unit' => $validated['mygpm_business_unit']  
+
         ]);
 
         // Sync single user

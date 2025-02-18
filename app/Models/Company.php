@@ -13,7 +13,9 @@ class Company extends Model
         'name',
         'type',
         'code',
-        'report_end_date'
+        'report_end_date',
+        'mygpm_business_unit'  // Add this line
+
     ];
 
     protected $casts = [

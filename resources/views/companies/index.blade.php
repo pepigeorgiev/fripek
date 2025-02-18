@@ -95,6 +95,13 @@
                     @endforeach
                 </select>
             </div>
+            <div>
+        <label class="block text-sm font-medium text-gray-700 mb-2">Деловна единица од MyGPM</label>
+        <input type="text" 
+               name="mygpm_business_unit" 
+               placeholder="Внесете деловна единица" 
+               class="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500">
+    </div>
 
             <div class="flex items-end">
                 <button type="submit" 
@@ -263,6 +270,17 @@
                         </select>
                     </div>
                 </div>
+                <div>
+    <label class="block text-sm font-medium text-gray-700 mb-1">
+        Деловна единица од MyGPM
+    </label>
+    <input type="text" 
+           name="mygpm_business_unit" 
+           value="{{ $company->mygpm_business_unit }}" 
+           placeholder="Внесете деловна единица"
+           class="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500">
+</div>
+                
 
                 <div class="flex space-x-3 mt-6">
                     <button type="submit" 
