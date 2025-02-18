@@ -227,9 +227,120 @@
         </div>
     </form>
 </div>
+
+
+
+
+{{-- Third Table: Cash Payments --}}
+@if(!empty($cashPayments))
+    <div class="mb-8">
+        <h2 class="text-xl font-semibold mb-2 text-xl font-bold">Табела за дневен преглед на компании за плаќање во ќеш</h2>
+        <table class="w-full bg-white shadow-md rounded text-lg font-bold">
+            <thead>
+                <tr>
+                    <th class="px-4 py-2 text-lg font-bold text-center border-b-2 border-gray-400 w-1/4">Име на компанија</th>
+                    <th class="px-4 py-2 text-lg font-bold text-center border-b-2 border-gray-400 w-2/4">Видови на леб</th>
+                    <th class="px-4 py-2 text-lg font-bold text-center border-b-2 border-gray-400 w-1/4">Вкупно</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach($cashPayments as $payment)
+                <tr class="border-t-2 border-gray-400">
+                <td class="border text-lg font-bold px-4 py-2  text-center align-center">{{ $payment['company'] }}</td>
+                        <td class="border px-4 py-2">
+                            <table class="w-full">
+                                <thead>
+                                    <tr>
+                                        <th class="w-1/2 text-left pb-2 border-b border-gray-400">Вид на леб</th>
+                                        <th class="w-1/2 text-right pb-2 border-b border-gray-400">Количина × Цена</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach($payment['breads'] as $breadName => $breadInfo)
+                                        <tr>
+                                            <td class="py-1 text-lg font-bold border-b border-gray-300">{{ $breadName }}:</td>
+                                            <td class="py-1 text-lg font-bold text-right border-b border-gray-300">{{ $breadInfo }}</td>
+                                        </tr>
+                                    @endforeach
+                                </tbody>
+                            </table>
+                        </td>
+                        <td class="border text-lg font-bold px-4 py-2  text-center align-center">
+                            {{ number_format($payment['total'], 2) }}
+                        </td>
+                    </tr>
+                @endforeach
+            </tbody>
+            <tfoot>
+                <tr>
+                    <td colspan="2" class="border px-4 py-2 font-bold text-right border-t-2 border-gray-400">
+                        Вкупно во кеш:
+                    </td>
+                    <td class="border px-4 py-2 font-bold text-center border-t-2 border-gray-400">
+                        {{ number_format($overallTotal, 2) }}
+                    </td>
+                </tr>
+            </tfoot>
+        </table>
+    </div>
+@endif
+
+{{-- Fourth Table: Invoice Payments --}}
+@if(!empty($invoicePayments))
+    <div class="mb-8">
+        <h2 class="text-xl font-semibold mb-2 text-xl font-bold">Табела за дневен преглед на компании за плаќање на фактура</h2>
+        <table class="w-full bg-white shadow-md rounded">
+            <thead>
+                <tr>
+                    <th class="px-4 py-2 text-lg font-bold text-center border-b-2 border-gray-400 w-1/4">Име на компанија</th>
+                    <th class="px-4 py-2 text-lg font-bold text-center border-b-2 border-gray-400 w-2/4">Видови на леб</th>
+                    <th class="px-4 py-2 text-lg font-bold text-center border-b-2 border-gray-400 w-1/4">Вкупно</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach($invoicePayments as $payment)
+                <tr class="border-t-2 border-gray-400">
+                <td class="border px-4 py-2 text-lg font-bold text-center align-center">{{ $payment['company'] }}</td>
+                        <td class="border px-4 py-2">
+                            <table class="w-full">
+                                <thead>
+                                    <tr>
+                                        <th class="w-1/2 text-left pb-2 border-b border-gray-400">Вид на леб</th>
+                                        <th class="w-1/2 text-right pb-2 border-b border-gray-400">Количина × Цена</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach($payment['breads'] as $breadName => $breadInfo)
+                                        <tr>
+                                            <td class="py-1 text-lg font-bold border-b border-gray-300">{{ $breadName }}:</td>
+                                            <td class="py-1 text-lg font-bold text-right border-b border-gray-300">{{ $breadInfo }}</td>
+                                        </tr>
+                                    @endforeach
+                                </tbody>
+                            </table>
+                        </td>
+                        <td class="border text-lg font-bold px-4 py-2  text-center align-center">
+                            {{ number_format($payment['total'], 2) }}
+                        </td>
+                    </tr>
+                @endforeach
+            </tbody>
+            <tfoot>
+                <tr>
+                    <td colspan="2" class="border px-4 py-2 font-bold text-right border-t-2 border-gray-400">
+                        Вкупно на фактура:
+                    </td>
+                    <td class="border text-lg px-4 py-2 font-bold text-center border-t-2 border-gray-400">
+                        {{ number_format($overallInvoiceTotal, 2) }}
+                    </td>
+                </tr>
+            </tfoot>
+        </table>
+    </div>
+@endif
     
 
-    {{-- Third Table: Cash Payments --}}
+    <!-- {{-- Third Table: Cash Payments --}}
 @if(!empty($cashPayments))
     <div class="mb-8">
         <h2 class="text-xl font-semibold mb-2 text-xl font-bold">Табела за дневен преглед на компании за плаќање во ќеш</h2>
@@ -329,11 +440,87 @@
             </tfoot>
         </table>
     </div>
-@endif
+@endif -->
    
 
+{{-- Unpaid Transactions Table --}}
+@if(!empty($unpaidTransactions))
+    <div class="mb-8">
+        <h2 class="text-xl font-semibold mb-2 text-xl font-bold">Неплатени трансакции за следење</h2>
+        <div class="bg-yellow-50 p-4 mb-4 border-l-4 border-yellow-400">
+            <p class="text-blue-700 text-xl font-bold">
+                Овие трансакции се означени како неплатени и не се вклучени во вкупната сума на кеш плаќања.
+            </p>
+        </div>
+        <table class="w-full bg-white shadow-md rounded">
+            <thead>
+                <tr>
+                    <th class="px-4 py-2 text-lg font-bold text-center border-b-2 border-gray-400 w-1/4">Име на компанија</th>
+                    <th class="px-4 py-2 text-lg font-bold text-center border-b-2 border-gray-400 w-2/4">Видови на леб</th>
+                    <th class="px-4 py-2 text-lg font-bold text-center border-b-2 border-gray-400 w-1/5">Вкупно</th>
+                    <th class="px-4 py-2 text-lg font-bold text-center border-b-2 border-gray-400 w-1/5">Акции</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach($unpaidTransactions as $payment)
+                <tr class="border-t-2 border-gray-400">
+                <td class="border text-lg font-bold px-4 py-2  text-center align-center">
+                            {{ $payment['company'] }}
+                            <div class="text-sm text-gray-500">{{ \Carbon\Carbon::parse($payment['transaction_date'])->format('d.m.Y') }}</div>
+                        </td>
+                        <td class="border px-4 py-2">
+                            <table class="w-full">
+                                <thead>
+                                    <tr>
+                                        <th class="w-1/2 text-left pb-2 border-b border-gray-400">Вид на леб</th>
+                                        <th class="w-1/2 text-right pb-2 border-b border-gray-400">Количина × Цена</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach($payment['breads'] as $breadName => $bread)
+                                        <tr>
+                                            <td class="py-1 text-lg font-bold border-b border-gray-300">{{ $breadName }}:</td>
+                                            <td class="py-1 text-lg font-bold text-right border-b border-gray-300">
+                                                {{ $bread['total'] }} x {{ $bread['price'] }} = {{ number_format($bread['potential_total'], 2) }}
+                                            </td>
+                                        </tr>
+                                    @endforeach
+                                </tbody>
+                            </table>
+                        </td>
+                        <td class="border text-lg font-bold px-4 py-2  text-center align-center">
+                            {{ number_format($payment['total_amount'], 2) }}
+                        </td>
+                        <td class="border text-lg font-bold px-4 py-2  text-center align-center">
+                            <form action="{{ route('daily-transactions.markAsPaid') }}" method="POST" class="inline">
+                                @csrf
+                                <input type="hidden" name="company_id" value="{{ $payment['company_id'] }}">
+                                <input type="hidden" name="date" value="{{ $payment['transaction_date'] }}">
+                                <button type="submit" 
+                                        class="bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded-md text-sm font-medium transition-colors">
+                                    Означи како платено
+                                </button>
+                            </form>
+                        </td>
+                    </tr>
+                @endforeach
+            </tbody>
+            <tfoot>
+                <tr>
+                    <td colspan="2" class="border px-4 py-2 font-bold text-right border-t-2 border-gray-400">
+                        Вкупно неплатено:
+                    </td>
+                    <td class="border px-4 py-2 font-bold text-center border-t-2 border-gray-400">
+                        {{ number_format(collect($unpaidTransactions)->sum('total_amount'), 2) }}
+                    </td>
+                    <td class="border px-4 py-2 border-t-2 border-gray-400"></td>
+                </tr>
+            </tfoot>
+        </table>
+    </div>
+@endif
 
-    @if(!empty($unpaidTransactions))
+    <!-- @if(!empty($unpaidTransactions))
     <div class="mb-8">
         <h2 class="text-xl font-semibold mb-2 text-xl font-bold">Неплатени трансакции за следење</h2>
         <div class="bg-yellow-50 p-4 mb-4 border-l-4 border-yellow-400">
@@ -407,7 +594,7 @@
             </tfoot>
         </table>
     </div>
-@endif
+@endif -->
 
 
 {{-- Final Summary Section --}}
@@ -631,15 +818,71 @@ if (oldBreadForm) {
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // Select all number input fields
+    // Find all number input fields
     const numberInputs = document.querySelectorAll('input[type="number"]');
-
-    // Add mobile-friendly attributes to each input
+    
     numberInputs.forEach(input => {
+        // Prevent default spinner behavior
+        input.addEventListener('keydown', function(e) {
+            if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+                e.preventDefault();
+                
+                // Find the current table row
+                const currentRow = this.closest('tr');
+                
+                // Find all input fields in the table
+                const allRows = Array.from(currentRow.closest('tbody').querySelectorAll('tr'));
+                const currentRowIndex = allRows.indexOf(currentRow);
+                
+                // Determine target row based on arrow key
+                let targetRow;
+                if (e.key === 'ArrowUp' && currentRowIndex > 0) {
+                    targetRow = allRows[currentRowIndex - 1];
+                } else if (e.key === 'ArrowDown' && currentRowIndex < allRows.length - 1) {
+                    targetRow = allRows[currentRowIndex + 1];
+                }
+                
+                if (targetRow) {
+                    // Find the input in the same column of the target row
+                    const inputs = Array.from(currentRow.querySelectorAll('input[type="number"]'));
+                    const currentInputIndex = inputs.indexOf(this);
+                    const targetInput = targetRow.querySelectorAll('input[type="number"]')[currentInputIndex];
+                    
+                    if (targetInput) {
+                        targetInput.focus();
+                        // Optional: Select the content of the target input
+                        targetInput.select();
+                    }
+                }
+            }
+        });
+
+        // Clear value on focus if it's zero
         input.addEventListener('focus', function() {
-            // Ensure the numeric keypad is shown
-            this.setAttribute('inputmode', 'numeric');
-            this.setAttribute('pattern', '[0-9]*');
+            if (this.value === '0') {
+                this.value = '';
+            }
+            // Select all content when focused
+            this.select();
+        });
+
+        // Handle input validation and formatting
+        input.addEventListener('input', function() {
+            // Remove any non-numeric characters
+            this.value = this.value.replace(/[^\d]/g, '');
+            
+            // Ensure the value is not negative
+            let value = parseInt(this.value) || 0;
+            if (value < 0) {
+                this.value = 0;
+            }
+        });
+
+        // Reset empty values to zero on blur
+        input.addEventListener('blur', function() {
+            if (this.value === '' || isNaN(this.value)) {
+                this.value = '0';
+            }
         });
     });
 });
