@@ -340,109 +340,7 @@
 @endif
     
 
-    <!-- {{-- Third Table: Cash Payments --}}
-@if(!empty($cashPayments))
-    <div class="mb-8">
-        <h2 class="text-xl font-semibold mb-2 text-xl font-bold">Табела за дневен преглед на компании за плаќање во ќеш</h2>
-        <table class="w-full bg-white shadow-md rounded text-lg font-bold">
-            <thead>
-                <tr>
-                    <th class="px-4 py-2 text-lg font-bold text-center">Име на компанија</th>
-                    @foreach($breadTypes as $breadType)
-                        <th class="px-4 py-2 text-lg font-bold text-center">{{ $breadType->name }}</th>
-                    @endforeach
-                    <th class="px-4 py-2 text-lg font-bold text-center">Вкупно</th>
-                </tr>
-            </thead>
-            <tbody>
-                @foreach($cashPayments as $payment)
-                    <tr>
-                        <td class="border px-4 py-2 text-lg font-bold text-center">{{ $payment['company'] }}</td>
-                        @foreach($breadTypes as $breadType)
-                            <td class="border px-4 py-2 text-center">
-                                @php
-                                    $breadInfo = $payment['breads'][$breadType->name] ?? null;
-                                    if ($breadInfo) {
-                                        echo $breadInfo;
-                                    } else {
-                                        $price = $breadType->getPriceForCompany($payment['company_id'], $date)['price'];
-                                        echo "0 x {$price} = 0.00";
-                                    }
-                                @endphp
-                            </td>
-                        @endforeach
-                        <td class="border px-4 py-2 text-center">
-                            {{ number_format($payment['total'], 2) }}
-                        </td>
-                    </tr>
-                @endforeach
-            </tbody>
-            <tfoot>
-                <tr>
-                    <td colspan="{{ count($breadTypes) + 1 }}" class="border px-4 py-2 font-bold text-right">
-                        Вкупно во кеш:
-                    </td>
-                    <td class="border px-4 py-2 font-bold text-center">
-                        {{ number_format($overallTotal, 2) }}
-                    </td>
-                </tr>
-            </tfoot>
-        </table>
-    </div>
-@endif
-
-{{-- Fourth Table: Invoice Payments --}}
-@if(!empty($invoicePayments))
-    <div class="mb-8">
-        <h2 class="text-xl font-semibold mb-2 text-xl font-bold">Табела за дневен преглед на компании за плаќање на фактура</h2>
-        <table class="w-full bg-white shadow-md rounded">
-            <thead>
-                <tr>
-                    <th class="px-4 py-2 text-lg font-bold text-center">Име на компанија</th>
-                    @foreach($breadTypes as $breadType)
-                        <th class="px-4 py-2 text-lg font-bold text-center">{{ $breadType->name }}</th>
-                    @endforeach
-                    <th class="px-4 py-2 text-lg font-bold text-center">Вкупно</th>
-                </tr>
-            </thead>
-            <tbody>
-                @foreach($invoicePayments as $payment)
-                    <tr>
-                        <td class="border px-4 py-2 text-lg font-bold text-center">{{ $payment['company'] }}</td>
-                        @foreach($breadTypes as $breadType)
-                            <td class="border px-4 py-2 text-lg font-bold text-center">
-                                @php
-                                    $breadInfo = $payment['breads'][$breadType->name] ?? null;
-                                    if ($breadInfo) {
-                                        echo $breadInfo;
-                                    } else {
-                                        $price = $breadType->getPriceForCompany($payment['company_id'], $date)['price'];
-                                        echo "0 x {$price} = 0.00";
-                                    }
-                                @endphp
-                            </td>
-                        @endforeach
-                        <td class="border px-4 py-2 text-lg font-bold text-center">
-                            {{ number_format($payment['total'], 2) }}
-                        </td>
-                    </tr>
-                @endforeach
-            </tbody>
-            <tfoot>
-                <tr>
-                    <td colspan="{{ count($breadTypes) + 1 }}" class="border px-4 py-2 font-bold text-right text-lg font-bold">
-                        Вкупно на фактура:
-                    </td>
-                    <td class="border px-4 py-2 font-bold text-lg text-center">
-                        {{ number_format($overallInvoiceTotal, 2) }}
-                    </td>
-                </tr>
-            </tfoot>
-        </table>
-    </div>
-@endif -->
    
-
 {{-- Unpaid Transactions Table --}}
 @if(!empty($unpaidTransactions))
     <div class="mb-8">
@@ -463,8 +361,8 @@
             </thead>
             <tbody>
                 @foreach($unpaidTransactions as $payment)
-                <tr class="border-t-2 border-gray-400">
-                <td class="border text-lg font-bold px-4 py-2  text-center align-center">
+                    <tr class="border-t-2 border-gray-400">
+                        <td class="border px-4 py-2 text-lg font-bold text-center align-center">
                             {{ $payment['company'] }}
                             <div class="text-sm text-gray-500">{{ \Carbon\Carbon::parse($payment['transaction_date'])->format('d.m.Y') }}</div>
                         </td>
@@ -478,20 +376,22 @@
                                 </thead>
                                 <tbody>
                                     @foreach($payment['breads'] as $breadName => $bread)
-                                        <tr>
-                                            <td class="py-1 text-lg font-bold border-b border-gray-300">{{ $breadName }}:</td>
-                                            <td class="py-1 text-lg font-bold text-right border-b border-gray-300">
-                                                {{ $bread['total'] }} x {{ $bread['price'] }} = {{ number_format($bread['potential_total'], 2) }}
-                                            </td>
-                                        </tr>
+                                        @if($bread['total'] != 0)
+                                            <tr>
+                                                <td class="py-1 text-lg font-bold border-b border-gray-300">{{ $breadName }}:</td>
+                                                <td class="py-1 text-lg font-bold text-right border-b border-gray-300">
+                                                    {{ $bread['total'] }} x {{ $bread['price'] }} = {{ number_format($bread['potential_total'], 2) }}
+                                                </td>
+                                            </tr>
+                                        @endif
                                     @endforeach
                                 </tbody>
                             </table>
                         </td>
-                        <td class="border text-lg font-bold px-4 py-2  text-center align-center">
+                        <td class="border px-4 py-2 text-center align-center">
                             {{ number_format($payment['total_amount'], 2) }}
                         </td>
-                        <td class="border text-lg font-bold px-4 py-2  text-center align-center">
+                        <td class="border px-4 py-2 text-center align-center">
                             <form action="{{ route('daily-transactions.markAsPaid') }}" method="POST" class="inline">
                                 @csrf
                                 <input type="hidden" name="company_id" value="{{ $payment['company_id'] }}">
@@ -520,81 +420,6 @@
     </div>
 @endif
 
-    <!-- @if(!empty($unpaidTransactions))
-    <div class="mb-8">
-        <h2 class="text-xl font-semibold mb-2 text-xl font-bold">Неплатени трансакции за следење</h2>
-        <div class="bg-yellow-50 p-4 mb-4 border-l-4 border-yellow-400">
-            <p class="text-blue-700 text-xl font-bold">
-                Овие трансакции се означени како неплатени и не се вклучени во вкупната сума на кеш плаќања.
-            </p>
-        </div>
-        <table class="w-full bg-white shadow-md rounded">
-            <thead>
-                <tr>
-                    <th class="px-4 py-2 text-xl font-bold text-lg font-bold text-center">Име на компанија</th>
-                    @foreach($breadTypes as $breadType)
-                        <th class="px-4 py-2 text-xl font-bold text-lg font-bold text-center">{{ $breadType->name }}</th>
-                    @endforeach
-                    <th class="px-4 py-2 text-xl font-bold text-lg font-bold text-center">Вкупно</th>
-                    <th class="px-4 py-2 text-xl font-bold text-lg font-bold text-center">Акции</th>
-                </tr>
-            </thead>
-            <tbody>
-                @foreach($unpaidTransactions as $payment)
-                    <tr>
-                        <td class="border px-4 py-2 text-xl font-bold text-center">
-                            {{ $payment['company'] }}
-                            <div class="text-sm text-gray-500">{{ \Carbon\Carbon::parse($payment['transaction_date'])->format('d.m.Y') }}</div>
-                        </td>
-                        @foreach($breadTypes as $breadType)
-                            <td class="border px-4 py-2 text-xl font-bold text-center">
-                                @if(isset($payment['breads'][$breadType->name]))
-                                    @php
-                                        $bread = $payment['breads'][$breadType->name];
-                                        $totalBreads = $bread['delivered'] - $bread['returned'] - $bread['gratis'];
-                                        $companyPrice = $breadType->getPriceForCompany($payment['company_id'], $payment['transaction_date'])['price'];
-                                        $total = $bread['potential_total'];
-                                    @endphp
-                                    {{ "{$totalBreads} x {$companyPrice} = " . number_format($total, 2) }}
-                                @else
-                                    @php
-                                        $companyPrice = $breadType->getPriceForCompany($payment['company_id'], $payment['transaction_date'])['price'];
-                                    @endphp
-                                    0 x {{ $companyPrice }} = 0
-                                @endif
-                            </td>
-                        @endforeach
-                        <td class="border px-4 py-2 text-xl font-bold text-center">
-                            {{ number_format($payment['total_amount'], 2) }}
-                        </td>
-                        <td class="border px-4 py-2 text-center">
-                            <form action="{{ route('daily-transactions.markAsPaid') }}" method="POST" class="inline">
-                                @csrf
-                                <input type="hidden" name="company_id" value="{{ $payment['company_id'] }}">
-                                <input type="hidden" name="date" value="{{ $payment['transaction_date'] }}">
-                                <button type="submit" 
-                                        class="bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded-md text-sm font-medium transition-colors">
-                                    Означи како платено
-                                </button>
-                            </form>
-                        </td>
-                    </tr>
-                @endforeach
-            </tbody>
-            <tfoot>
-                <tr>
-                    <td colspan="{{ count($breadTypes) + 1 }}" class="border px-4 py-2 font-bold text-right text-lg">
-                        Вкупно неплатено:
-                    </td>
-                    <td class="border px-4 py-2 font-bold text-xl text-center">
-                        {{ number_format(collect($unpaidTransactions)->sum('total_amount'), 2) }}
-                    </td>
-                    <td class="border px-4 py-2"></td>
-                </tr>
-            </tfoot>
-        </table>
-    </div>
-@endif -->
 
 
 {{-- Final Summary Section --}}
