@@ -49,59 +49,58 @@
     
     <!-- Companies Section -->
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
-        @forelse($companies as $company)
-            <div class="bg-white p-4 rounded shadow border-l-4 {{ $company->type === 'cash' ? 'border-green-500' : 'border-blue-500' }}">
-                <!-- Rest of the company card content remains the same -->
-                <div class="flex justify-between items-center mb-2">
-                    <h2 class="text-lg font-semibold">{{ $company->name }}</h2>
-                    <span class="px-2 py-1 rounded-full text-sm {{ $company->type === 'cash' 
-                        ? 'bg-green-100 text-green-800' 
-                        : 'bg-blue-100 text-blue-800' }}">
-                        {{ $company->type === 'cash' ? 'Кеш' : 'Фактура' }}
-                    </span>
-                </div>
+    @forelse($companies as $company)
+        <div class="bg-white p-4 rounded shadow border-l-4 {{ $company->type === 'cash' ? 'border-green-500' : 'border-blue-500' }}">
+            <div class="flex justify-between items-center mb-2">
+                <h2 class="text-lg font-semibold">{{ $company->name }}</h2>
+                <span class="px-2 py-1 rounded-full text-sm {{ $company->type === 'cash' 
+                    ? 'bg-green-100 text-green-800' 
+                    : 'bg-blue-100 text-blue-800' }}">
+                    {{ $company->type === 'cash' ? 'Кеш' : 'Фактура' }}
+                </span>
+            </div>
+            
+            @if(isset($todaysTransactions[$company->id]) && $todaysTransactions[$company->id]->isNotEmpty())
+                <table class="w-full">
+                    <thead>
+                        <tr>
+                            <th class="text-left">Име на лебот</th>
+                            <th class="text-right">Пратен</th>
+                            <th class="text-right">Вратен</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach($todaysTransactions[$company->id] as $transaction)
+                            @if($transaction->breadType && ($transaction->delivered > 0 || $transaction->returned > 0))
+                                <tr>
+                                    <td>{{ $transaction->breadType->name }}</td>
+                                    <td class="text-right">{{ $transaction->delivered }}</td>
+                                    <td class="text-right font-semibold {{ $transaction->returned > 0 ? 'text-red-600' : '' }}">
+                                        {{ $transaction->returned }}
+                                    </td>
+                                </tr>
+                            @endif
+                        @endforeach
+                    </tbody>
+                </table>
                 
-                @if(isset($todaysTransactions[$company->id]) && $todaysTransactions[$company->id]->isNotEmpty())
-                    <table class="w-full">
-                        <thead>
-                            <tr>
-                                <th class="text-left">Име на лебот</th>
-                                <th class="text-right">Пратен</th>
-                                <th class="text-right">Вратен</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @foreach($todaysTransactions[$company->id] as $transaction)
-                                @if($transaction->breadType)
-                                    <tr>
-                                        <td>{{ $transaction->breadType->name }}</td>
-                                        <td class="text-right">{{ $transaction->delivered }}</td>
-                                        <td class="text-right font-semibold {{ $transaction->returned > 0 ? 'text-red-600' : '' }}">
-                                            {{ $transaction->returned }}
-                                        </td>
-                                    </tr>
-                                @endif
-                            @endforeach
-                        </tbody>
-                    </table>
-                    
-                    <div class="text-sm text-gray-500 mt-2">
-                        Време на трансакција: {{ $todaysTransactions[$company->id]->first()->created_at->format('H:i') }}
-                    </div>
-                @else
-                    <p class="text-gray-500">Денес нема трансакции</p>
-                @endif
+                <div class="text-sm text-gray-500 mt-2">
+                    Време на трансакција: {{ $todaysTransactions[$company->id]->first()->created_at->format('H:i') }}
+                </div>
+            @else
+                <p class="text-gray-500">Денес нема трансакции</p>
+            @endif
 
-                <a href="{{ route('monthly-summary.show', $company) }}" 
-                   class="text-blue-500 hover:underline mt-4 block">
-                    Месечен преглед
-                </a>
-            </div>
-        @empty
-            <div class="col-span-full">
-                <p class="text-gray-500">Нема пронајдено компании</p>
-            </div>
-        @endforelse
-    </div>
+            <a href="{{ route('monthly-summary.show', $company) }}" 
+               class="text-blue-500 hover:underline mt-4 block">
+                Месечен преглед
+            </a>
+        </div>
+    @empty
+        <div class="col-span-full">
+            <p class="text-gray-500">Нема пронајдено компании</p>
+        </div>
+    @endforelse
 </div>
+    
 @endsection

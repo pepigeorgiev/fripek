@@ -728,19 +728,4 @@ input[type=number] {
 
 
 
-<!-- <script>
-    document.addEventListener('DOMContentLoaded', function() {
-        // Select all number input fields
-        const numberInputs = document.querySelectorAll('input[type="number"]');
-
-        // Add focus event listener to each input
-        numberInputs.forEach(input => {
-            input.addEventListener('focus', function() {
-                // Ensure the numeric keypad is shown
-                this.setAttribute('inputmode', 'numeric');
-            });
-        });
-    });
-</script> -->
-
 @endsection
