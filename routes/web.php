@@ -86,6 +86,10 @@ Route::middleware(['auth'])->group(function () {
         ->name('daily-transactions.markAsPaid');
     Route::get('/daily-transactions/unpaid', [DailyTransactionController::class, 'getUnpaidTransactions'])
         ->name('daily-transactions.unpaid');
+    Route::post('/daily-transactions/store-old-bread', [DailyTransactionController::class, 'storeOldBreadSales'])->name('daily-transactions.store-old-bread');
+    // In your routes file
+Route::post('/update-daily-transaction', [DailyTransactionController::class, 'updateDailyTransaction'])
+->name('update-daily-transaction');
     
     // Summary routes
     Route::get('/summary', [SummaryController::class, 'index'])->name('summary.index');

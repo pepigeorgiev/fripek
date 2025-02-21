@@ -83,7 +83,17 @@
             <button type="button" id="oldBreadSalesButton" class="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600 text-sm md:text-base">
                 Продажба на стар леб
             </button>
+            <div class="flex items-center gap-3 p-4 bg-white border border-gray-300 rounded-lg shadow-sm hover:shadow-md transition-shadow">
+    <input type="checkbox" id="update_existing_transaction" class="h-5 w-5 text-blue-600 focus:ring-blue-500 border-gray-300 rounded cursor-pointer">
+    <label for="update_existing_transaction" class="text-gray-800 text-base md:text-lg cursor-pointer">
+        Допуна/ажурирање на веќе внесена трансакција
+    </label>
+</div>
         </div>
+
+
+
+
 
         <!-- Daily Transactions Section -->
         <div id="dailyTransactionsSection" class="mt-4 px-2 md:px-0">
@@ -100,7 +110,7 @@
                                     Тип
                                 </th>
                                 <th class="px-2 md:px-6 py-2 md:py-3 bg-gray-50 text-center text-xs md:text-sm font-bold text-gray-700 uppercase">
-                                    Исп
+                                    Про
                                 </th>
                                 <th class="px-2 md:px-6 py-2 md:py-3 bg-gray-50 text-center text-xs md:text-sm font-bold text-gray-700 uppercase">
                                     Пов
@@ -171,6 +181,8 @@
                 </div>
             </form>
         </div>
+
+    
 
         <!-- Old Bread Sales Section -->
         <div id="oldBreadSalesSection" class="hidden mt-4 px-2 md:px-0">
@@ -498,6 +510,69 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 </script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const updateExistingCheckbox = document.getElementById('update_existing_transaction');
+    const transactionForm = document.getElementById('transactionForm');
+
+    transactionForm.addEventListener('submit', function(e) {
+        // If update checkbox is checked, change form submission behavior
+        if (updateExistingCheckbox.checked) {
+            e.preventDefault(); // Prevent default form submission
+            
+            const formData = new FormData(this);
+            const transactions = [];
+
+            // Collect transaction data
+            document.querySelectorAll('input[name^="transactions"]').forEach((input, index) => {
+                const match = input.name.match(/transactions\[(\d+)\]\[(\w+)\]/);
+                if (match) {
+                    const rowIndex = match[1];
+                    const field = match[2];
+                    
+                    // Initialize transaction object if not exists
+                    transactions[rowIndex] = transactions[rowIndex] || {
+                        bread_type_id: document.querySelector(`input[name="transactions[${rowIndex}][bread_type_id]"]`).value
+                    };
+                    
+                    // Add field value
+                    transactions[rowIndex][field] = parseInt(input.value) || 0;
+                }
+            });
+
+            // Prepare payload
+            const payload = {
+                company_id: document.getElementById('company_id').value,
+                transaction_date: document.getElementById('transaction_date').value,
+                transactions: transactions.filter(t => t && t.delivered > 0)
+            };
+
+            // Submit via AJAX
+            $.ajax({
+                url: '{{ route("update-daily-transaction") }}', // Add this route
+                method: 'POST',
+                data: JSON.stringify(payload),
+                contentType: 'application/json',
+                headers: {
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                },
+                success: function(response) {
+                    if (response.success) {
+                        alert('Трансакциите се успешно ажурирани.');
+                        // Optionally reload or redirect
+                        location.reload();
+                    } else {
+                        alert('Грешка при ажурирање.');
+                    }
+                },
+                error: function() {
+                    alert('Грешка при комуникација со серверот.');
+                }
+            });
+        }
+    });
+});
+</script>
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
@@ -514,6 +589,8 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 });
 </script>
+
+
 
 <style>
 /* Hide spinner buttons for number inputs */

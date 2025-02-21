@@ -137,6 +137,15 @@ class SummaryController extends Controller
             $breadTypes->pluck('price', 'name')->toArray(),
             $allCompanies
         );
+
+        $transactions = $this->getTransactionsForSummary($selectedDate);
+    
+        $paymentData = $this->calculateAllPayments(
+            $transactions, 
+            $breadTypes->pluck('price', 'name')->toArray(),
+            $allCompanies
+        );
+    
     
         // Get unpaid transactions separately
         $unpaidTransactions = $this->getUnpaidTransactions($selectedDate, $allCompanies);
@@ -315,6 +324,23 @@ private function calculateOldBreadSales($date, $userCompanies)
         ->groupBy('bread_type_id');
 }
 
+private function getTransactionsForSummary($date)
+{
+    return DailyTransaction::with(['breadType', 'company'])
+        ->where(function ($query) use ($date) {
+            $query->where(function ($q) use ($date) {
+                // Include transactions from the selected date
+                $q->whereDate('transaction_date', $date);
+            })->orWhere(function ($q) use ($date) {
+                // Include transactions that were paid on the selected date
+                $q->where('is_paid', true)
+                    ->whereDate('paid_date', $date);
+            });
+        })
+        ->get()
+        ->groupBy('company_id');
+}
+
 
 
 
@@ -426,6 +452,7 @@ private function calculateOldBreadSales($date, $userCompanies)
         return [$additionalData, $totalSold, $totalInPrice];
     }
 
+
     public function calculateAdditionalTableData($date, $breadTypes, $breadSales)
 {
     $data = [];
@@ -436,61 +463,45 @@ private function calculateOldBreadSales($date, $userCompanies)
     // Get yesterday's date
     $previousDate = Carbon::parse($date)->subDay()->format('Y-m-d');
     
-    // Get returned bread for yesterday with company filtering
+    // Get all daily transactions for returned bread, regardless of payment status
     $returnedQuery = DailyTransaction::whereDate('transaction_date', $date);
     
     if ($user->role === 'user') {
-        $userIdToFilter = $user->id;
         $returnedQuery->whereIn('company_id', $user->companies->pluck('id'));
     } elseif (($user->isAdmin() || $user->role === 'super_admin') && $selectedUserId) {
-        $userIdToFilter = $selectedUserId;
         $selectedUser = User::find($selectedUserId);
         $returnedQuery->whereIn('company_id', $selectedUser->companies->pluck('id'));
-    } else {
-        $userIdToFilter = null;
-        // If admin viewing all, get all companies' returns
-        $returnedQuery->whereNotNull('company_id');
     }
 
     $returnedBread = $returnedQuery->get()->groupBy('bread_type_id');
 
-    // Get old bread sold values with accumulation
-    if ($userIdToFilter) {
-        // For specific user, keep existing logic
-        $oldBreadSoldQuery = DailyTransaction::where('transaction_date', $date)
-            ->whereNotNull('old_bread_sold')
-            ->where('user_id', $userIdToFilter);
-        $oldBreadSold = $oldBreadSoldQuery->get()->keyBy('bread_type_id');
-    } else {
-        // For all users view, use aggregation
-        $oldBreadSold = DailyTransaction::where('transaction_date', $date)
-            ->whereNotNull('old_bread_sold')
-            ->select('bread_type_id')
-            ->selectRaw('SUM(old_bread_sold) as old_bread_sold')
-            ->groupBy('bread_type_id')
-            ->get()
-            ->keyBy('bread_type_id');
+    // Get old bread sold values, regardless of payment status
+    $oldBreadSoldQuery = DailyTransaction::where('transaction_date', $date)
+        ->whereNotNull('old_bread_sold');
+
+    if ($user->role === 'user') {
+        $oldBreadSoldQuery->whereIn('company_id', $user->companies->pluck('id'));
+    } elseif (($user->isAdmin() || $user->role === 'super_admin') && $selectedUserId) {
+        $oldBreadSoldQuery->whereIn('company_id', User::find($selectedUserId)->companies->pluck('id'));
     }
 
-    Log::info('Retrieved data', [
-        'date' => $date,
-        'returned_count' => $returnedBread->count(),
-        'old_bread_count' => $oldBreadSold->count()
-    ]);
+    $oldBreadSold = $oldBreadSoldQuery
+        ->select('bread_type_id')
+        ->selectRaw('SUM(old_bread_sold) as old_bread_sold')
+        ->groupBy('bread_type_id')
+        ->get()
+        ->keyBy('bread_type_id');
 
     foreach ($breadTypes as $breadType) {
         if (!$breadType->available_for_daily) {
             continue;
         }
 
-        // Calculate returned amount by summing returned field
         $returned = $returnedBread
             ->get($breadType->id, collect())
             ->sum('returned');
         
-        // Get accumulated old bread sold
-        $oldBreadTransaction = $oldBreadSold->get($breadType->id);
-        $soldOldBread = $oldBreadTransaction ? $oldBreadTransaction->old_bread_sold : 0;
+        $soldOldBread = $oldBreadSold->get($breadType->id)?->old_bread_sold ?? 0;
         
         $price = $breadType->old_price ?? 0;
         $returned1 = 0;
@@ -507,16 +518,9 @@ private function calculateOldBreadSales($date, $userCompanies)
             'difference1' => $difference1,
             'price' => $price,
             'total' => $total,
-            'user_id' => $userIdToFilter,
+            'user_id' => $user->role === 'user' ? $user->id : null,
             'bread_type_id' => $breadType->id
         ];
-
-        Log::info('Processed data for bread type', [
-            'bread_type' => $breadType->name,
-            'returned_amount' => $returned,
-            'old_bread_sold' => $soldOldBread,
-            'calculations' => $data[$breadType->name]
-        ]);
 
         $totalPrice += $total;
     }
@@ -526,6 +530,106 @@ private function calculateOldBreadSales($date, $userCompanies)
         'totalPrice' => $totalPrice
     ];
 }
+//     public function calculateAdditionalTableData($date, $breadTypes, $breadSales)
+// {
+//     $data = [];
+//     $totalPrice = 0;
+//     $user = Auth::user();
+//     $selectedUserId = request('user_id');
+
+//     // Get yesterday's date
+//     $previousDate = Carbon::parse($date)->subDay()->format('Y-m-d');
+    
+//     // Get returned bread for yesterday with company filtering
+//     $returnedQuery = DailyTransaction::whereDate('transaction_date', $date);
+    
+//     if ($user->role === 'user') {
+//         $userIdToFilter = $user->id;
+//         $returnedQuery->whereIn('company_id', $user->companies->pluck('id'));
+//     } elseif (($user->isAdmin() || $user->role === 'super_admin') && $selectedUserId) {
+//         $userIdToFilter = $selectedUserId;
+//         $selectedUser = User::find($selectedUserId);
+//         $returnedQuery->whereIn('company_id', $selectedUser->companies->pluck('id'));
+//     } else {
+//         $userIdToFilter = null;
+//         // If admin viewing all, get all companies' returns
+//         $returnedQuery->whereNotNull('company_id');
+//     }
+
+//     $returnedBread = $returnedQuery->get()->groupBy('bread_type_id');
+
+//     // Get old bread sold values with accumulation
+//     if ($userIdToFilter) {
+//         // For specific user, keep existing logic
+//         $oldBreadSoldQuery = DailyTransaction::where('transaction_date', $date)
+//             ->whereNotNull('old_bread_sold')
+//             ->where('user_id', $userIdToFilter);
+//         $oldBreadSold = $oldBreadSoldQuery->get()->keyBy('bread_type_id');
+//     } else {
+//         // For all users view, use aggregation
+//         $oldBreadSold = DailyTransaction::where('transaction_date', $date)
+//             ->whereNotNull('old_bread_sold')
+//             ->select('bread_type_id')
+//             ->selectRaw('SUM(old_bread_sold) as old_bread_sold')
+//             ->groupBy('bread_type_id')
+//             ->get()
+//             ->keyBy('bread_type_id');
+//     }
+
+//     Log::info('Retrieved data', [
+//         'date' => $date,
+//         'returned_count' => $returnedBread->count(),
+//         'old_bread_count' => $oldBreadSold->count()
+//     ]);
+
+//     foreach ($breadTypes as $breadType) {
+//         if (!$breadType->available_for_daily) {
+//             continue;
+//         }
+
+//         // Calculate returned amount by summing returned field
+//         $returned = $returnedBread
+//             ->get($breadType->id, collect())
+//             ->sum('returned');
+        
+//         // Get accumulated old bread sold
+//         $oldBreadTransaction = $oldBreadSold->get($breadType->id);
+//         $soldOldBread = $oldBreadTransaction ? $oldBreadTransaction->old_bread_sold : 0;
+        
+//         $price = $breadType->old_price ?? 0;
+//         $returned1 = 0;
+
+//         $difference = $returned - $soldOldBread;
+//         $difference1 = $difference - $returned1;
+//         $total = $soldOldBread * $price;
+
+//         $data[$breadType->name] = [
+//             'returned' => $returned,
+//             'sold' => $soldOldBread,
+//             'difference' => $difference,
+//             'returned1' => $returned1,
+//             'difference1' => $difference1,
+//             'price' => $price,
+//             'total' => $total,
+//             'user_id' => $userIdToFilter,
+//             'bread_type_id' => $breadType->id
+//         ];
+
+//         Log::info('Processed data for bread type', [
+//             'bread_type' => $breadType->name,
+//             'returned_amount' => $returned,
+//             'old_bread_sold' => $soldOldBread,
+//             'calculations' => $data[$breadType->name]
+//         ]);
+
+//         $totalPrice += $total;
+//     }
+
+//     return [
+//         'data' => $data,
+//         'totalPrice' => $totalPrice
+//     ];
+// }
 
 
 

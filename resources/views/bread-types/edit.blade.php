@@ -151,7 +151,7 @@
             <div class="flex items-center justify-end">
                 <a href="{{ route('bread-types.index') }}" 
                    class="bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600 mr-2">
-                    Cancel
+                    Излез
                 </a>
                 <button type="submit" 
                         class="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600">

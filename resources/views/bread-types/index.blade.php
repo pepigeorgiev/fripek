@@ -5,7 +5,7 @@
     <div class="flex justify-between items-center mb-4">
         <h1 class="text-2xl font-bold">Тип на леб</h1>
         <a href="{{ route('bread-types.create') }}" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">
-            Додади нов леб
+            Додади артикал
         </a>
     </div>
 
@@ -19,7 +19,7 @@
 
                     <th class="px-6 py-3 text-left">Име</th>
                     <th class="px-6 py-3 text-left">Редовна цена</th>
-                    <th class="px-6 py-3 text-left">Стара цена</th>
+                    <th class="px-6 py-3 text-left">Цена за продажба на вчерашен леб</th>
                     <th class="px-6 py-3 text-left">Продажба на стар леб</th>
                     <th class="px-6 py-3 text-left">Дали лебот е активен</th>
                     <th class="px-6 py-3 text-right">Промени или Избриши</th>
