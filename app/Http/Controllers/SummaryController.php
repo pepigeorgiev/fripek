@@ -232,7 +232,7 @@ class SummaryController extends Controller
     return $counts;
 }
 
-// Update the calculateAllPayments method in SummaryController.php
+
 private function calculateAllPayments($transactions, $breadPrices, $userCompanies)
 {
     $cashPayments = [];
@@ -253,6 +253,9 @@ private function calculateAllPayments($transactions, $breadPrices, $userCompanie
         ];
 
         foreach ($companyTransactions as $transaction) {
+            // Skip if bread type is missing
+            if (!$transaction->breadType) continue;
+            
             // Skip if transaction is unpaid for cash companies
             if ($company->type === 'cash' && !$transaction->is_paid) {
                 continue;
@@ -266,7 +269,7 @@ private function calculateAllPayments($transactions, $breadPrices, $userCompanie
             }
 
             $calculatedTotal = $this->calculateTransactionTotal($transaction, $company, $selectedDate);
-            if ($calculatedTotal['netBreads'] > 0) {
+            if (is_array($calculatedTotal) && isset($calculatedTotal['netBreads']) && $calculatedTotal['netBreads'] > 0) {
                 $breadName = $transaction->breadType->name;
                 $payment['breads'][$breadName] = "{$calculatedTotal['netBreads']} x {$calculatedTotal['price']} = " . 
                     number_format($calculatedTotal['total'], 2);
@@ -292,6 +295,66 @@ private function calculateAllPayments($transactions, $breadPrices, $userCompanie
         'overallInvoiceTotal' => $overallInvoiceTotal
     ];
 }
+// Update the calculateAllPayments method in SummaryController.php
+// private function calculateAllPayments($transactions, $breadPrices, $userCompanies)
+// {
+//     $cashPayments = [];
+//     $invoicePayments = [];
+//     $overallTotal = 0;
+//     $overallInvoiceTotal = 0;
+//     $selectedDate = request('date', now()->toDateString());
+
+//     foreach ($transactions as $companyId => $companyTransactions) {
+//         $company = $userCompanies->firstWhere('id', $companyId);
+//         if (!$company) continue;
+
+//         $payment = [
+//             'company' => $company->name,
+//             'company_id' => $companyId,
+//             'breads' => [],
+//             'total' => 0
+//         ];
+
+//         foreach ($companyTransactions as $transaction) {
+//             // Skip if transaction is unpaid for cash companies
+//             if ($company->type === 'cash' && !$transaction->is_paid) {
+//                 continue;
+//             }
+
+//             // Skip if paid on a different date
+//             if ($transaction->is_paid && 
+//                 $transaction->paid_date !== null && 
+//                 $transaction->paid_date !== $selectedDate) {
+//                 continue;
+//             }
+
+//             $calculatedTotal = $this->calculateTransactionTotal($transaction, $company, $selectedDate);
+//             if ($calculatedTotal['netBreads'] > 0) {
+//                 $breadName = $transaction->breadType->name;
+//                 $payment['breads'][$breadName] = "{$calculatedTotal['netBreads']} x {$calculatedTotal['price']} = " . 
+//                     number_format($calculatedTotal['total'], 2);
+//                 $payment['total'] += $calculatedTotal['total'];
+//             }
+//         }
+
+//         if ($payment['total'] > 0) {
+//             if ($company->type === 'cash') {
+//                 $cashPayments[] = $payment;
+//                 $overallTotal += $payment['total'];
+//             } else {
+//                 $invoicePayments[] = $payment;
+//                 $overallInvoiceTotal += $payment['total'];
+//             }
+//         }
+//     }
+
+//     return [
+//         'cashPayments' => $cashPayments,
+//         'invoicePayments' => $invoicePayments,
+//         'overallTotal' => $overallTotal,
+//         'overallInvoiceTotal' => $overallInvoiceTotal
+//     ];
+// }
 
 private function calculateTransactionTotal($transaction, $company, $date)
 {
