@@ -149,54 +149,92 @@ class DailyTransactionController extends Controller
     }
 }
 
-
+// In DailyTransactionController
 public function storeOldBreadSales(Request $request)
 {
-    $validatedData = $request->validate([
+    Log::info('Processing old bread sales request', [
+        'request_data' => $request->all()
+    ]);
+
+    $request->validate([
         'transaction_date' => 'required|date',
-        'old_bread_sold' => 'required|array',
         'old_bread_sold.*.bread_type_id' => 'required|exists:bread_types,id',
-        'old_bread_sold.*.sold' => 'required|integer|min:0'
+        'old_bread_sold.*.sold' => 'required|integer|min:0',
     ]);
 
     try {
-        DB::transaction(function () use ($validatedData) {
-            $user = Auth::user();
-            $company = $user->companies()->first();
+        DB::beginTransaction();
 
-            foreach ($validatedData['old_bread_sold'] as $breadTypeId => $data) {
-                // Update only old_bread_sold without affecting other fields
-                DailyTransaction::updateOrCreate(
-                    [
-                        'company_id' => $company->id,
-                        'bread_type_id' => $data['bread_type_id'],
-                        'transaction_date' => $validatedData['transaction_date']
-                    ],
-                    [
-                        'old_bread_sold' => $data['sold']
-                    ]
-                );
-            }
-        });
+        $user = Auth::user();
+        $company = $user->companies()->first();
+        $date = $request->input('transaction_date');
+        $oldBreadData = $request->input('old_bread_sold', []);
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Успешно ажурирање на стар леб.'
-        ]);
+        foreach ($oldBreadData as $breadTypeId => $data) {
+            if (empty($data['sold'])) continue;
+
+            // Get existing transaction for this date and bread type
+            $transaction = DailyTransaction::firstOrNew([
+                'company_id' => $company->id,
+                'bread_type_id' => $data['bread_type_id'],
+                'transaction_date' => $date
+            ]);
+
+            // Add new amount to existing old_bread_sold (or 0 if new record)
+            $currentAmount = $transaction->old_bread_sold ?? 0;
+            $newAmount = $currentAmount + intval($data['sold']);
+
+            // Log the accumulation
+            Log::info('Accumulating old bread sales', [
+                'bread_type_id' => $data['bread_type_id'],
+                'current_amount' => $currentAmount,
+                'adding_amount' => $data['sold'],
+                'new_total' => $newAmount
+            ]);
+
+            $transaction->old_bread_sold = $newAmount;
+            $transaction->save();
+        }
+
+        DB::commit();
+        return redirect()->back()->with('success', 'Успешно ажурирање на стар леб');
+
     } catch (\Exception $e) {
-        Log::error('Error storing old bread sales: ' . $e->getMessage());
-        return response()->json([
-            'success' => false,
-            'message' => 'Грешка при зачувување.'
-        ], 500);
+        DB::rollBack();
+        Log::error('Error in storeOldBreadSales: ' . $e->getMessage());
+        return redirect()->back()->with('error', 'Грешка при зачувување');
     }
 }
 
 
+private function calculateTotalForTransaction($transaction, $company, $date)
+{
+    if (!$transaction->breadType) {
+        return [
+            'netBreads' => 0,
+            'price' => 0,
+            'total' => 0,
+            'old_bread_sold' => 0
+        ];
+    }
 
+    $delivered = $transaction->delivered;
+    $returned = $transaction->returned;
+    $gratis = $transaction->gratis ?? 0;
+    $oldBreadSold = $transaction->old_bread_sold ?? 0;
+    $netBreads = $delivered - $returned - $gratis;
 
-
-
+    $price = $transaction->breadType->getPriceForCompany($company->id, $date)['price'];
+    $oldBreadPrice = $transaction->breadType->old_price ?? $price;
+    
+    return [
+        'netBreads' => $netBreads,
+        'price' => $price,
+        'total' => $netBreads * $price,
+        'old_bread_sold' => $oldBreadSold,
+        'old_bread_total' => $oldBreadSold * $oldBreadPrice
+    ];
+}
 
 
 
@@ -250,98 +288,7 @@ private function getTransactionsForDate($date)
             });
         })->get();
 }
-// public function markAsPaid(Request $request)
-// {
-//     try {
-//         DB::transaction(function () use ($request) {
-//             $date = $request->input('date');
-//             $companyId = $request->input('company_id');
-            
-//             Log::info('Starting markAsPaid process', [
-//                 'date' => $date,
-//                 'company_id' => $companyId
-//             ]);
 
-//             // Get all unpaid transactions for this company and date
-//             $unpaidTransactions = DailyTransaction::where([
-//                 'company_id' => $companyId,
-//                 'transaction_date' => $date,
-//                 'is_paid' => false
-//             ])->get();
-
-//             foreach ($unpaidTransactions as $unpaidTransaction) {
-//                 // Check if there's an existing transaction for today
-//                 $existingTransaction = DailyTransaction::where([
-//                     'company_id' => $companyId,
-//                     'bread_type_id' => $unpaidTransaction->bread_type_id,
-//                     'transaction_date' => now()->toDateString()
-//                 ])->first();
-
-//                 if ($existingTransaction) {
-//                     Log::info('Found existing transaction', [
-//                         'transaction_id' => $existingTransaction->id,
-//                         'bread_type_id' => $unpaidTransaction->bread_type_id
-//                     ]);
-
-//                     // Keep the existing transaction's values but mark it as paid
-//                     $oldValues = [
-//                         'delivered' => $existingTransaction->delivered,
-//                         'returned' => $existingTransaction->returned,
-//                         'gratis' => $existingTransaction->gratis,
-//                         'is_paid' => $existingTransaction->is_paid
-//                     ];
-
-//                     $existingTransaction->update([
-//                         'is_paid' => true,
-//                         'paid_date' => now()->toDateString()
-//                     ]);
-
-//                     // Record history for the existing transaction
-//                     $this->recordHistory($existingTransaction, $oldValues, [
-//                         'delivered' => $existingTransaction->delivered,
-//                         'returned' => $existingTransaction->returned,
-//                         'gratis' => $existingTransaction->gratis,
-//                         'is_paid' => true
-//                     ]);
-//                 }
-
-//                 // Also mark the original unpaid transaction as paid
-//                 $oldValues = [
-//                     'delivered' => $unpaidTransaction->delivered,
-//                     'returned' => $unpaidTransaction->returned,
-//                     'gratis' => $unpaidTransaction->gratis,
-//                     'is_paid' => false
-//                 ];
-
-//                 $unpaidTransaction->update([
-//                     'is_paid' => true,
-//                     'paid_date' => now()->toDateString()
-//                 ]);
-
-//                 // Record history for the unpaid transaction
-//                 $this->recordHistory($unpaidTransaction, $oldValues, [
-//                     'delivered' => $unpaidTransaction->delivered,
-//                     'returned' => $unpaidTransaction->returned,
-//                     'gratis' => $unpaidTransaction->gratis,
-//                     'is_paid' => true
-//                 ]);
-
-//                 Log::info('Transaction marked as paid', [
-//                     'transaction_id' => $unpaidTransaction->id,
-//                     'bread_type_id' => $unpaidTransaction->bread_type_id
-//                 ]);
-//             }
-//         });
-
-//         return back()->with('success', 'Трансакциите се означени како платени.');
-
-//     } catch (\Exception $e) {
-//         Log::error('Error marking transactions as paid: ' . $e->getMessage(), [
-//             'trace' => $e->getTraceAsString()
-//         ]);
-//         return back()->with('error', 'Грешка при означување на трансакциите како платени.');
-//     }
-// }
 
 // New method to record payment history
 private function recordPaymentHistory($transaction, $oldValues, $newValues)
@@ -420,107 +367,4 @@ public function updateDailyTransaction(Request $request)
     }
 }
 
-//     public function updateDailyTransaction(Request $request, Company $company)
-//     {
-//         $data = $request->validate([
-//             'date' => 'required|date',
-//             'transactions' => 'required|array',
-//             'transactions.*.bread_type_id' => [
-//                 'required',
-//                 'exists:bread_types,id',
-//                 function ($attribute, $value, $fail) {
-//                     $breadType = BreadType::find($value);
-//                     if (!$breadType || !$breadType->is_active) {
-//                         $fail('Selected bread type is not active.');
-//                     }
-//                 },
-//             ],
-//             'transactions.*.delivered' => 'required|integer|min:0',
-//             'transactions.*.returned' => 'required|integer|min:0',
-//             'transactions.*.gratis' => 'required|integer|min:0',
-//         ]);
-
-//         foreach ($data['transactions'] as $transaction) {
-//             // Double-check bread type is active before creating/updating
-//             $breadType = BreadType::find($transaction['bread_type_id']);
-//             if ($breadType && $breadType->is_active) {
-//                 // Get existing transaction first
-//                 $existingTransaction = DailyTransaction::where([
-//                     'company_id' => $company->id,
-//                     'bread_type_id' => $transaction['bread_type_id'],
-//                     'transaction_date' => $data['date'],
-//                 ])->first();
-
-//                 // Prepare old values if transaction exists
-//                 $oldValues = $existingTransaction ? [
-//                     'delivered' => $existingTransaction->delivered,
-//                     'returned' => $existingTransaction->returned,
-//                     'gratis' => $existingTransaction->gratis,
-//                 ] : null;
-
-//                 // Create or update the transaction
-//                 $dailyTransaction = DailyTransaction::updateOrCreate(
-//                     [
-//                         'company_id' => $company->id,
-//                         'bread_type_id' => $transaction['bread_type_id'],
-//                         'transaction_date' => $data['date'],
-//                     ],
-//                     [
-//                         'delivered' => $transaction['delivered'],
-//                         'returned' => $transaction['returned'],
-//                         'gratis' => $transaction['gratis'],
-//                     ]
-//                 );
-
-//                 // Record history if there are changes
-//                 if ($oldValues !== null) {
-//                     $newValues = [
-//                         'delivered' => $transaction['delivered'],
-//                         'returned' => $transaction['returned'],
-//                         'gratis' => $transaction['gratis'],
-//                     ];
-                    
-//                     if ($oldValues != $newValues) {
-//                         $this->recordHistory($dailyTransaction, $oldValues, $newValues);
-//                     }
-//                 }
-//             }
-//         }
-
-//         // Get updated summary for active bread types only
-//         $todaySummary = DailyTransaction::where('company_id', $company->id)
-//             ->whereDate('transaction_date', $data['date'])
-//             ->whereHas('breadType', function($query) {
-//                 $query->where('is_active', true);
-//             })
-//             ->with(['breadType' => function($query) {
-//                 $query->where('is_active', true);
-//             }])
-//             ->get();
-
-//         $month = Carbon::parse($data['date'])->format('m');
-//         $year = Carbon::parse($data['date'])->format('Y');
-
-//         // Get monthly transactions for active bread types only
-//         $monthlyTransactions = DailyTransaction::with(['breadType' => function($query) {
-//                 $query->where('is_active', true);
-//             }])
-//             ->whereHas('breadType', function($query) {
-//                 $query->where('is_active', true);
-//             })
-//             ->where('company_id', $company->id)
-//             ->whereMonth('transaction_date', $month)
-//             ->whereYear('transaction_date', $year)
-//             ->get()
-//             ->groupBy(function ($transaction) {
-//                 return $transaction->transaction_date->format('Y-m-d');
-//             });
-
-//         return response()->json([
-//             'success' => true,
-//             'todaySummary' => $todaySummary,
-//             'monthlyTransactions' => $monthlyTransactions,
-//         ]);
-//     }
-    
 }

@@ -90,6 +90,31 @@ Route::middleware(['auth'])->group(function () {
     // In your routes file
 Route::post('/update-daily-transaction', [DailyTransactionController::class, 'updateDailyTransaction'])
 ->name('update-daily-transaction');
+Route::post('/daily-transactions/old-bread', [DailyTransactionController::class, 'storeOldBreadSales'])
+    ->name('daily-transactions.store-old-bread');
+    Route::post('/store-old-bread', [DailyTransactionController::class, 'storeOldBreadSales'])
+    ->name('daily-transactions.store-old-bread');
+Route::post('/update', [DailyTransactionController::class, 'updateDailyTransaction'])
+    ->name('update-daily-transaction');
+    Route::post('/store-old-bread', [DailyTransactionController::class, 'storeOldBreadSales'])
+    ->name('daily-transactions.store-old-bread');
+    Route::middleware(['auth'])->group(function () {
+        // Daily Transactions routes
+        Route::prefix('daily-transactions')->group(function () {
+            Route::get('/', [DailyTransactionController::class, 'index'])
+                ->name('daily-transactions.index');
+            Route::get('/create', [DailyTransactionController::class, 'create'])
+                ->name('daily-transactions.create');
+            Route::post('/', [DailyTransactionController::class, 'store'])
+                ->name('daily-transactions.store');
+            Route::post('/store-old-bread', [DailyTransactionController::class, 'storeOldBreadSales'])
+                ->name('daily-transactions.store-old-bread');
+            Route::post('/update', [DailyTransactionController::class, 'updateDailyTransaction'])
+                ->name('update-daily-transaction');
+        });
+    });
+
+
     
     // Summary routes
     Route::get('/summary', [SummaryController::class, 'index'])->name('summary.index');
@@ -261,4 +286,4 @@ Route::get('/csrf-token', function () {
 
 Route::post('/pwa-log', [LogController::class, 'store'])->name('pwa.log');
 
-Route::post('/old-bread-sales/store', [OldBreadSalesController::class, 'store'])->name('old-bread-sales.store');
+// Route::post('/old-bread-sales/store', [OldBreadSalesController::class, 'store'])->name('old-bread-sales.store');

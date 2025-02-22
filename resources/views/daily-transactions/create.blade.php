@@ -186,8 +186,8 @@
 
         <!-- Old Bread Sales Section -->
         <div id="oldBreadSalesSection" class="hidden mt-4 px-2 md:px-0">
-            <form id="oldBreadSalesForm" action="{{ route('old-bread-sales.store') }}" method="POST">
-                @csrf
+        <form id="oldBreadSalesForm" action="{{ route('daily-transactions.store-old-bread') }}" method="POST">
+        @csrf
                 <input type="hidden" name="transaction_date" value="{{ $date }}">
 
                 <div class="overflow-x-auto -mx-2 md:mx-0">
@@ -362,7 +362,7 @@ $('#transactionForm').on('submit', function(e) {
         },
         error: function(xhr) {
             console.error('Error response:', xhr);
-            alert('Грешка при зачувување. Обидете се повторно.');
+            // alert('Грешка при зачувување. Обидете се повторно.');
         },
         complete: function() {
             $form.find('button[type="submit"]').prop('disabled', false);

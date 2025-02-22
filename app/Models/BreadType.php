@@ -11,11 +11,19 @@ class BreadType extends Model
         'code',
         'name',
         'price',
+        'price_group_1',
+        'price_group_2',
+        'price_group_3',
+        'price_group_4',
+        'price_group_5',
         'old_price',
+        'valid_from',
         'is_active',
         'old_bread_sold',
-        'available_for_daily',
+        'available_for_daily'
     ];
+
+  
 
     protected $casts = [
         'price' => 'decimal:2',
@@ -28,7 +36,7 @@ class BreadType extends Model
     public function companies()
     {
         return $this->belongsToMany(Company::class, 'bread_type_company')
-            ->withPivot('price', 'old_price', 'valid_from', 'created_by')
+            ->withPivot('price', 'old_price', 'valid_from', 'price_group', 'created_by')
             ->withCasts([
                 'price' => 'decimal:2',
                 'old_price' => 'decimal:2',
@@ -36,6 +44,16 @@ class BreadType extends Model
             ])
             ->withTimestamps();
     }
+
+    public function getPriceForGroup($priceGroup)
+{
+    if ($priceGroup === 0) {
+        return $this->price;
+    }
+    
+    $groupPrice = "price_group_" . $priceGroup;
+    return $this->$groupPrice ?? $this->price;
+}
 
     public function dailyTransactions()
     {

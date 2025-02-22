@@ -32,11 +32,13 @@
             "Database\\Factories\\": "database/factories/",
             "Database\\Seeders\\": "database/seeders/"
         }
+        
     },
     "autoload-dev": {
         "psr-4": {
             "Tests\\": "tests/"
         }
+        
     },
     "scripts": {
         "post-autoload-dump": [
@@ -72,3 +74,4 @@
     "minimum-stability": "stable",
     "prefer-stable": true
 }
+

@@ -184,19 +184,19 @@
         $canEdit = ($currentUser->role === 'user' && $data['user_id'] === $currentUser->id) || 
                    (($currentUser->isAdmin() || $currentUser->role === 'super_admin') && !$selectedUserId);
     @endphp
-    <form id="oldBreadSalesForm" action="{{ route('old-bread-sales.store') }}" method="POST">
+    <form id="oldBreadSalesForm" action="{{ route('daily-transactions.store-old-bread') }}" method="POST">
     @csrf
     <input type="hidden" name="transaction_date" value="{{ $date }}">
     <input type="hidden" 
-           name="sold[{{ $breadType }}][bread_type_id]" 
+           name="old_bread_sold[{{ $breadTypeObj->id }}][bread_type_id]" 
            value="{{ $breadTypeObj->id }}">
-           
     <input type="number" 
-           name="sold[{{ $breadType }}][sold]" 
-           value="{{ $soldValue }}" 
+           name="old_bread_sold[{{ $breadTypeObj->id }}][sold]" 
+           value="{{ $soldValue }}"
            class="w-full px-2 py-1 border rounded text-center-desktop"
-           @unless($canEdit) readonly @endunless
-           min="0">
+           @unless($canEdit) readonly @endunless>
+</form>
+   
 </td>
                             </td>
                             <td class="border px-4 py-2 text-lg font-bold text-center-desktop">{{ $data['difference'] ?? 0 }}</td>

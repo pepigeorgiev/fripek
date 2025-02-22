@@ -25,35 +25,91 @@ class BreadTypeController extends Controller
     }
 
     public function store(Request $request)
-    {
-        \Log::info('Received request to create bread type', ['request_data' => $request->all()]);
+{
+    \Log::info('Received request to create bread type', ['request_data' => $request->all()]);
 
-        try {
-            $validated = $request->validate([
-                'name' => 'required|string|max:255|unique:bread_types',
-                'code' => 'required|string|max:50|unique:bread_types',
-                'price' => 'required|numeric|min:0',
-                'old_price' => 'required|numeric|min:0',
-                'is_active' => 'sometimes|boolean',
-                'available_for_daily' => 'sometimes|boolean',
-                'valid_from' => 'required|date|after_or_equal:today'
-            ]);
+    try {
+        $validated = $request->validate([
+            'name' => 'required|string|max:255|unique:bread_types',
+            'code' => 'required|string|max:50|unique:bread_types',
+            'price' => 'required|numeric|min:0',
+            'price_group_1' => 'nullable|numeric|min:0',
+            'price_group_2' => 'nullable|numeric|min:0',
+            'price_group_3' => 'nullable|numeric|min:0',
+            'price_group_4' => 'nullable|numeric|min:0',
+            'price_group_5' => 'nullable|numeric|min:0',
+            'old_price' => 'required|numeric|min:0',
+            'is_active' => 'sometimes|boolean',
+            'available_for_daily' => 'sometimes|boolean',
+            'valid_from' => 'required|date|after_or_equal:today'
+        ]);
 
-            $validated['is_active'] = $request->has('is_active');
-            $validated['available_for_daily'] = $request->has('available_for_daily');
+        $validated['is_active'] = $request->has('is_active');
+        $validated['available_for_daily'] = $request->has('available_for_daily');
 
-                // Generate code if not provided
+        // Generate code if not provided
         if (!isset($validated['code'])) {
             $lastId = BreadType::max('id') ?? 0;
             $validated['code'] = 'BT' . str_pad($lastId + 1, 4, '0', STR_PAD_LEFT);
         }
 
-            DB::beginTransaction();
+        DB::beginTransaction();
 
-            // Create the bread type
-            $breadType = BreadType::create($validated);
+        // Create the bread type
+        $breadType = BreadType::create($validated);
 
-            // Record the initial price in history
+        // Record the initial price in history
+        BreadPriceHistory::create([
+            'bread_type_id' => $breadType->id,
+            'price' => $validated['price'],
+            'old_price' => $validated['old_price'],
+            'valid_from' => $validated['valid_from'],
+            'created_by' => auth()->id()
+        ]);
+
+        DB::commit();
+
+        return redirect()
+            ->route('bread-types.index')
+            ->with('success', 'Успешно додавање на лебот');
+    } catch (\Exception $e) {
+        DB::rollBack();
+        \Log::error('Error creating bread type: ' . $e->getMessage());
+        return back()
+            ->withInput()
+            ->with('error', 'Се појави грешка при додавање на лебот.');
+    }
+}
+
+public function update(Request $request, BreadType $breadType)
+{
+    try {
+        $validated = $request->validate([
+            'name' => 'required|string|max:255|unique:bread_types,name,' . $breadType->id,
+            'code' => 'required|string|max:50|unique:bread_types,code,' . $breadType->id,
+            'price' => 'required|numeric|min:0|decimal:0,2',
+            'price_group_1' => 'nullable|numeric|min:0|decimal:0,2',
+            'price_group_2' => 'nullable|numeric|min:0|decimal:0,2',
+            'price_group_3' => 'nullable|numeric|min:0|decimal:0,2',
+            'price_group_4' => 'nullable|numeric|min:0|decimal:0,2',
+            'price_group_5' => 'nullable|numeric|min:0|decimal:0,2',
+            'old_price' => 'required|numeric|min:0|decimal:0,2',
+            'is_active' => 'sometimes|boolean',
+            'available_for_daily' => 'sometimes|boolean',
+            'valid_from' => 'required|date|after_or_equal:today'
+        ]);
+
+        $validated['is_active'] = $request->has('is_active');
+        $validated['available_for_daily'] = $request->has('available_for_daily');
+
+        // Check if prices have changed
+        $pricesChanged = $breadType->price != $validated['price'] || 
+                        $breadType->old_price != $validated['old_price'];
+
+        DB::beginTransaction();
+
+        if ($pricesChanged) {
+            // Create a new price history record
             BreadPriceHistory::create([
                 'bread_type_id' => $breadType->id,
                 'price' => $validated['price'],
@@ -62,19 +118,52 @@ class BreadTypeController extends Controller
                 'created_by' => auth()->id()
             ]);
 
-            DB::commit();
-
-            return redirect()
-                ->route('bread-types.index')
-                ->with('success', 'Успешно додавање на лебот');
-        } catch (\Exception $e) {
-            DB::rollBack();
-            \Log::error('Error creating bread type: ' . $e->getMessage());
-            return back()
-                ->withInput()
-                ->with('error', 'Се појави грешка при додавање на лебот.');
+            // Update the current prices and group prices in bread_types table
+            $breadType->update([
+                'code' => $validated['code'],
+                'name' => $validated['name'],
+                'price' => $validated['price'],
+                'price_group_1' => $validated['price_group_1'],
+                'price_group_2' => $validated['price_group_2'],
+                'price_group_3' => $validated['price_group_3'],
+                'price_group_4' => $validated['price_group_4'],
+                'price_group_5' => $validated['price_group_5'],
+                'old_price' => $validated['old_price'],
+                'is_active' => $validated['is_active'],
+                'available_for_daily' => $validated['available_for_daily'],
+                'last_price_change' => $validated['valid_from']
+            ]);
+        } else {
+            // Update non-price fields and group prices
+            $breadType->update([
+                'code' => $validated['code'],
+                'name' => $validated['name'],
+                'price_group_1' => $validated['price_group_1'],
+                'price_group_2' => $validated['price_group_2'],
+                'price_group_3' => $validated['price_group_3'],
+                'price_group_4' => $validated['price_group_4'],
+                'price_group_5' => $validated['price_group_5'],
+                'is_active' => $validated['is_active'],
+                'available_for_daily' => $validated['available_for_daily']
+            ]);
         }
+
+        DB::commit();
+
+        return redirect()
+            ->route('bread-types.index')
+            ->with('success', 'Успешно ажурирање на лебот. ' . 
+                ($pricesChanged ? 'Новата цена ќе важи од ' . $validated['valid_from'] : ''));
+    } catch (\Exception $e) {
+        DB::rollBack();
+        Log::error('Error updating bread type: ' . $e->getMessage());
+        return back()
+            ->withInput()
+            ->with('error', 'Се појави грешка при ажурирање на лебот.');
     }
+}
+
+    
 
     public function edit(BreadType $breadType)
     {
@@ -85,72 +174,7 @@ class BreadTypeController extends Controller
         return view('bread-types.edit', compact('breadType', 'priceHistory'));
     }
 
-    public function update(Request $request, BreadType $breadType)
-    {
-        try {
-            $validated = $request->validate([
-                'name' => 'required|string|max:255|unique:bread_types,name,' . $breadType->id,
-                'code' => 'required|string|max:50|unique:bread_types,code,' . $breadType->id,
-                'price' => 'required|numeric|min:0|decimal:0,2',
-                'old_price' => 'required|numeric|min:0|decimal:0,2',
-                'is_active' => 'sometimes|boolean',
-                'available_for_daily' => 'sometimes|boolean',
-                'valid_from' => 'required|date|after_or_equal:today'
-            ]);
-
-            $validated['is_active'] = $request->has('is_active');
-            $validated['available_for_daily'] = $request->has('available_for_daily');
-
-            // Check if prices have changed
-            $pricesChanged = $breadType->price != $validated['price'] || 
-                           $breadType->old_price != $validated['old_price'];
-
-            DB::beginTransaction();
-
-            if ($pricesChanged) {
-                // Create a new price history record
-                BreadPriceHistory::create([
-                    'bread_type_id' => $breadType->id,
-                    'price' => $validated['price'],
-                    'old_price' => $validated['old_price'],
-                    'valid_from' => $validated['valid_from'],
-                    'created_by' => auth()->id()
-                ]);
-
-                // Update the current prices in bread_types table
-                $breadType->update([
-                    'code' => $validated['code'],
-                    'name' => $validated['name'],
-                    'price' => $validated['price'],
-                    'old_price' => $validated['old_price'],
-                    'is_active' => $validated['is_active'],
-                    'available_for_daily' => $validated['available_for_daily'],
-                    'last_price_change' => $validated['valid_from']
-                ]);
-            } else {
-                // Update only non-price fields
-                $breadType->update([
-                    'code' => $validated['code'],
-                    'name' => $validated['name'],
-                    'is_active' => $validated['is_active'],
-                    'available_for_daily' => $validated['available_for_daily']
-                ]);
-            }
-
-            DB::commit();
-
-            return redirect()
-                ->route('bread-types.index')
-                 ->with('success', 'Успешно ажурирање на лебот. ' . 
-                    ($pricesChanged ? 'Новата цена ќе важи од ' . $validated['valid_from'] : ''));
-        } catch (\Exception $e) {
-            DB::rollBack();
-            Log::error('Error updating bread type: ' . $e->getMessage());
-            return back()
-                ->withInput()
-                ->with('error', 'Се појави грешка при ажурирање на лебот.');
-        }
-    }
+    
 
     public function showCompanyPrices(BreadType $breadType)
 {
@@ -159,52 +183,40 @@ class BreadTypeController extends Controller
 }
 
 
-public function updateCompanyPrices(Request $request, BreadType $breadType)
+public function updateCompanyPrices(Request $request, BreadType $breadType, Company $company)
 {
-    try {
-        $validated = $request->validate([
-            'companies' => 'required|array',
-            'companies.*.company_id' => 'required|exists:companies,id',
-            'companies.*.price' => 'required|numeric|min:0|regex:/^\d+(\.\d{1,5})?$/',
-            'companies.*.old_price' => 'required|numeric|min:0|regex:/^\d+(\.\d{1,5})?$/',
-            'valid_from' => 'required|date|after_or_equal:today'
-        ]);
+    $data = $request->validate([
+        'companies.'.$company->id.'.price' => 'required|numeric|min:0',
+        'companies.'.$company->id.'.old_price' => 'required|numeric|min:0',
+        'companies.'.$company->id.'.price_group' => 'required|integer|min:0|max:5',
+        'companies.'.$company->id.'.valid_from' => 'required|date|after_or_equal:today',
+    ]);
 
-        DB::beginTransaction();
+    $companyData = $data['companies'][$company->id];
+    
+    // Add created_by to the data array
+    $pivotData = [
+        'price' => $companyData['price'],
+        'old_price' => $companyData['old_price'],
+        'price_group' => $companyData['price_group'],
+        'valid_from' => $companyData['valid_from'],
+        'created_by' => auth()->id()  // Add this line
+    ];
 
-        foreach ($validated['companies'] as $companyData) {
-            $existingPivot = $breadType->companies()->where('company_id', $companyData['company_id'])->exists();
+    // Check if the relationship exists
+    $existingRelation = $breadType->companies()
+        ->where('company_id', $company->id)
+        ->exists();
 
-            if ($existingPivot) {
-                $breadType->companies()->updateExistingPivot($companyData['company_id'], [
-                    'price' => number_format($companyData['price'], 5, '.', ''),
-                    'old_price' => number_format($companyData['old_price'], 5, '.', ''),
-                    'valid_from' => $validated['valid_from'],
-                    'created_by' => auth()->id()
-                ]);
-            } else {
-                $breadType->companies()->attach($companyData['company_id'], [
-                    'price' => number_format($companyData['price'], 5, '.', ''),
-                    'old_price' => number_format($companyData['old_price'], 5, '.', ''),
-                    'valid_from' => $validated['valid_from'],
-                    'created_by' => auth()->id()
-                ]);
-            }
-        }
-
-        DB::commit();
-
-        return redirect()
-            ->back()
-            ->with('success', 'Успешно зачувани цени по компании');
-    } catch (\Exception $e) {
-        DB::rollBack();
-        \Log::error('Error updating company prices: ' . $e->getMessage());
-        return back()
-            ->withInput()
-            ->with('error', 'Се појави грешка при зачувување на цените.');
+    if ($existingRelation) {
+        $breadType->companies()->updateExistingPivot($company->id, $pivotData);
+    } else {
+        $breadType->companies()->attach($company->id, $pivotData);
     }
+
+    return back()->with('success', 'Цените се успешно зачувани за ' . $company->name);
 }
+
 
     public function destroy(BreadType $breadType)
     {
