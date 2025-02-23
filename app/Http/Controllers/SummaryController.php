@@ -745,6 +745,38 @@ private function getTransactionsForSummary($date)
         ];
     }
 
+    public function markMultipleAsPaid(Request $request)
+{
+    try {
+        $selectedTransactions = $request->input('selected_transactions', []);
+        
+        DB::beginTransaction();
+        
+        foreach ($selectedTransactions as $transaction) {
+            list($companyId, $date) = explode('_', $transaction);
+            
+            DailyTransaction::where('company_id', $companyId)
+                ->whereDate('transaction_date', $date)
+                ->where('is_paid', false)
+                ->update([
+                    'is_paid' => true,
+                    'paid_date' => now(),
+                    'updated_at' => now()
+                ]);
+        }
+        
+        DB::commit();
+        
+        return back()
+            ->with('success', 'Избраните трансакции се успешно означени како платени.')
+            ->with('scroll', session('scroll_position'));
+    } catch (\Exception $e) {
+        DB::rollBack();
+        Log::error('Error marking multiple transactions as paid: ' . $e->getMessage());
+        return back()->with('error', 'Се појави грешка при означување на трансакциите како платени.');
+    }
+}
+
     public function showAdditionalTable(Request $request)
     {
         $date = $request->input('date', Carbon::yesterday()->toDateString());

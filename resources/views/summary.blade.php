@@ -350,73 +350,99 @@
                 Овие трансакции се означени како неплатени и не се вклучени во вкупната сума на кеш плаќања.
             </p>
         </div>
-        <table class="w-full bg-white shadow-md rounded">
-            <thead>
-                <tr>
-                    <th class="px-4 py-2 text-lg font-bold text-center border-b-2 border-gray-400 w-1/4">Име на компанија</th>
-                    <th class="px-4 py-2 text-lg font-bold text-center border-b-2 border-gray-400 w-2/4">Видови на леб</th>
-                    <th class="px-4 py-2 text-lg font-bold text-center border-b-2 border-gray-400 w-1/5">Вкупно</th>
-                    <th class="px-4 py-2 text-lg font-bold text-center border-b-2 border-gray-400 w-1/5">Акции</th>
-                </tr>
-            </thead>
-            <tbody>
-                @foreach($unpaidTransactions as $payment)
-                    <tr class="border-t-2 border-gray-400">
-                        <td class="border px-4 py-2 text-lg font-bold text-center align-center">
-                            {{ $payment['company'] }}
-                            <div class="text-sm text-gray-500">{{ \Carbon\Carbon::parse($payment['transaction_date'])->format('d.m.Y') }}</div>
-                        </td>
-                        <td class="border px-4 py-2">
-                            <table class="w-full">
-                                <thead>
-                                    <tr>
-                                        <th class="w-1/2 text-left pb-2 border-b border-gray-400">Вид на леб</th>
-                                        <th class="w-1/2 text-right pb-2 border-b border-gray-400">Количина × Цена</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    @foreach($payment['breads'] as $breadName => $bread)
-                                        @if($bread['total'] != 0)
-                                            <tr>
-                                                <td class="py-1 text-lg font-bold border-b border-gray-300">{{ $breadName }}:</td>
-                                                <td class="py-1 text-lg font-bold text-right border-b border-gray-300">
-                                                    {{ $bread['total'] }} x {{ $bread['price'] }} = {{ number_format($bread['potential_total'], 2) }}
-                                                </td>
-                                            </tr>
-                                        @endif
-                                    @endforeach
-                                </tbody>
-                            </table>
-                        </td>
-                        <td class="border px-4 py-2 text-center align-center">
-                            {{ number_format($payment['total_amount'], 2) }}
-                        </td>
-                        <td class="border px-4 py-2 text-center align-center">
-                            <form action="{{ route('daily-transactions.markAsPaid') }}" method="POST" class="inline">
-                                @csrf
-                                <input type="hidden" name="company_id" value="{{ $payment['company_id'] }}">
-                                <input type="hidden" name="date" value="{{ $payment['transaction_date'] }}">
-                                <button type="submit" 
-                                        class="bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded-md text-sm font-medium transition-colors">
-                                    Означи како платено
-                                </button>
-                            </form>
-                        </td>
+
+        <form id="bulkPaymentForm" action="{{ route('daily-transactions.markMultipleAsPaid') }}" method="POST">
+            @csrf
+            <input type="hidden" name="date" value="{{ $date }}">
+            
+            <div class="flex justify-end mb-4">
+                <button type="submit" 
+                        id="bulkPaymentButton"
+                        disabled
+                        class="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg transition duration-150 ease-in-out disabled:opacity-50 disabled:cursor-not-allowed">
+                    Означи ги селектираните како платени
+                </button>
+            </div>
+
+            <table class="w-full bg-white shadow-md rounded">
+                <thead>
+                    <tr>
+                        <th class="px-4 py-2 text-lg font-bold text-center border-b-2 border-gray-400">
+                            <input type="checkbox" 
+                                   id="selectAll" 
+                                   class="form-checkbox h-5 w-5 text-blue-600">
+                        </th>
+                        <th class="px-4 py-2 text-lg font-bold text-center border-b-2 border-gray-400 w-1/4">Име на компанија</th>
+                        <th class="px-4 py-2 text-lg font-bold text-center border-b-2 border-gray-400 w-2/4">Видови на леб</th>
+                        <th class="px-4 py-2 text-lg font-bold text-center border-b-2 border-gray-400 w-1/5">Вкупно</th>
+                        <th class="px-4 py-2 text-lg font-bold text-center border-b-2 border-gray-400 w-1/5">Индивидуални акции</th>
                     </tr>
-                @endforeach
-            </tbody>
-            <tfoot>
-                <tr>
-                    <td colspan="2" class="border px-4 py-2 font-bold text-right border-t-2 border-gray-400">
-                        Вкупно неплатено:
-                    </td>
-                    <td class="border px-4 py-2 font-bold text-center border-t-2 border-gray-400">
-                        {{ number_format(collect($unpaidTransactions)->sum('total_amount'), 2) }}
-                    </td>
-                    <td class="border px-4 py-2 border-t-2 border-gray-400"></td>
-                </tr>
-            </tfoot>
-        </table>
+                </thead>
+                <tbody>
+                    @foreach($unpaidTransactions as $payment)
+                        <tr class="border-t-2 border-gray-400">
+                            <td class="border px-4 py-2 text-center">
+                                <input type="checkbox" 
+                                       name="selected_transactions[]" 
+                                       value="{{ $payment['company_id'] }}_{{ $payment['transaction_date'] }}"
+                                       class="transaction-checkbox form-checkbox h-5 w-5 text-blue-600">
+                            </td>
+                            <td class="border px-4 py-2 text-lg font-bold text-center align-center">
+                                {{ $payment['company'] }}
+                                <div class="text-sm text-gray-500">{{ \Carbon\Carbon::parse($payment['transaction_date'])->format('d.m.Y') }}</div>
+                            </td>
+                            <td class="border px-4 py-2">
+                                <table class="w-full">
+                                    <thead>
+                                        <tr>
+                                            <th class="w-1/2 text-left pb-2 border-b border-gray-400">Вид на леб</th>
+                                            <th class="w-1/2 text-right pb-2 border-b border-gray-400">Количина × Цена</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @foreach($payment['breads'] as $breadName => $bread)
+                                            @if($bread['total'] != 0)
+                                                <tr>
+                                                    <td class="py-1 text-lg font-bold border-b border-gray-300">{{ $breadName }}:</td>
+                                                    <td class="py-1 text-lg font-bold text-right border-b border-gray-300">
+                                                        {{ $bread['total'] }} x {{ $bread['price'] }} = {{ number_format($bread['potential_total'], 2) }}
+                                                    </td>
+                                                </tr>
+                                            @endif
+                                        @endforeach
+                                    </tbody>
+                                </table>
+                            </td>
+                            <td class="border px-4 py-2 text-center align-center">
+                                {{ number_format($payment['total_amount'], 2) }}
+                            </td>
+                            <td class="border px-4 py-2 text-center align-center">
+                                <form action="{{ route('daily-transactions.markAsPaid') }}" method="POST" class="inline">
+                                    @csrf
+                                    <input type="hidden" name="company_id" value="{{ $payment['company_id'] }}">
+                                    <input type="hidden" name="date" value="{{ $payment['transaction_date'] }}">
+                                    <button type="submit" 
+                                            class="bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded-md text-sm font-medium transition-colors">
+                                        Означи како платено
+                                    </button>
+                                </form>
+                            </td>
+                        </tr>
+                    @endforeach
+                </tbody>
+                <tfoot>
+                    <tr>
+                        <td colspan="3" class="border px-4 py-2 font-bold text-right border-t-2 border-gray-400">
+                            Вкупно неплатено:
+                        </td>
+                        <td class="border px-4 py-2 font-bold text-center border-t-2 border-gray-400">
+                            {{ number_format(collect($unpaidTransactions)->sum('total_amount'), 2) }}
+                        </td>
+                        <td class="border px-4 py-2 border-t-2 border-gray-400"></td>
+                    </tr>
+                </tfoot>
+            </table>
+        </form>
     </div>
 @endif
 
@@ -712,6 +738,55 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 });
 </script>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Handle bulk payment functionality
+        const selectAllCheckbox = document.getElementById('selectAll');
+        const transactionCheckboxes = document.querySelectorAll('.transaction-checkbox');
+        const bulkPaymentButton = document.getElementById('bulkPaymentButton');
+        const bulkPaymentForm = document.getElementById('bulkPaymentForm');
+
+        // Function to update the bulk payment button state
+        function updateBulkPaymentButton() {
+            const checkedBoxes = document.querySelectorAll('.transaction-checkbox:checked');
+            bulkPaymentButton.disabled = checkedBoxes.length === 0;
+        }
+
+        // Handle "Select All" checkbox
+        if (selectAllCheckbox) {
+            selectAllCheckbox.addEventListener('change', function() {
+                transactionCheckboxes.forEach(checkbox => {
+                    checkbox.checked = this.checked;
+                });
+                updateBulkPaymentButton();
+            });
+        }
+
+        // Handle individual checkboxes
+        transactionCheckboxes.forEach(checkbox => {
+            checkbox.addEventListener('change', function() {
+                const allChecked = Array.from(transactionCheckboxes).every(cb => cb.checked);
+                if (selectAllCheckbox) {
+                    selectAllCheckbox.checked = allChecked;
+                }
+                updateBulkPaymentButton();
+            });
+        });
+
+        // Store scroll position before form submission
+        if (bulkPaymentForm) {
+            bulkPaymentForm.addEventListener('submit', function() {
+                localStorage.setItem('scrollPosition', window.scrollY);
+            });
+        }
+
+        // Restore scroll position if exists
+        if (localStorage.getItem('scrollPosition')) {
+            window.scrollTo(0, localStorage.getItem('scrollPosition'));
+            localStorage.removeItem('scrollPosition');
+        }
+    });
+    </script>
 
 <style>
 /* Hide spinner buttons for number inputs */

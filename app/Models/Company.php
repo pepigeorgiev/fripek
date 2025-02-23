@@ -40,6 +40,12 @@ class Company extends Model
             || $this->monthlyTransactions()->exists();
     }
 
+    public function breadTypes()
+    {
+        return $this->belongsToMany(BreadType::class)
+                    ->withPivot(['price', 'old_price', 'price_group', 'valid_from'])
+                    ->withTimestamps();
+    }
     
 
     

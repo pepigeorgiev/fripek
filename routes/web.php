@@ -111,6 +111,10 @@ Route::post('/update', [DailyTransactionController::class, 'updateDailyTransacti
                 ->name('daily-transactions.store-old-bread');
             Route::post('/update', [DailyTransactionController::class, 'updateDailyTransaction'])
                 ->name('update-daily-transaction');
+                Route::post('/daily-transactions/mark-multiple-as-paid', [SummaryController::class, 'markMultipleAsPaid'])
+    ->name('daily-transactions.markMultipleAsPaid');
+                
+
         });
     });
 

@@ -32,96 +32,102 @@
         </div>
 
         <div class="grid grid-cols-1 gap-6" id="company-list">
-            @foreach($companies as $company)
-            <form action="{{ route('bread-types.updateCompanyPrices', ['breadType' => $breadType->id, 'company' => $company->id]) }}" 
-                  method="POST" 
-                  class="border p-4 rounded-lg company-item">
-                @csrf
-                <input type="hidden" name="companies[{{ $company->id }}][company_id]" value="{{ $company->id }}">
-                <h3 class="font-bold mb-4">{{ $company->name }}</h3>
-                
-                <div class="mb-4">
-                    <label class="block text-gray-700 mb-2">Избери ценовна група</label>
-                    <select name="companies[{{ $company->id }}][price_group]" 
-                            class="w-full px-3 py-2 border rounded-lg price-group-select"
-                            data-company-id="{{ $company->id }}"
-                            data-base-price="{{ $breadType->price }}">
-                        <option value="0">Основна цена</option>
-                        @for ($i = 1; $i <= 5; $i++)
-                            @php
-                                $groupPrice = $breadType->{'price_group_' . $i} ?? null;
-                            @endphp
-                            @if($groupPrice)
-                                <option value="{{ $i }}" 
-                                        {{ (isset($company->pivot->price_group) && $company->pivot->price_group == $i) ? 'selected' : '' }}
-                                        data-price="{{ $groupPrice }}">
-                                    Цена група {{ $i }} ({{ number_format($groupPrice, 2) }} ден.)
-                                </option>
-                            @endif
-                        @endfor
-                    </select>
-                </div>
-                
-                @php
-                    $pivot = $company->pivot ?? null;
-                    $priceGroup = $pivot ? ($pivot->price_group ?? 0) : 0;
-                    $price = old('companies.' . $company->id . '.price');
-                    
-                    if (!$price) {
-                        if ($pivot && $pivot->price) {
-                            $price = $pivot->price;
-                        } else {
-                            $price = $priceGroup > 0 ? 
-                                     ($breadType->{'price_group_' . $priceGroup} ?? $breadType->price) : 
-                                     $breadType->price;
-                        }
-                    }
-                @endphp
+    @foreach($companies as $company)
+    <form action="{{ route('bread-types.updateCompanyPrices', ['breadType' => $breadType->id, 'company' => $company->id]) }}" 
+          method="POST" 
+          class="border p-4 rounded-lg company-item">
+        @csrf
+        <input type="hidden" name="companies[{{ $company->id }}][company_id]" value="{{ $company->id }}">
+        <h3 class="font-bold mb-4">{{ $company->name }}</h3>
+        <div class="mb-4">
+    <label class="block text-gray-700 mb-2">Избери ценовна група</label>
+    <select name="companies[{{ $company->id }}][price_group]" 
+            class="w-full px-3 py-2 border rounded-lg price-group-select"
+            data-company-id="{{ $company->id }}"
+            data-base-price="{{ $breadType->price }}">
+        @php
+            // Get the currently saved price group and price for this company
+            $currentData = DB::table('bread_type_company')
+                ->where('bread_type_id', $breadType->id)
+                ->where('company_id', $company->id)
+                ->orderBy('valid_from', 'desc')
+                ->first();
+            
+            $currentPriceGroup = $currentData?->price_group ?? 0;
+            $currentPrice = $currentData?->price ?? $breadType->price;
+        @endphp
+        
+        <option value="0" 
+                {{ $currentPriceGroup === 0 ? 'selected' : '' }}
+                data-price="{{ $breadType->price }}">
+            Основна цена ({{ number_format($breadType->price, 2) }} ден.)
+        </option>
+        @for ($i = 1; $i <= 5; $i++)
+            @php
+                $groupPrice = $breadType->{'price_group_' . $i} ?? null;
+            @endphp
+            @if($groupPrice)
+                <option value="{{ $i }}" 
+                        {{ $currentPriceGroup === $i ? 'selected' : '' }}
+                        data-price="{{ $groupPrice }}">
+                    Цена група {{ $i }} ({{ number_format($groupPrice, 2) }} ден.)
+                </option>
+            @endif
+        @endfor
+    </select>
+</div>
 
-                <div class="grid grid-cols-2 gap-4">
-                    <div>
-                        <label class="block text-gray-700 mb-2">Цена</label>
-                        <input type="number" 
-                               name="companies[{{ $company->id }}][price]" 
-                               value="{{ $price }}"
-                               step="0.01"
-                               min="0"
-                               required
-                               class="w-full px-3 py-2 border rounded-lg company-price">
-                    </div>
-                    
-                    <div>
-                        <label class="block text-gray-700 mb-2">Стара цена</label>
-                        <input type="number" 
-                               name="companies[{{ $company->id }}][old_price]" 
-                               value="{{ old('companies.' . $company->id . '.old_price', 
-                                        $pivot->old_price ?? $breadType->old_price) }}"
-                               step="0.01"
-                               min="0"
-                               required
-                               class="w-full px-3 py-2 border rounded-lg">
-                    </div>
-                </div>
-
-                <div class="mt-4">
-                    <label class="block text-gray-700 mb-2">Важи од датум</label>
-                    <input type="date" 
-                           name="companies[{{ $company->id }}][valid_from]" 
-                           value="{{ old('valid_from', date('Y-m-d')) }}"
-                           required
-                           min="{{ date('Y-m-d') }}"
-                           class="w-full px-3 py-2 border rounded-lg">
-                </div>
-
-                <div class="flex justify-end mt-4">
-                    <button type="submit" 
-                            class="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600">
-                        Зачувај за {{ $company->name }}
-                    </button>
-                </div>
-            </form>
-            @endforeach
+<div class="grid grid-cols-2 gap-4">
+    <div>
+        <label class="block text-gray-700 mb-2">Цена</label>
+        <input type="number" 
+               name="companies[{{ $company->id }}][price]" 
+               value="{{ $currentPrice }}"
+               step="0.01"
+               min="0"
+               required
+               class="w-full px-3 py-2 border rounded-lg company-price">
+    </div>
+        
+       
+            
+            <div>
+                <label class="block text-gray-700 mb-2">Стара цена</label>
+                <input type="number" 
+                       name="companies[{{ $company->id }}][old_price]" 
+                       value="{{ DB::table('bread_type_company')
+                           ->where('bread_type_id', $breadType->id)
+                           ->where('company_id', $company->id)
+                           ->orderBy('valid_from', 'desc')
+                           ->value('old_price') ?? $breadType->old_price }}"
+                       step="0.01"
+                       min="0"
+                       required
+                       class="w-full px-3 py-2 border rounded-lg">
+            </div>
         </div>
+
+        <div class="mt-4">
+            <label class="block text-gray-700 mb-2">Важи од датум</label>
+            <input type="date" 
+                   name="companies[{{ $company->id }}][valid_from]" 
+                   value="{{ old('valid_from', date('Y-m-d')) }}"
+                   required
+                   min="{{ date('Y-m-d') }}"
+                   class="w-full px-3 py-2 border rounded-lg">
+        </div>
+
+        <div class="flex justify-end mt-4">
+            <button type="submit" 
+                    class="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600">
+                Зачувај за {{ $company->name }}
+            </button>
+        </div>
+    </form>
+    @endforeach
+</div>
+
+       
 
         <div class="flex justify-end mt-6">
             <a href="{{ route('bread-types.edit', $breadType) }}" 
@@ -215,23 +221,64 @@
 
         document.getElementById('search').addEventListener('input', filterCompanies);
         document.querySelector('button[type="button"]').addEventListener('click', filterCompanies);
+        
 
         // Price group handling
         const priceGroupSelects = document.querySelectorAll('.price-group-select');
-        
-        priceGroupSelects.forEach(select => {
-            select.addEventListener('change', function() {
-                const form = this.closest('form');
-                const priceInput = form.querySelector('.company-price');
-                const selectedOption = this.options[this.selectedIndex];
+    
+    priceGroupSelects.forEach(select => {
+        // Initial price setup based on selected group
+        const setInitialPrice = () => {
+            const form = select.closest('form');
+            const priceInput = form.querySelector('.company-price');
+            const selectedOption = select.options[select.selectedIndex];
+            
+            if (selectedOption) {
+                // Get price from the selected option's data-price attribute
+                let price = selectedOption.value === '0' ? 
+                           select.dataset.basePrice : 
+                           selectedOption.dataset.price;
                 
-                let newPrice = this.value === '0' ? 
+                // Only set if there's no existing value
+                if (!priceInput.value || priceInput.value === '0.00') {
+                    priceInput.value = parseFloat(price).toFixed(2);
+                }
+            }
+        };
+
+        // Run initial price setup
+        setInitialPrice();
+
+        // Handle price group changes
+        select.addEventListener('change', function() {
+            const form = this.closest('form');
+            const priceInput = form.querySelector('.company-price');
+            const selectedOption = this.options[this.selectedIndex];
+            
+            if (selectedOption) {
+                let newPrice = selectedOption.value === '0' ? 
                               this.dataset.basePrice : 
                               selectedOption.dataset.price;
                 
                 priceInput.value = parseFloat(newPrice).toFixed(2);
-            });
+            }
         });
     });
+});
+   // Handle form submissions
+   const forms = document.querySelectorAll('form');
+    forms.forEach(form => {
+        form.addEventListener('submit', function() {
+            // Store scroll position before submit
+            localStorage.setItem('scrollPosition', window.scrollY);
+        });
+    });
+
+    // Restore scroll position if exists
+    if (localStorage.getItem('scrollPosition')) {
+        window.scrollTo(0, localStorage.getItem('scrollPosition'));
+        localStorage.removeItem('scrollPosition');
+    }
+
 </script>
 @endsection

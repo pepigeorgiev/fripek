@@ -174,13 +174,33 @@ public function update(Request $request, BreadType $breadType)
         return view('bread-types.edit', compact('breadType', 'priceHistory'));
     }
 
-    
-
     public function showCompanyPrices(BreadType $breadType)
 {
-    $companies = Company::all();
+    $companies = Company::all()->map(function($company) use ($breadType) {
+        // Get the latest pricing for this company and bread type
+        $latestPricing = DB::table('bread_type_company')
+            ->where('bread_type_id', $breadType->id)
+            ->where('company_id', $company->id)
+            ->orderBy('valid_from', 'desc')
+            ->orderBy('created_at', 'desc')
+            ->first();
+            
+        if ($latestPricing) {
+            $company->pivot = $latestPricing;
+        }
+        
+        return $company;
+    });
+
     return view('bread-types.company-prices', compact('breadType', 'companies'));
 }
+    
+
+//     public function showCompanyPrices(BreadType $breadType)
+// {
+//     $companies = Company::all();
+//     return view('bread-types.company-prices', compact('breadType', 'companies'));
+// }
 
 
 public function updateCompanyPrices(Request $request, BreadType $breadType, Company $company)
