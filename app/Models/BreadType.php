@@ -65,7 +65,7 @@ class BreadType extends Model
         // Get the company
         $company = Company::find($companyId);
         if (!$company) {
-            Log::warning("Company not found for ID: {$companyId}");
+            // Log::warning("Company not found for ID: {$companyId}");
             return [
                 'price' => $this->price,
                 'old_price' => $this->old_price
@@ -81,10 +81,10 @@ class BreadType extends Model
             ->first();
             
         if ($specificPrice) {
-            Log::debug("Found specific price for company {$companyId}", [
-                'price' => $specificPrice->price,
-                'old_price' => $specificPrice->old_price
-            ]);
+            // Log::debug("Found specific price for company {$companyId}", [
+            //     'price' => $specificPrice->price,
+            //     'old_price' => $specificPrice->old_price
+            // ]);
             
             return [
                 'price' => $specificPrice->price,
@@ -99,9 +99,9 @@ class BreadType extends Model
         if ($priceGroup > 0) {
             $priceField = "price_group_{$priceGroup}";
             if (isset($this->$priceField) && $this->$priceField) {
-                Log::debug("Using price group {$priceGroup} for company {$companyId}", [
-                    'price' => $this->$priceField
-                ]);
+                // Log::debug("Using price group {$priceGroup} for company {$companyId}", [
+                //     'price' => $this->$priceField
+                // ]);
                 $price = $this->$priceField;
             }
         }
