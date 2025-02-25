@@ -6,7 +6,6 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Cache;
 
 class BreadType extends Model
 {
@@ -59,16 +58,6 @@ class BreadType extends Model
      * Get the current price for this bread type for a specific company
      * This method uses company's price group to determine the price
      */
-
-     public function getPriceForCompanyWithCache($companyId, $date)
-     {
-         $cacheKey = "price_company_{$companyId}_bread_{$this->id}_date_" . date('Y-m-d', strtotime($date));
-         
-         return Cache::remember($cacheKey, 60 * 24, function() use ($companyId, $date) {
-             return $this->getPriceForCompany($companyId, $date);
-         });
-     }
-
     public function getPriceForCompany($companyId, $date = null)
     {
         $date = $date ?: now()->format('Y-m-d');
