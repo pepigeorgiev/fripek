@@ -29,8 +29,10 @@
                     </button>
                 </div>
             </div>
+            
         </div>
 
+        
         <div class="grid grid-cols-1 gap-6" id="company-list">
     @foreach($companies as $company)
     <form action="{{ route('bread-types.updateCompanyPrices', ['breadType' => $breadType->id, 'company' => $company->id]) }}" 
@@ -39,26 +41,29 @@
         @csrf
         <input type="hidden" name="companies[{{ $company->id }}][company_id]" value="{{ $company->id }}">
         <h3 class="font-bold mb-4">{{ $company->name }}</h3>
+        <div class="bg-blue-50 border-l-4 border-blue-500 p-4 mb-4">
+    <div class="flex">
+        <div class="flex-shrink-0">
+            <svg class="h-5 w-5 text-blue-500" fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"></path>
+            </svg>
+        </div>
+        <div class="ml-3">
+            <p class="text-sm text-blue-700">
+                Секоја компанија има стандардна ценовна група ({{ $company->price_group == 0 ? 'Основна цена' : 'Ценовна група ' . $company->price_group }}). 
+                Овде може да изберете друга ценовна група само за овој производ.
+            </p>
+        </div>
+    </div>
+</div>
         <div class="mb-4">
     <label class="block text-gray-700 mb-2">Избери ценовна група</label>
     <select name="companies[{{ $company->id }}][price_group]" 
             class="w-full px-3 py-2 border rounded-lg price-group-select"
             data-company-id="{{ $company->id }}"
             data-base-price="{{ $breadType->price }}">
-        @php
-            // Get the currently saved price group and price for this company
-            $currentData = DB::table('bread_type_company')
-                ->where('bread_type_id', $breadType->id)
-                ->where('company_id', $company->id)
-                ->orderBy('valid_from', 'desc')
-                ->first();
-            
-            $currentPriceGroup = $currentData?->price_group ?? 0;
-            $currentPrice = $currentData?->price ?? $breadType->price;
-        @endphp
-        
         <option value="0" 
-                {{ $currentPriceGroup === 0 ? 'selected' : '' }}
+                {{ $company->price_group === 0 ? 'selected' : '' }}
                 data-price="{{ $breadType->price }}">
             Основна цена ({{ number_format($breadType->price, 2) }} ден.)
         </option>
@@ -68,18 +73,51 @@
             @endphp
             @if($groupPrice)
                 <option value="{{ $i }}" 
-                        {{ $currentPriceGroup === $i ? 'selected' : '' }}
+                        {{ $company->price_group === $i ? 'selected' : '' }}
                         data-price="{{ $groupPrice }}">
-                    Цена група {{ $i }} ({{ number_format($groupPrice, 2) }} ден.)
+                    Ценовна група {{ $i }} ({{ number_format($groupPrice, 2) }} ден.)
                 </option>
             @endif
         @endfor
     </select>
+    <p class="text-xs text-gray-500 mt-1">
+        Тековна ценовна група за компанијата: 
+        <strong>
+            @if($company->price_group == 0)
+                Основна цена
+            @else
+                Ценовна група {{ $company->price_group }}
+            @endif
+        </strong>
+    </p>
 </div>
 
 <div class="grid grid-cols-2 gap-4">
     <div>
         <label class="block text-gray-700 mb-2">Цена</label>
+        @php
+            // First try to get company-specific price from pivot
+            $specificPrice = DB::table('bread_type_company')
+                ->where('bread_type_id', $breadType->id)
+                ->where('company_id', $company->id)
+                ->orderBy('valid_from', 'desc')
+                ->first();
+            
+            // If company-specific price exists, use it
+            if ($specificPrice) {
+                $currentPrice = $specificPrice->price;
+            } else {
+                // Otherwise, use price based on company's price group
+                $priceGroup = $company->price_group;
+                
+                if ($priceGroup > 0) {
+                    $priceGroupField = "price_group_" . $priceGroup;
+                    $currentPrice = $breadType->$priceGroupField ?? $breadType->price;
+                } else {
+                    $currentPrice = $breadType->price;
+                }
+            }
+        @endphp
         <input type="number" 
                name="companies[{{ $company->id }}][price]" 
                value="{{ $currentPrice }}"
@@ -88,23 +126,25 @@
                required
                class="w-full px-3 py-2 border rounded-lg company-price">
     </div>
-        
-       
-            
-            <div>
-                <label class="block text-gray-700 mb-2">Стара цена</label>
-                <input type="number" 
-                       name="companies[{{ $company->id }}][old_price]" 
-                       value="{{ DB::table('bread_type_company')
-                           ->where('bread_type_id', $breadType->id)
-                           ->where('company_id', $company->id)
-                           ->orderBy('valid_from', 'desc')
-                           ->value('old_price') ?? $breadType->old_price }}"
-                       step="0.01"
-                       min="0"
-                       required
-                       class="w-full px-3 py-2 border rounded-lg">
-            </div>
+    
+    <div>
+        <label class="block text-gray-700 mb-2">Стара цена</label>
+        @php
+            // Get old price from pivot or use default
+            $currentOldPrice = $specificPrice->old_price ?? $breadType->old_price;
+        @endphp
+        <input type="number" 
+               name="companies[{{ $company->id }}][old_price]" 
+               value="{{ $currentOldPrice }}"
+               step="0.01"
+               min="0"
+               required
+               class="w-full px-3 py-2 border rounded-lg">
+    </div>
+
+
+
+
         </div>
 
         <div class="mt-4">
@@ -188,43 +228,49 @@
 
 <script>
     document.addEventListener('DOMContentLoaded', function() {
-        // Search functionality
-        const translitMap = {
-            'a': 'а', 'b': 'б', 'v': 'в', 'g': 'г', 'd': 'д', 'e': 'е', 'zh': 'ж', 'z': 'з', 
-            'i': 'и', 'j': 'ј', 'k': 'к', 'l': 'л', 'm': 'м', 'n': 'н', 'o': 'о', 'p': 'п', 
-            'r': 'р', 's': 'с', 't': 'т', 'u': 'у', 'f': 'ф', 'h': 'х', 'c': 'ц', 'ch': 'ч', 
-            'sh': 'ш', 'dj': 'џ', 'gj': 'ѓ', 'kj': 'ќ', 'z': 'ж', 'c': 'ч', 's':'ш' 
-        };
+    // Search functionality
+    const translitMap = {
+        'a': 'а', 'b': 'б', 'v': 'в', 'g': 'г', 'd': 'д', 'e': 'е', 'zh': 'ж', 'z': 'з', 
+        'i': 'и', 'j': 'ј', 'k': 'к', 'l': 'л', 'm': 'м', 'n': 'н', 'o': 'о', 'p': 'п', 
+        'r': 'р', 's': 'с', 't': 'т', 'u': 'у', 'f': 'ф', 'h': 'х', 'c': 'ц', 'ch': 'ч', 
+        'sh': 'ш', 'dj': 'џ', 'gj': 'ѓ', 'kj': 'ќ', 'z': 'ж', 'c': 'ч', 's':'ш' 
+    };
 
-        function transliterate(input) {
-            return input.toLowerCase().replace(/ch|sh|dj|gj|kj|zh|[a-z]/g, function(match) {
-                return translitMap[match] || match;
-            });
+    function transliterate(input) {
+        return input.toLowerCase().replace(/ch|sh|dj|gj|kj|zh|[a-z]/g, function(match) {
+            return translitMap[match] || match;
+        });
+    }
+
+    function filterCompanies() {
+        const searchValue = document.getElementById('search').value.toLowerCase();
+        const transliteratedSearch = transliterate(searchValue);
+        const companyItems = document.querySelectorAll('.company-item');
+
+        companyItems.forEach(item => {
+            const companyName = item.querySelector('h3').textContent.toLowerCase();
+            const transliteratedName = transliterate(companyName);
+
+            if (transliteratedName.includes(transliteratedSearch) || companyName.includes(transliteratedSearch)) {
+                item.style.display = 'block';
+            } else {
+                item.style.display = 'none';
+            }
+        });
+    }
+
+    // Set up search functionality
+    const searchInput = document.getElementById('search');
+    if (searchInput) {
+        searchInput.addEventListener('input', filterCompanies);
+        const searchButton = document.querySelector('button[type="button"]');
+        if (searchButton) {
+            searchButton.addEventListener('click', filterCompanies);
         }
-
-        function filterCompanies() {
-            const searchValue = document.getElementById('search').value.toLowerCase();
-            const transliteratedSearch = transliterate(searchValue);
-            const companyItems = document.querySelectorAll('.company-item');
-
-            companyItems.forEach(item => {
-                const companyName = item.querySelector('h3').textContent.toLowerCase();
-                const transliteratedName = transliterate(companyName);
-
-                if (transliteratedName.includes(transliteratedSearch) || companyName.includes(transliteratedSearch)) {
-                    item.style.display = 'block';
-                } else {
-                    item.style.display = 'none';
-                }
-            });
-        }
-
-        document.getElementById('search').addEventListener('input', filterCompanies);
-        document.querySelector('button[type="button"]').addEventListener('click', filterCompanies);
-        
-
-        // Price group handling
-        const priceGroupSelects = document.querySelectorAll('.price-group-select');
+    }
+    
+    // Price group handling
+    const priceGroupSelects = document.querySelectorAll('.price-group-select');
     
     priceGroupSelects.forEach(select => {
         // Initial price setup based on selected group
@@ -235,9 +281,7 @@
             
             if (selectedOption) {
                 // Get price from the selected option's data-price attribute
-                let price = selectedOption.value === '0' ? 
-                           select.dataset.basePrice : 
-                           selectedOption.dataset.price;
+                let price = selectedOption.dataset.price;
                 
                 // Only set if there's no existing value
                 if (!priceInput.value || priceInput.value === '0.00') {
@@ -256,17 +300,22 @@
             const selectedOption = this.options[this.selectedIndex];
             
             if (selectedOption) {
-                let newPrice = selectedOption.value === '0' ? 
-                              this.dataset.basePrice : 
-                              selectedOption.dataset.price;
+                // Get price from data-price attribute
+                let newPrice = selectedOption.dataset.price;
                 
-                priceInput.value = parseFloat(newPrice).toFixed(2);
+                // Make sure we have a valid price
+                if (newPrice) {
+                    console.log('Updating price to:', newPrice);
+                    priceInput.value = parseFloat(newPrice).toFixed(2);
+                } else {
+                    console.warn('No data-price found for selected option');
+                }
             }
         });
     });
-});
-   // Handle form submissions
-   const forms = document.querySelectorAll('form');
+
+    // Handle form submissions for scroll position memory
+    const forms = document.querySelectorAll('form');
     forms.forEach(form => {
         form.addEventListener('submit', function() {
             // Store scroll position before submit
@@ -279,6 +328,34 @@
         window.scrollTo(0, localStorage.getItem('scrollPosition'));
         localStorage.removeItem('scrollPosition');
     }
+});
+
+document.addEventListener('DOMContentLoaded', function() {
+    // Get all price group select inputs
+    const priceGroupSelects = document.querySelectorAll('.price-group-select');
+
+    // For each price group select
+    priceGroupSelects.forEach(select => {
+        // Add change event listener
+        select.addEventListener('change', function() {
+            const form = this.closest('form');
+            const priceInput = form.querySelector('.company-price');
+            const selectedOption = this.options[this.selectedIndex];
+            
+            // Check if we have a selected option with data-price
+            if (selectedOption && selectedOption.hasAttribute('data-price')) {
+                // Get price from data-price attribute
+                const newPrice = selectedOption.getAttribute('data-price');
+                console.log('Changing price to:', newPrice);
+                
+                // Update the price input value
+                if (newPrice && !isNaN(parseFloat(newPrice))) {
+                    priceInput.value = parseFloat(newPrice).toFixed(2);
+                }
+            }
+        });
+    });
+});
 
 </script>
 @endsection

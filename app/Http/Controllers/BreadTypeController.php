@@ -175,33 +175,56 @@ public function update(Request $request, BreadType $breadType)
     }
 
     public function showCompanyPrices(BreadType $breadType)
-{
-    $companies = Company::all()->map(function($company) use ($breadType) {
-        // Get the latest pricing for this company and bread type
-        $latestPricing = DB::table('bread_type_company')
-            ->where('bread_type_id', $breadType->id)
-            ->where('company_id', $company->id)
-            ->orderBy('valid_from', 'desc')
-            ->orderBy('created_at', 'desc')
-            ->first();
+    {
+        $companies = Company::all()->map(function($company) use ($breadType) {
+            // Get the latest pricing for this company and bread type
+            $latestPricing = DB::table('bread_type_company')
+                ->where('bread_type_id', $breadType->id)
+                ->where('company_id', $company->id)
+                ->orderBy('valid_from', 'desc')
+                ->orderBy('created_at', 'desc')
+                ->first();
+                
+            if ($latestPricing) {
+                $company->pivot = $latestPricing;
+            } else {
+                // If no specific pricing exists, create default values based on company's price group
+                $priceGroup = $company->price_group;
+                
+                // Determine price based on company's price group
+                $defaultPrice = $breadType->price; // Start with default price
+                
+                if ($priceGroup > 0) {
+                    $priceGroupField = "price_group_{$priceGroup}";
+                    if (isset($breadType->$priceGroupField) && $breadType->$priceGroupField) {
+                        $defaultPrice = $breadType->$priceGroupField;
+                    }
+                }
+                
+                // Create a default pivot object with the appropriate price
+                $company->pivot = (object)[
+                    'price' => $defaultPrice,
+                    'old_price' => $breadType->old_price,
+                    'price_group' => $company->price_group,
+                    'valid_from' => now()->format('Y-m-d')
+                ];
+            }
             
-        if ($latestPricing) {
-            $company->pivot = $latestPricing;
-        }
-        
-        return $company;
-    });
-
-    return view('bread-types.company-prices', compact('breadType', 'companies'));
-}
+            // Debug - log price calculation
+            \Log::info("Company price calculation for {$company->name}", [
+                'bread_type' => $breadType->name,
+                'company_price_group' => $company->price_group,
+                'selected_price' => $company->pivot->price,
+                'price_group_1' => $breadType->price_group_1,
+                'price_group_2' => $breadType->price_group_2,
+                'price_group_3' => $breadType->price_group_3
+            ]);
+            
+            return $company;
+        });
     
-
-//     public function showCompanyPrices(BreadType $breadType)
-// {
-//     $companies = Company::all();
-//     return view('bread-types.company-prices', compact('breadType', 'companies'));
-// }
-
+        return view('bread-types.company-prices', compact('breadType', 'companies'));
+    }
 
 public function updateCompanyPrices(Request $request, BreadType $breadType, Company $company)
 {
@@ -220,9 +243,9 @@ public function updateCompanyPrices(Request $request, BreadType $breadType, Comp
         'old_price' => $companyData['old_price'],
         'price_group' => $companyData['price_group'],
         'valid_from' => $companyData['valid_from'],
-        'created_by' => auth()->id()  // Add this line
+        'created_by' => auth()->id()
     ];
-
+    
     // Check if the relationship exists
     $existingRelation = $breadType->companies()
         ->where('company_id', $company->id)
@@ -234,8 +257,14 @@ public function updateCompanyPrices(Request $request, BreadType $breadType, Comp
         $breadType->companies()->attach($company->id, $pivotData);
     }
 
+    // Also update the company's price_group if it changed
+    if ($company->price_group != $companyData['price_group']) {
+        $company->update(['price_group' => $companyData['price_group']]);
+    }
+
     return back()->with('success', 'Цените се успешно зачувани за ' . $company->name);
 }
+
 
 
     public function destroy(BreadType $breadType)

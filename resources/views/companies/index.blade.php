@@ -103,6 +103,21 @@
                class="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500">
     </div>
 
+    <div>
+    <label class="block text-sm font-medium text-gray-700 mb-2">Ценовна група</label>
+    <select name="price_group" 
+            required 
+            class="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500">
+        <option value="0">Основна цена</option>
+        <option value="1">Ценовна група 1</option>
+        <option value="2">Ценовна група 2</option>
+        <option value="3">Ценовна група 3</option>
+        <option value="4">Ценовна група 4</option>
+        <option value="5">Ценовна група 5</option>
+    </select>
+    <p class="text-xs text-gray-500 mt-1">Изберете ценовна група која ќе важи за сите производи</p>
+</div>
+
             <div class="flex items-end">
                 <button type="submit" 
                         class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg transition duration-150 ease-in-out flex items-center justify-center">
@@ -297,6 +312,22 @@
            value="{{ $company->mygpm_business_unit }}" 
            placeholder="Внесете деловна единица"
            class="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500">
+</div>
+
+<div>
+    <label class="block text-sm font-medium text-gray-700 mb-1">
+        Ценовна група
+    </label>
+    <select name="price_group" 
+            required 
+            class="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500">
+        <option value="0" {{ $company->price_group == 0 ? 'selected' : '' }}>Основна цена</option>
+        <option value="1" {{ $company->price_group == 1 ? 'selected' : '' }}>Ценовна група 1</option>
+        <option value="2" {{ $company->price_group == 2 ? 'selected' : '' }}>Ценовна група 2</option>
+        <option value="3" {{ $company->price_group == 3 ? 'selected' : '' }}>Ценовна група 3</option>
+        <option value="4" {{ $company->price_group == 4 ? 'selected' : '' }}>Ценовна група 4</option>
+        <option value="5" {{ $company->price_group == 5 ? 'selected' : '' }}>Ценовна група 5</option>
+    </select>
 </div>
                 
 

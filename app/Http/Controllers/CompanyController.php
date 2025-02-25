@@ -45,7 +45,9 @@ class CompanyController extends Controller
         'code' => 'required|string|max:50',
         'type' => 'required|in:invoice,cash',
         'user_ids' => 'required|exists:users,id',
-        'mygpm_business_unit' => 'nullable|string|max:255'  
+        'mygpm_business_unit' => 'nullable|string|max:255',
+        'price_group' => 'required|integer|min:0|max:5' 
+  
 
     ], $messages);
 
@@ -55,7 +57,9 @@ class CompanyController extends Controller
             'name' => $validated['name'],
             'code' => $validated['code'],
             'type' => $validated['type'],
-            'mygpm_business_unit' => $validated['mygpm_business_unit']  
+            'mygpm_business_unit' => $validated['mygpm_business_unit'],
+            'price_group' => $validated['price_group'] 
+  
 
         ]);
 
@@ -79,7 +83,9 @@ class CompanyController extends Controller
         'code' => 'required|string|max:50',
         'type' => 'required|in:invoice,cash',
         'user_ids' => 'required|exists:users,id',
-        'mygpm_business_unit' => 'nullable|string|max:255'  
+        'mygpm_business_unit' => 'nullable|string|max:255',
+        'price_group' => 'required|integer|min:0|max:5' 
+  
 
     ],$messages);
 
@@ -88,7 +94,9 @@ class CompanyController extends Controller
             'name' => $validated['name'],
             'code' => $validated['code'],
             'type' => $validated['type'],
-            'mygpm_business_unit' => $validated['mygpm_business_unit']  
+            'mygpm_business_unit' => $validated['mygpm_business_unit'],
+            'price_group' => $validated['price_group'] 
+  
 
         ]);
 
