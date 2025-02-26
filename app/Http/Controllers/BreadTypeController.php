@@ -47,6 +47,10 @@ class BreadTypeController extends Controller
         $validated['is_active'] = $request->has('is_active');
         $validated['available_for_daily'] = $request->has('available_for_daily');
 
+        // Remove valid_from from the bread types data as it's not a column in that table
+        $validFromDate = $validated['valid_from'];
+        unset($validated['valid_from']);
+
         // Generate code if not provided
         if (!isset($validated['code'])) {
             $lastId = BreadType::max('id') ?? 0;
@@ -63,7 +67,7 @@ class BreadTypeController extends Controller
             'bread_type_id' => $breadType->id,
             'price' => $validated['price'],
             'old_price' => $validated['old_price'],
-            'valid_from' => $validated['valid_from'],
+            'valid_from' => $validFromDate,
             'created_by' => auth()->id()
         ]);
 
