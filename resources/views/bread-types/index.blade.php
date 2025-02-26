@@ -32,10 +32,10 @@
 
                         <td class="px-6 py-4">{{ $breadType->name }}</td>
                         <td class="px-6 py-4">
-                            {{ rtrim(rtrim(number_format($breadType->price, 5), '0'), '.') }} ден.
+                            {{ rtrim(rtrim(number_format($breadType->price, 2), '0'), '.') }} ден.
                         </td>
                         <td class="px-6 py-4">
-                            {{ rtrim(rtrim(number_format($breadType->old_price, 5), '0'), '.') }} ден.
+                            {{ rtrim(rtrim(number_format($breadType->old_price, 2), '0'), '.') }} ден.
                         </td>
                         <td class="px-6 py-4">
                             <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full {{ $breadType->available_for_daily ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800' }}">
