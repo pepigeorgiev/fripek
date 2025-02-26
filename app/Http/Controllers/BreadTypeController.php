@@ -88,16 +88,17 @@ class BreadTypeController extends Controller
 public function update(Request $request, BreadType $breadType)
 {
     try {
+
         $validated = $request->validate([
             'name' => 'required|string|max:255|unique:bread_types,name,' . $breadType->id,
             'code' => 'required|string|max:50|unique:bread_types,code,' . $breadType->id,
-            'price' => 'required|numeric|min:0|decimal:0,2',
-            'price_group_1' => 'nullable|numeric|min:0|decimal:0,2',
-            'price_group_2' => 'nullable|numeric|min:0|decimal:0,2',
-            'price_group_3' => 'nullable|numeric|min:0|decimal:0,2',
-            'price_group_4' => 'nullable|numeric|min:0|decimal:0,2',
-            'price_group_5' => 'nullable|numeric|min:0|decimal:0,2',
-            'old_price' => 'required|numeric|min:0|decimal:0,2',
+            'price' => 'required|numeric|min:0',  // Remove decimal:0,2
+            'price_group_1' => 'nullable|numeric|min:0',  // Remove decimal:0,2
+            'price_group_2' => 'nullable|numeric|min:0',  // Remove decimal:0,2
+            'price_group_3' => 'nullable|numeric|min:0',  // Remove decimal:0,2
+            'price_group_4' => 'nullable|numeric|min:0',  // Remove decimal:0,2
+            'price_group_5' => 'nullable|numeric|min:0',  // Remove decimal:0,2
+            'old_price' => 'required|numeric|min:0',  // Remove decimal:0,2
             'is_active' => 'sometimes|boolean',
             'available_for_daily' => 'sometimes|boolean',
             'valid_from' => 'required|date|after_or_equal:today'
@@ -111,6 +112,7 @@ public function update(Request $request, BreadType $breadType)
                         $breadType->old_price != $validated['old_price'];
 
         DB::beginTransaction();
+
 
         if ($pricesChanged) {
             // Create a new price history record
@@ -135,7 +137,7 @@ public function update(Request $request, BreadType $breadType)
                 'old_price' => $validated['old_price'],
                 'is_active' => $validated['is_active'],
                 'available_for_daily' => $validated['available_for_daily'],
-                'last_price_change' => $validated['valid_from']
+                // 'last_price_change' => $validated['valid_from']
             ]);
         } else {
             // Update non-price fields and group prices
