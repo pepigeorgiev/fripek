@@ -166,4 +166,3 @@ Route::get('/check-schema', function() {
     $table = DB::select('DESCRIBE bread_types');
     dd($table);
 });
-
