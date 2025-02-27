@@ -411,12 +411,12 @@ public function updateDailyTransaction(Request $request)
             $transactionDate = $validatedData['transaction_date'];
 
             foreach ($validatedData['transactions'] as $transactionData) {
-                // Find existing transaction with lock for update to prevent concurrency issues
+                // Find existing transaction for this company, date, and bread type
                 $existingTransaction = DailyTransaction::where([
                     'company_id' => $companyId,
                     'bread_type_id' => $transactionData['bread_type_id'],
                     'transaction_date' => $transactionDate
-                ])->lockForUpdate()->first();
+                ])->first();
 
                 if ($existingTransaction) {
                     // Update existing transaction by adding new quantities
@@ -454,10 +454,7 @@ public function updateDailyTransaction(Request $request)
             'message' => 'Трансакциите се успешно ажурирани.'
         ]);
     } catch (\Exception $e) {
-        Log::error('Error updating daily transactions: ' . $e->getMessage(), [
-            'exception' => $e,
-            'validated_data' => $validatedData
-        ]);
+        Log::error('Error updating daily transactions: ' . $e->getMessage());
         
         return response()->json([
             'success' => false,
@@ -465,6 +462,77 @@ public function updateDailyTransaction(Request $request)
         ], 500);
     }
 }
+
+// public function updateDailyTransaction(Request $request)
+// {
+//     $validatedData = $request->validate([
+//         'company_id' => 'required|exists:companies,id',
+//         'transaction_date' => 'required|date',
+//         'transactions' => 'required|array',
+//         'transactions.*.bread_type_id' => 'required|exists:bread_types,id',
+//         'transactions.*.delivered' => 'required|integer|min:0',
+//     ]);
+
+//     try {
+//         DB::transaction(function () use ($validatedData) {
+//             $companyId = $validatedData['company_id'];
+//             $transactionDate = $validatedData['transaction_date'];
+
+//             foreach ($validatedData['transactions'] as $transactionData) {
+//                 // Find existing transaction with lock for update to prevent concurrency issues
+//                 $existingTransaction = DailyTransaction::where([
+//                     'company_id' => $companyId,
+//                     'bread_type_id' => $transactionData['bread_type_id'],
+//                     'transaction_date' => $transactionDate
+//                 ])->lockForUpdate()->first();
+
+//                 if ($existingTransaction) {
+//                     // Update existing transaction by adding new quantities
+//                     $oldValues = $existingTransaction->only(['delivered', 'returned', 'gratis']);
+                    
+//                     $existingTransaction->update([
+//                         'delivered' => $existingTransaction->delivered + $transactionData['delivered'],
+//                         'returned' => $existingTransaction->returned + ($transactionData['returned'] ?? 0),
+//                         'gratis' => $existingTransaction->gratis + ($transactionData['gratis'] ?? 0)
+//                     ]);
+
+//                     // Optional: Record history of the update
+//                     $this->recordHistory($existingTransaction, $oldValues, [
+//                         'delivered' => $existingTransaction->delivered,
+//                         'returned' => $existingTransaction->returned,
+//                         'gratis' => $existingTransaction->gratis
+//                     ]);
+//                 } else {
+//                     // Create new transaction if it doesn't exist
+//                     DailyTransaction::create([
+//                         'company_id' => $companyId,
+//                         'bread_type_id' => $transactionData['bread_type_id'],
+//                         'transaction_date' => $transactionDate,
+//                         'delivered' => $transactionData['delivered'],
+//                         'returned' => $transactionData['returned'] ?? 0,
+//                         'gratis' => $transactionData['gratis'] ?? 0,
+//                         'is_paid' => false
+//                     ]);
+//                 }
+//             }
+//         });
+
+//         return response()->json([
+//             'success' => true,
+//             'message' => 'Трансакциите се успешно ажурирани.'
+//         ]);
+//     } catch (\Exception $e) {
+//         Log::error('Error updating daily transactions: ' . $e->getMessage(), [
+//             'exception' => $e,
+//             'validated_data' => $validatedData
+//         ]);
+        
+//         return response()->json([
+//             'success' => false,
+//             'message' => 'Грешка при ажурирање на трансакциите.'
+//         ], 500);
+//     }
+// }
 
 // public function updateDailyTransaction(Request $request)
 // {
