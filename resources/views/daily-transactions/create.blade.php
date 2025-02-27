@@ -257,17 +257,164 @@ $.ajaxSetup({
     }
 });
 
-// Add offline storage handling
-const OFFLINE_STORAGE_KEY = 'offline_transactions';
+// Replace all existing form handlers with this consolidated version
+document.addEventListener('DOMContentLoaded', function() {
+    const transactionForm = document.getElementById('transactionForm');
+    const updateExistingCheckbox = document.getElementById('update_existing_transaction');
+    const companySelect = document.getElementById('company_id');
+    const dateInput = document.getElementById('transaction_date');
+    const formCompanyId = document.getElementById('form_company_id');
+    const formTransactionDate = document.getElementById('form_transaction_date');
+    
+    // Set initial values
+    formCompanyId.value = companySelect.value;
+    formTransactionDate.value = dateInput.value;
+    
+    // Update hidden inputs when selections change
+    companySelect.addEventListener('change', function() {
+        formCompanyId.value = this.value;
+    });
+    
+    dateInput.addEventListener('change', function() {
+        formTransactionDate.value = this.value;
+    });
+    
+    // Single unified form submission handler
+    transactionForm.addEventListener('submit', function(e) {
+        // Always prevent default initially
+        e.preventDefault();
+        
+        const selectedCompanyId = companySelect.value;
+        const selectedDate = dateInput.value;
+        
+        // Validation
+        if (!selectedCompanyId) {
+            alert('Ве молиме изберете компанија');
+            return false;
+        }
+        
+        // Set form hidden inputs
+        formCompanyId.value = selectedCompanyId;
+        formTransactionDate.value = selectedDate;
+        
+        // Disable submit button to prevent double submission
+        const submitButton = transactionForm.querySelector('button[type="submit"]');
+        submitButton.disabled = true;
+        
+        // Check for online status
+        if (!navigator.onLine) {
+            const formData = new FormData(transactionForm);
+            storeOfflineTransaction(formData);
+            alert('Нема интернет конекција. Трансакцијата е зачувана локално.');
+            submitButton.disabled = false;
+            return false;
+        }
+        
+        // Handle differently based on checkbox
+        if (updateExistingCheckbox.checked) {
+            // Prepare data for update endpoint
+            const transactions = [];
+            document.querySelectorAll('input[name^="transactions"]').forEach((input) => {
+                const match = input.name.match(/transactions\[(\d+)\]\[(\w+)\]/);
+                if (match) {
+                    const rowIndex = match[1];
+                    const field = match[2];
+                    
+                    // Initialize transaction object if not exists
+                    transactions[rowIndex] = transactions[rowIndex] || {
+                        bread_type_id: document.querySelector(`input[name="transactions[${rowIndex}][bread_type_id]"]`).value
+                    };
+                    
+                    // Add field value
+                    transactions[rowIndex][field] = parseInt(input.value) || 0;
+                }
+            });
+            
+            // Prepare payload - only include transactions with delivered > 0
+            const payload = {
+                company_id: selectedCompanyId,
+                transaction_date: selectedDate,
+                transactions: transactions.filter(t => t && t.delivered > 0)
+            };
+            
+            // Send AJAX for update
+            $.ajax({
+                url: '/update-daily-transaction',
+                method: 'POST',
+                data: JSON.stringify(payload),
+                contentType: 'application/json',
+                headers: {
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                },
+                success: function(response) {
+                    if (response.success) {
+                        alert('Трансакциите се успешно ажурирани.');
+                        // Redirect with params
+                        window.location.href = '/daily-transactions/create?' + 
+                            'company_id=' + selectedCompanyId + 
+                            '&date=' + selectedDate;
+                    } else {
+                        alert('Грешка при ажурирање.');
+                        submitButton.disabled = false;
+                    }
+                },
+                error: function(xhr) {
+                    console.error('Error updating transactions:', xhr);
+                    alert('Грешка при комуникација со серверот.');
+                    submitButton.disabled = false;
+                }
+            });
+        } else {
+            // Regular form submission with FormData
+            const formData = new FormData(transactionForm);
+            
+            $.ajax({
+                url: transactionForm.action,
+                type: 'POST',
+                data: formData,
+                processData: false,
+                contentType: false,
+                headers: {
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                },
+                success: function(response) {
+                    if (response.success) {
+                        alert('Успешно ажурирање на дневни трансакции.');
+                        // Redirect with params
+                        setTimeout(() => {
+                            window.location.href = '/daily-transactions/create?' + 
+                                'company_id=' + selectedCompanyId + 
+                                '&date=' + selectedDate;
+                        }, 1000);
+                    } else {
+                        alert('Грешка при зачувување.');
+                        submitButton.disabled = false;
+                    }
+                },
+                error: function(xhr) {
+                    console.error('Error response:', xhr);
+                    alert('Грешка при зачувување. Обидете се повторно.');
+                    submitButton.disabled = false;
+                }
+            });
+        }
+        
+        // Save to localStorage for later reference
+        localStorage.setItem('selectedDate', selectedDate);
+        localStorage.setItem('selectedCompany', selectedCompanyId);
+        
+        return false; // Prevent any default form submission
+    });
+});
 
-// Check if we're online
+// Helper functions for offline capabilities
 function isOnline() {
     return navigator.onLine;
 }
 
-// Store transaction offline
 function storeOfflineTransaction(formData) {
     console.log('Storing transaction offline');
+    const OFFLINE_STORAGE_KEY = 'offline_transactions';
     const transactions = JSON.parse(localStorage.getItem(OFFLINE_STORAGE_KEY) || '[]');
     transactions.push({
         data: Object.fromEntries(formData),
@@ -276,9 +423,9 @@ function storeOfflineTransaction(formData) {
     localStorage.setItem(OFFLINE_STORAGE_KEY, JSON.stringify(transactions));
 }
 
-// Sync offline transactions when back online
 function syncOfflineTransactions() {
     console.log('Syncing offline transactions');
+    const OFFLINE_STORAGE_KEY = 'offline_transactions';
     const transactions = JSON.parse(localStorage.getItem(OFFLINE_STORAGE_KEY) || '[]');
     if (transactions.length === 0) return;
 
@@ -289,7 +436,7 @@ function syncOfflineTransactions() {
         });
 
         $.ajax({
-            url: '{{ route("daily-transactions.store") }}',
+            url: '/daily-transactions/store',
             type: 'POST',
             data: formData,
             processData: false,
@@ -298,77 +445,17 @@ function syncOfflineTransactions() {
                 'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
             },
             success: function() {
+                // Remove this transaction from storage on success
                 transactions.splice(index, 1);
                 localStorage.setItem(OFFLINE_STORAGE_KEY, JSON.stringify(transactions));
                 alert('Офлајн трансакцијата е успешно синхронизирана.');
             },
-            error: function() {
-                console.error('Failed to sync transaction:', transaction);
+            error: function(xhr) {
+                console.error('Failed to sync transaction:', transaction, xhr);
             }
         });
     });
 }
-
-// Form submission handling
-$('#transactionForm').on('submit', function(e) {
-    e.preventDefault();
-    
-    const selectedCompanyId = $('#company_id').val();
-    const selectedDate = $('#transaction_date').val();
-
-    console.log('Selected Company ID:', selectedCompanyId);
-    
-    // Validation with early return
-    if (!selectedCompanyId) {
-        alert('Ве молиме изберете компанија');
-        return false;
-    }
-
-    // Explicitly set the hidden input values before form submission
-    $('#form_company_id').val(selectedCompanyId);
-    $('#form_transaction_date').val(selectedDate);
-
-    const $form = $(this);
-    const formData = new FormData(this);
-
-    // Debug check
-    console.log('Form Company ID value:', formData.get('company_id'));
-
-    
-    if (!isOnline()) {
-        storeOfflineTransaction(formData);
-        alert('Нема интернет конекција. Трансакцијата е зачувана локално.');
-        return;
-    }
-
-    $form.find('button[type="submit"]').prop('disabled', true);
-
-    $.ajax({
-        url: $form.attr('action'),
-        type: 'POST',
-        data: formData,
-        processData: false,
-        contentType: false,
-        headers: {
-            'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
-        },
-        success: function(response) {
-            alert('Успешно ажурирање на дневни трансакции.');
-            setTimeout(() => {
-                window.location.href = '/daily-transactions/create?' + 
-                    'company_id=' + selectedCompanyId + 
-                    '&date=' + selectedDate;
-            }, 1000);
-        },
-        error: function(xhr) {
-            console.error('Error response:', xhr);
-            // alert('Грешка при зачувување. Обидете се повторно.');
-        },
-        complete: function() {
-            $form.find('button[type="submit"]').prop('disabled', false);
-        }
-    });
-});
 
 // Listen for online/offline events
 window.addEventListener('online', function() {
@@ -382,12 +469,9 @@ window.addEventListener('offline', function() {
 });
 
 // Check for offline transactions on page load
-$(document).ready(function() {
-    console.log('Document ready');
-    if (isOnline()) {
-        syncOfflineTransactions();
-    }
-});
+if (isOnline()) {
+    syncOfflineTransactions();
+}
 </script>
 
 <script>
@@ -511,65 +595,130 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 </script>
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    const updateExistingCheckbox = document.getElementById('update_existing_transaction');
+// ddocument.addEventListener('DOMContentLoaded', function() {
     const transactionForm = document.getElementById('transactionForm');
-
+    const updateExistingCheckbox = document.getElementById('update_existing_transaction');
+    
+    // Skip if form doesn't exist on this page
+    if (!transactionForm) return;
+    
+    // Set up form submission handler
     transactionForm.addEventListener('submit', function(e) {
-        // If update checkbox is checked, change form submission behavior
-        if (updateExistingCheckbox.checked) {
-            e.preventDefault(); // Prevent default form submission
-            
-            const formData = new FormData(this);
+        e.preventDefault();
+        
+        const formData = new FormData(this);
+        const companyId = formData.get('company_id');
+        const transactionDate = formData.get('transaction_date');
+        
+        // Validation
+        if (!companyId) {
+            alert('Ве молиме изберете компанија');
+            return false;
+        }
+        
+        // Handle differently based on checkbox
+        if (updateExistingCheckbox && updateExistingCheckbox.checked) {
+            // Process for update existing transactions
             const transactions = [];
-
-            // Collect transaction data
-            document.querySelectorAll('input[name^="transactions"]').forEach((input, index) => {
+            
+            // Find all transaction inputs and group by row
+            const inputElements = document.querySelectorAll('input[name^="transactions"]');
+            const transactionsByRow = {};
+            
+            inputElements.forEach(input => {
                 const match = input.name.match(/transactions\[(\d+)\]\[(\w+)\]/);
                 if (match) {
                     const rowIndex = match[1];
                     const field = match[2];
                     
-                    // Initialize transaction object if not exists
-                    transactions[rowIndex] = transactions[rowIndex] || {
-                        bread_type_id: document.querySelector(`input[name="transactions[${rowIndex}][bread_type_id]"]`).value
-                    };
+                    if (!transactionsByRow[rowIndex]) {
+                        transactionsByRow[rowIndex] = {};
+                    }
                     
-                    // Add field value
-                    transactions[rowIndex][field] = parseInt(input.value) || 0;
+                    // Parse number values, keep bread_type_id as string
+                    transactionsByRow[rowIndex][field] = field === 'bread_type_id' 
+                        ? input.value 
+                        : parseInt(input.value) || 0;
                 }
             });
-
-            // Prepare payload
+            
+            // Convert to array and filter out zero deliveries
+            Object.values(transactionsByRow).forEach(transaction => {
+                if (transaction.delivered > 0) {
+                    transactions.push(transaction);
+                }
+            });
+            
+            // Create request payload
             const payload = {
-                company_id: document.getElementById('company_id').value,
-                transaction_date: document.getElementById('transaction_date').value,
-                transactions: transactions.filter(t => t && t.delivered > 0)
+                company_id: companyId,
+                transaction_date: transactionDate,
+                transactions: transactions
             };
-
-            // Submit via AJAX
-            $.ajax({
-                url: '{{ route("update-daily-transaction") }}', // Add this route
+            
+            console.log('Update payload:', payload);
+            
+            // Send using fetch API
+            fetch(window.location.origin + '/update-daily-transaction', {
                 method: 'POST',
-                data: JSON.stringify(payload),
-                contentType: 'application/json',
                 headers: {
+                    'Content-Type': 'application/json',
                     'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
                 },
-                success: function(response) {
-                    if (response.success) {
-                        alert('Трансакциите се успешно ажурирани.');
-                        // Optionally reload or redirect
-                        location.reload();
-                    } else {
-                        alert('Грешка при ажурирање.');
-                    }
-                },
-                error: function() {
-                    alert('Грешка при комуникација со серверот.');
+                body: JSON.stringify(payload)
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Network response was not ok: ' + response.status);
                 }
+                return response.json();
+            })
+            .then(data => {
+                if (data.success) {
+                    alert('Трансакциите се успешно ажурирани.');
+                    window.location.href = '/daily-transactions/create?' + 
+                        'company_id=' + companyId + 
+                        '&date=' + transactionDate;
+                } else {
+                    alert(data.message || 'Грешка при ажурирање.');
+                }
+            })
+            .catch(error => {
+                console.error('Error updating transactions:', error);
+                alert('Грешка при комуникација со серверот.');
+            });
+        } else {
+            // Regular form submission for new transactions
+            fetch(transactionForm.action, {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                }
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Network response was not ok: ' + response.status);
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (data.success) {
+                    alert('Успешно ажурирање на дневни трансакции.');
+                    window.location.href = '/daily-transactions/create?' + 
+                        'company_id=' + companyId + 
+                        '&date=' + transactionDate;
+                } else {
+                    alert(data.message || 'Грешка при зачувување.');
+                }
+            })
+            .catch(error => {
+                console.error('Error saving transactions:', error);
+                alert('Грешка при зачувување. Обидете се повторно.');
             });
         }
+        
+        return false;
     });
 });
 </script>

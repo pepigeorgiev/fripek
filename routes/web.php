@@ -88,16 +88,19 @@ Route::middleware(['auth'])->group(function () {
         ->name('daily-transactions.unpaid');
     Route::post('/daily-transactions/store-old-bread', [DailyTransactionController::class, 'storeOldBreadSales'])->name('daily-transactions.store-old-bread');
     // In your routes file
-Route::post('/update-daily-transaction', [DailyTransactionController::class, 'updateDailyTransaction'])
-->name('update-daily-transaction');
+// Route::post('/update-daily-transaction', [DailyTransactionController::class, 'updateDailyTransaction'])
+// ->name('update-daily-transaction');
 Route::post('/daily-transactions/old-bread', [DailyTransactionController::class, 'storeOldBreadSales'])
     ->name('daily-transactions.store-old-bread');
     Route::post('/store-old-bread', [DailyTransactionController::class, 'storeOldBreadSales'])
     ->name('daily-transactions.store-old-bread');
-Route::post('/update', [DailyTransactionController::class, 'updateDailyTransaction'])
-    ->name('update-daily-transaction');
+// Route::post('/update', [DailyTransactionController::class, 'updateDailyTransaction'])
+//     ->name('update-daily-transaction');
     Route::post('/store-old-bread', [DailyTransactionController::class, 'storeOldBreadSales'])
     ->name('daily-transactions.store-old-bread');
+    Route::post('/daily-transactions/update', [DailyTransactionController::class, 'updateDailyTransaction'])
+    ->name('update-daily-transaction');
+    Route::post('/update-daily-transaction', [\App\Http\Controllers\DailyTransactionController::class, 'updateDailyTransaction'])->name('update-daily-transaction');
     Route::middleware(['auth'])->group(function () {
         // Daily Transactions routes
         Route::prefix('daily-transactions')->group(function () {
@@ -109,8 +112,8 @@ Route::post('/update', [DailyTransactionController::class, 'updateDailyTransacti
                 ->name('daily-transactions.store');
             Route::post('/store-old-bread', [DailyTransactionController::class, 'storeOldBreadSales'])
                 ->name('daily-transactions.store-old-bread');
-            Route::post('/update', [DailyTransactionController::class, 'updateDailyTransaction'])
-                ->name('update-daily-transaction');
+            // Route::post('/update', [DailyTransactionController::class, 'updateDailyTransaction'])
+            //     ->name('update-daily-transaction');
                 Route::post('/daily-transactions/mark-multiple-as-paid', [SummaryController::class, 'markMultipleAsPaid'])
     ->name('daily-transactions.markMultipleAsPaid');
                 
