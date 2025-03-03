@@ -79,7 +79,7 @@ class SummaryController extends Controller
     
         // Get transactions for the selected date
 
-        $selectedDate = $request->input('date', now()->toDateString());
+        // $selectedDate = $request->input('date', now()->toDateString());
     
         $query = DailyTransaction::with(['breadType', 'company'])
             ->whereNotNull('bread_type_id')
@@ -128,23 +128,26 @@ class SummaryController extends Controller
                 ->groupBy('bread_type_id');
         }
 
+
+            $allTransactions = $this->getTransactionsForSummary($selectedDate);
+
         $breadSales = $breadSales->get()->keyBy('bread_type_id');
     
         $breadCounts = $this->calculateBreadCounts($transactions, $selectedDate, $breadSales);
         
         $paymentData = $this->calculateAllPayments(
-            $transactions, 
+            $allTransactions, 
             $breadTypes->pluck('price', 'name')->toArray(),
             $allCompanies
         );
 
         $transactions = $this->getTransactionsForSummary($selectedDate);
     
-        $paymentData = $this->calculateAllPayments(
-            $transactions, 
-            $breadTypes->pluck('price', 'name')->toArray(),
-            $allCompanies
-        );
+        // $paymentData = $this->calculateAllPayments(
+        //     $transactions, 
+        //     $breadTypes->pluck('price', 'name')->toArray(),
+        //     $allCompanies
+        // );
     
     
         // Get unpaid transactions separately
@@ -636,96 +639,247 @@ private function getTransactionsForSummary($date)
 
 
 
-
-
-
-    private function getUnpaidTransactions($selectedDate, $companies)
-    {
-        try {
-            Log::info('Fetching unpaid transactions', [
+private function getUnpaidTransactions($selectedDate, $companies)
+{
+    try {
+        // Use the request instance for caching
+        $requestInstance = request();
+        
+        // Create a unique cache key
+        $cacheKey = 'unpaid_transactions_' . md5($selectedDate . '_' . implode(',', $companies->pluck('id')->toArray()));
+        
+        // Check if already cached for this request
+        if ($requestInstance->has($cacheKey)) {
+            Log::info('Using cached unpaid transactions', [
                 'date' => $selectedDate,
-                'companies' => $companies->pluck('name', 'id')
+                'cache_key' => $cacheKey
             ]);
+            return $requestInstance->get($cacheKey);
+        }
+        
+        // Only get cash companies
+        $cashCompanyIds = $companies->where('type', 'cash')->pluck('id')->toArray();
+        
+        if (empty($cashCompanyIds)) {
+            $requestInstance->offsetSet($cacheKey, []);
+            return [];
+        }
 
-            $unpaidTransactions = DailyTransaction::with(['breadType', 'company'])
-                ->whereNotNull('bread_type_id')
-                ->whereHas('breadType')
-                ->where('is_paid', false)
-                ->whereHas('company', function($query) {
-                    $query->where('type', 'cash');
-                })
-                ->whereIn('company_id', $companies->pluck('id'))
-                ->orderBy('transaction_date', 'desc')
-                ->get();
-
-            Log::info('Found unpaid transactions', [
-                'count' => $unpaidTransactions->count(),
-                'transactions' => $unpaidTransactions->map(fn($t) => [
-                    'id' => $t->id,
-                    'company' => $t->company->name,
-                    'date' => $t->transaction_date,
-                    'is_paid' => $t->is_paid
-                ])
-            ]);
-
-            $result = [];
+        // First find companies with net unpaid amounts > 0
+        $companiesWithUnpaid = DB::table('daily_transactions')
+            ->select('company_id')
+            ->whereIn('company_id', $cashCompanyIds)
+            ->where('is_paid', false)
+            ->whereNotNull('bread_type_id')
+            ->groupBy('company_id', 'transaction_date')
+            ->havingRaw('SUM(delivered - returned - COALESCE(gratis, 0)) > 0')
+            ->distinct()
+            ->pluck('company_id')
+            ->toArray();
             
-            foreach ($unpaidTransactions->groupBy(['company_id', 'transaction_date']) as $companyId => $dateGroups) {
-                foreach ($dateGroups as $date => $transactions) {
-                    $company = $companies->firstWhere('id', $companyId);
-                    if (!$company) continue;
+        if (empty($companiesWithUnpaid)) {
+            $requestInstance->offsetSet($cacheKey, []);
+            return [];
+        }
+        
+        // Then get the actual transactions only for those companies
+        $unpaidTransactions = DailyTransaction::with(['breadType', 'company'])
+    ->whereNotNull('bread_type_id')
+    ->whereHas('breadType')
+    ->where('is_paid', false)
+    ->whereHas('company', function($query) {
+        $query->where('type', 'cash');
+    })
+    ->whereIn('company_id', $companies->pluck('id'))
+    ->where(DB::raw('delivered - returned - COALESCE(gratis, 0)'), '>', 0)
+    ->orderBy('transaction_date', 'desc')
+    ->get();
+        // $unpaidTransactions = DailyTransaction::with(['breadType', 'company'])
+        //     ->whereNotNull('bread_type_id')
+        //     ->whereHas('breadType')
+        //     ->where('is_paid', false)
+        //     ->whereIn('company_id', $companiesWithUnpaid)
+        //     ->orderBy('transaction_date', 'desc')
+        //     ->get();
 
-                    $payment = [
-                        'company' => $company->name,
-                        'company_id' => $companyId,
-                        'transaction_date' => $date,
-                        'breads' => []
-                    ];
+        $result = [];
+        
+        foreach ($unpaidTransactions->groupBy(['company_id', 'transaction_date']) as $companyId => $dateGroups) {
+            foreach ($dateGroups as $date => $transactions) {
+                $company = $companies->firstWhere('id', $companyId);
+                if (!$company) continue;
 
-                    $totalAmount = 0;
-                    foreach ($transactions as $transaction) {
-                        if ($transaction->breadType) {
-                            $delivered = $transaction->delivered;
-                            $returned = $transaction->returned;
-                            $gratis = $transaction->gratis ?? 0;
-                            
-                            $prices = $transaction->breadType->getPriceForCompany($companyId, $date);
-                            $price = $prices['price'];
-                            
-                            $netBreads = $delivered - $returned - $gratis;
-                            $totalForType = $netBreads * $price;
-                            
-                            $payment['breads'][$transaction->breadType->name] = [
-                                'delivered' => $delivered,
-                                'returned' => $returned,
-                                'gratis' => $gratis,
-                                'total' => $netBreads,
-                                'price' => $price,
-                                'potential_total' => $totalForType
-                            ];
-                            
-                            $totalAmount += $totalForType;
-                        }
-                    }
+                $payment = [
+                    'company' => $company->name,
+                    'company_id' => $companyId,
+                    'transaction_date' => $date,
+                    'breads' => []
+                ];
+
+                $totalAmount = 0;
+                $hasNetBread = false;
+                
+                foreach ($transactions as $transaction) {
+                    if (!$transaction->breadType) continue;
                     
+                    $delivered = $transaction->delivered;
+                    $returned = $transaction->returned;
+                    $gratis = $transaction->gratis ?? 0;
+                    
+                    $netBreads = $delivered - $returned - $gratis;
+                    
+                    // Skip if no net bread
+                    if ($netBreads <= 0) continue;
+                    
+                    $hasNetBread = true;
+                    
+                    $prices = $transaction->breadType->getPriceForCompany($companyId, $date);
+                    $price = $prices['price'];
+                    
+                    $totalForType = $netBreads * $price;
+                    
+                    $payment['breads'][$transaction->breadType->name] = [
+                        'delivered' => $delivered,
+                        'returned' => $returned,
+                        'gratis' => $gratis,
+                        'total' => $netBreads,
+                        'price' => $price,
+                        'potential_total' => $totalForType
+                    ];
+                    
+                    $totalAmount += $totalForType;
+                }
+                
+                // Only include if there are actual unpaid amounts
+                if ($hasNetBread && $totalAmount > 0) {
                     $payment['total_amount'] = $totalAmount;
                     $result[] = $payment;
                 }
             }
-
-            Log::info('Processed unpaid transactions', [
-                'result_count' => count($result)
-            ]);
-
-            return $result;
-        } catch (\Exception $e) {
-            Log::error('Error getting unpaid transactions', [
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
-            ]);
-            return [];
         }
+
+        Log::info('Processed unpaid transactions', [
+            'result_count' => count($result)
+        ]);
+        
+        // Store in request cache
+        $requestInstance->offsetSet($cacheKey, $result);
+
+        return $result;
+    } catch (\Exception $e) {
+        Log::error('Error getting unpaid transactions', [
+            'error' => $e->getMessage(),
+            'trace' => $e->getTraceAsString()
+        ]);
+        return [];
     }
+}
+
+
+    // private function getUnpaidTransactions($selectedDate, $companies)
+    // {
+    //     // $executionId = uniqid();
+    //     // $trace = debug_backtrace(DEBUG_BACKTRACE_PROVIDE_OBJECT, 10);
+        
+    //     // $traceInfo = [];
+    //     // foreach ($trace as $index => $call) {
+    //     //     $traceInfo[] = ($index + 1) . '. ' . 
+    //     //         ($call['class'] ?? '') . 
+    //     //         ($call['type'] ?? '') . 
+    //     //         ($call['function'] ?? '') . 
+    //     //         ' in ' . 
+    //     //         ($call['file'] ?? '???') . 
+    //     //         ' line ' . 
+    //     //         ($call['line'] ?? '???');
+    //     // }
+        
+    //     // Log::info("[Execution ID: {$executionId}] Call stack:", $traceInfo);
+        
+    //     try {
+    //         // Log::info('Fetching unpaid transactions', [
+    //         //     'date' => $selectedDate,
+    //         //     'companies' => $companies->pluck('name', 'id')
+    //         // ]);
+
+    //         $unpaidTransactions = DailyTransaction::with(['breadType', 'company'])
+    //             ->whereNotNull('bread_type_id')
+    //             ->whereHas('breadType')
+    //             ->where('is_paid', false)
+    //             ->whereHas('company', function($query) {
+    //                 $query->where('type', 'cash');
+    //             })
+    //             ->whereIn('company_id', $companies->pluck('id'))
+    //             ->orderBy('transaction_date', 'desc')
+    //             ->get();
+
+    //         // Log::info('Found unpaid transactions', [
+    //         //     'count' => $unpaidTransactions->count(),
+    //         //     'transactions' => $unpaidTransactions->map(fn($t) => [
+    //         //         'id' => $t->id,
+    //         //         'company' => $t->company->name,
+    //         //         'date' => $t->transaction_date,
+    //         //         'is_paid' => $t->is_paid
+    //         //     ])
+    //         // ]);
+
+    //         $result = [];
+            
+    //         foreach ($unpaidTransactions->groupBy(['company_id', 'transaction_date']) as $companyId => $dateGroups) {
+    //             foreach ($dateGroups as $date => $transactions) {
+    //                 $company = $companies->firstWhere('id', $companyId);
+    //                 if (!$company) continue;
+
+    //                 $payment = [
+    //                     'company' => $company->name,
+    //                     'company_id' => $companyId,
+    //                     'transaction_date' => $date,
+    //                     'breads' => []
+    //                 ];
+
+    //                 $totalAmount = 0;
+    //                 foreach ($transactions as $transaction) {
+    //                     if ($transaction->breadType) {
+    //                         $delivered = $transaction->delivered;
+    //                         $returned = $transaction->returned;
+    //                         $gratis = $transaction->gratis ?? 0;
+                            
+    //                         $prices = $transaction->breadType->getPriceForCompany($companyId, $date);
+    //                         $price = $prices['price'];
+                            
+    //                         $netBreads = $delivered - $returned - $gratis;
+    //                         $totalForType = $netBreads * $price;
+                            
+    //                         $payment['breads'][$transaction->breadType->name] = [
+    //                             'delivered' => $delivered,
+    //                             'returned' => $returned,
+    //                             'gratis' => $gratis,
+    //                             'total' => $netBreads,
+    //                             'price' => $price,
+    //                             'potential_total' => $totalForType
+    //                         ];
+                            
+    //                         $totalAmount += $totalForType;
+    //                     }
+    //                 }
+                    
+    //                 $payment['total_amount'] = $totalAmount;
+    //                 $result[] = $payment;
+    //             }
+    //         }
+
+    //         Log::info('Processed unpaid transactions', [
+    //             'result_count' => count($result)
+    //         ]);
+
+    //         return $result;
+    //     } catch (\Exception $e) {
+    //         Log::error('Error getting unpaid transactions', [
+    //             'error' => $e->getMessage(),
+    //             'trace' => $e->getTraceAsString()
+    //         ]);
+    //         return [];
+    //     }
+    // }
 
    
 
