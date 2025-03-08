@@ -340,10 +340,10 @@
 @endif
     
 
-   
+
 {{-- Unpaid Transactions Table --}}
 @if(!empty($unpaidTransactions))
-    <div class="mb-8">
+    <div class="mb-8" id="unpaidTransactionsSection">
         <h2 class="text-xl font-semibold mb-2 text-xl font-bold">Неплатени трансакции за следење</h2>
         <div class="bg-yellow-50 p-4 mb-4 border-l-4 border-yellow-400">
             <p class="text-blue-700 text-xl font-bold">
@@ -355,7 +355,18 @@
             @csrf
             <input type="hidden" name="date" value="{{ $date }}">
             
-            <div class="flex justify-end mb-4">
+            {{-- Pagination selector and bulk payment button --}}
+            <div class="flex justify-between items-center mb-4">
+                <div class="flex items-center">
+                    <span class="mr-2">Прикажи:</span>
+                    <select id="unpaidPerPage" class="bg-white border border-gray-300 rounded px-2 py-1 text-sm" onchange="changeUnpaidPerPage(this.value)">
+                        <option value="10" {{ $unpaidTransactionsPagination['perPage'] == 10 ? 'selected' : '' }}>10</option>
+                        <option value="25" {{ $unpaidTransactionsPagination['perPage'] == 25 ? 'selected' : '' }}>25</option>
+                        <option value="50" {{ $unpaidTransactionsPagination['perPage'] == 50 ? 'selected' : '' }}>50</option>
+                        <option value="100" {{ $unpaidTransactionsPagination['perPage'] == 100 ? 'selected' : '' }}>100</option>
+                    </select>
+                </div>
+                
                 <button type="submit" 
                         id="bulkPaymentButton"
                         disabled
@@ -364,6 +375,7 @@
                 </button>
             </div>
 
+            {{-- Main table - this is the same as your original --}}
             <table class="w-full bg-white shadow-md rounded">
                 <thead>
                     <tr>
@@ -436,16 +448,121 @@
                             Вкупно неплатено:
                         </td>
                         <td class="border px-4 py-2 font-bold text-center border-t-2 border-gray-400">
-                            {{ number_format(collect($unpaidTransactions)->sum('total_amount'), 2) }}
+                            {{ number_format($unpaidTransactionsTotal, 2) }}
                         </td>
                         <td class="border px-4 py-2 border-t-2 border-gray-400"></td>
                     </tr>
                 </tfoot>
             </table>
         </form>
+        
+        {{-- Pagination controls - new section --}}
+        @if($unpaidTransactionsPagination['total'] > 0)
+            <div class="mt-4 flex items-center justify-between">
+                <div class="text-sm text-gray-700">
+                    Прикажани <span class="font-medium">{{ count($unpaidTransactions) }}</span> од вкупно <span class="font-medium">{{ $unpaidTransactionsPagination['total'] }}</span> неплатени трансакции
+                </div>
+                
+                <div class="flex items-center space-x-2">
+                    {{-- Previous Page Button --}}
+                    @if($unpaidTransactionsPagination['currentPage'] > 1)
+                        <a href="{{ request()->fullUrlWithQuery(['unpaid_page' => $unpaidTransactionsPagination['currentPage'] - 1, 'unpaid_per_page' => $unpaidTransactionsPagination['perPage']]) }}" 
+                        class="px-3 py-1 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300">
+                            &laquo; Претходна
+                        </a>
+                    @else
+                        <span class="px-3 py-1 bg-gray-100 text-gray-400 rounded-md cursor-not-allowed">
+                            &laquo; Претходна
+                        </span>
+                    @endif
+                    
+                    {{-- Page Numbers --}}
+                    <div class="flex space-x-1">
+                        @for($i = 1; $i <= $unpaidTransactionsPagination['lastPage']; $i++)
+                            <a href="{{ request()->fullUrlWithQuery(['unpaid_page' => $i, 'unpaid_per_page' => $unpaidTransactionsPagination['perPage']]) }}" 
+                            class="px-3 py-1 {{ $i == $unpaidTransactionsPagination['currentPage'] ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300' }} rounded-md">
+                                {{ $i }}
+                            </a>
+                        @endfor
+                    </div>
+                    
+                    {{-- Next Page Button --}}
+                    @if($unpaidTransactionsPagination['currentPage'] < $unpaidTransactionsPagination['lastPage'])
+                        <a href="{{ request()->fullUrlWithQuery(['unpaid_page' => $unpaidTransactionsPagination['currentPage'] + 1, 'unpaid_per_page' => $unpaidTransactionsPagination['perPage']]) }}" 
+                        class="px-3 py-1 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300">
+                            Следна &raquo;
+                        </a>
+                    @else
+                        <span class="px-3 py-1 bg-gray-100 text-gray-400 rounded-md cursor-not-allowed">
+                            Следна &raquo;
+                        </span>
+                    @endif
+                </div>
+            </div>
+        @endif
     </div>
     
+    {{-- Add JavaScript to handle pagination controls --}}
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Function to change items per page
+        window.changeUnpaidPerPage = function(perPage) {
+            const url = new URL(window.location.href);
+            url.searchParams.set('unpaid_per_page', perPage);
+            url.searchParams.set('unpaid_page', 1); // Reset to first page when changing items per page
+            window.location.href = url.toString();
+        };
+        
+        // The existing checkbox functionality
+        const selectAllCheckbox = document.getElementById('selectAll');
+        const transactionCheckboxes = document.querySelectorAll('.transaction-checkbox');
+        const bulkPaymentButton = document.getElementById('bulkPaymentButton');
+        
+        // Function to update the bulk payment button state
+        function updateBulkPaymentButton() {
+            const checkedBoxes = document.querySelectorAll('.transaction-checkbox:checked');
+            bulkPaymentButton.disabled = checkedBoxes.length === 0;
+        }
+
+        // Handle "Select All" checkbox
+        if (selectAllCheckbox) {
+            selectAllCheckbox.addEventListener('change', function() {
+                transactionCheckboxes.forEach(checkbox => {
+                    checkbox.checked = this.checked;
+                });
+                updateBulkPaymentButton();
+            });
+        }
+
+        // Handle individual checkboxes
+        transactionCheckboxes.forEach(checkbox => {
+            checkbox.addEventListener('change', function() {
+                const allChecked = Array.from(transactionCheckboxes).every(cb => cb.checked);
+                if (selectAllCheckbox) {
+                    selectAllCheckbox.checked = allChecked;
+                }
+                updateBulkPaymentButton();
+            });
+        });
+
+        // Store scroll position when navigating pagination
+        const paginationLinks = document.querySelectorAll('.mt-4 a');
+        paginationLinks.forEach(link => {
+            link.addEventListener('click', function() {
+                sessionStorage.setItem('unpaidScrollPosition', window.scrollY);
+            });
+        });
+        
+        // Restore scroll position
+        const savedScrollPosition = sessionStorage.getItem('unpaidScrollPosition');
+        if (savedScrollPosition) {
+            window.scrollTo(0, savedScrollPosition);
+            sessionStorage.removeItem('unpaidScrollPosition');
+        }
+    });
+    </script>
 @endif
+
 
 
 
@@ -507,7 +624,106 @@
             input.addEventListener('focus', clearInputOnFocus);
         });
     });
+   // Add this script to your page
+document.addEventListener('DOMContentLoaded', function() {
+    // Create a simple search box and button
+    const searchContainer = document.createElement('div');
+    searchContainer.className = 'flex items-center mb-4 mt-4';
+    
+    const searchLabel = document.createElement('span');
+    searchLabel.textContent = 'Пребарувај: ';
+    searchLabel.className = 'mr-2 font-bold';
+    
+    const searchInput = document.createElement('input');
+    searchInput.type = 'text';
+    searchInput.id = 'simpleSearchInput';
+    searchInput.placeholder = 'Внесете текст за пребарување...';
+    searchInput.className = 'bg-white border border-gray-300 rounded px-3 py-2 text-sm w-64 mr-2';
+    
+    const searchButton = document.createElement('button');
+    searchButton.type = 'button';
+    searchButton.id = 'simpleSearchButton';
+    searchButton.className = 'bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg transition duration-150 ease-in-out';
+    searchButton.textContent = 'Пребарај';
+    
+    const clearButton = document.createElement('button');
+    clearButton.type = 'button';
+    clearButton.id = 'simpleClearButton';
+    clearButton.className = 'bg-gray-300 hover:bg-gray-400 text-gray-800 px-4 py-2 rounded-lg ml-2 transition duration-150 ease-in-out';
+    clearButton.textContent = 'Исчисти';
+    
+    searchContainer.appendChild(searchLabel);
+    searchContainer.appendChild(searchInput);
+    searchContainer.appendChild(searchButton);
+    searchContainer.appendChild(clearButton);
+    
+    // Find the unpaid transactions section and add the search box
+    const unpaidSection = document.getElementById('unpaidTransactionsSection');
+    if (unpaidSection) {
+        const firstElement = unpaidSection.querySelector('.bg-yellow-50') || unpaidSection.firstElementChild;
+        unpaidSection.insertBefore(searchContainer, firstElement.nextSibling);
+        
+        // Simple direct search function
+        function runSimpleSearch() {
+            const searchText = searchInput.value.toLowerCase().trim();
+            if (!searchText) {
+                // If search text is empty, show all rows
+                unpaidSection.querySelectorAll('tbody tr').forEach(row => {
+                    row.style.display = '';
+                });
+                updateResultCounter();
+                return;
+            }
+            
+            // Go through each row
+            unpaidSection.querySelectorAll('tbody tr').forEach(row => {
+                // Get all text content from the row
+                const rowContent = row.textContent.toLowerCase();
+                
+                // If the row contains the search text, show it, otherwise hide it
+                if (rowContent.includes(searchText)) {
+                    row.style.display = '';
+                } else {
+                    row.style.display = 'none';
+                }
+            });
+            
+            // Update the results counter
+            updateResultCounter();
+        }
+        
+        // Update the "showing X of Y results" counter
+        function updateResultCounter() {
+            const resultsText = unpaidSection.querySelector('.text-sm.text-gray-700');
+            if (!resultsText) return;
+            
+            const allRows = unpaidSection.querySelectorAll('tbody tr');
+            const visibleRows = Array.from(allRows).filter(row => row.style.display !== 'none').length;
+            const totalRows = allRows.length;
+            
+            const firstSpan = resultsText.querySelector('span:first-of-type');
+            if (firstSpan) {
+                firstSpan.textContent = visibleRows;
+            }
+        }
+        
+        // Add event listeners
+        searchButton.addEventListener('click', runSimpleSearch);
+        searchInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                runSimpleSearch();
+                e.preventDefault();
+            }
+        });
+        
+        clearButton.addEventListener('click', function() {
+            searchInput.value = '';
+            runSimpleSearch();
+        });
+    }
+});
 </script>
+
 
 <style>
     /* Default styles for desktop */
