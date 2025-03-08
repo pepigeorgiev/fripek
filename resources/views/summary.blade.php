@@ -631,7 +631,7 @@ document.addEventListener('DOMContentLoaded', function() {
     searchContainer.className = 'flex items-center mb-4 mt-4';
     
     const searchLabel = document.createElement('span');
-    searchLabel.textContent = 'Пребарувај: ';
+    searchLabel.textContent = 'Пребарувај : ';
     searchLabel.className = 'mr-2 font-bold';
     
     const searchInput = document.createElement('input');
