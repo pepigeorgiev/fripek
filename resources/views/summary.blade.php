@@ -625,7 +625,7 @@
         });
     });
    // Add this script to your page
-document.addEventListener('DOMContentLoaded', function() {
+   document.addEventListener('DOMContentLoaded', function() {
     // Create a simple search box and button
     const searchContainer = document.createElement('div');
     searchContainer.className = 'flex items-center mb-4 mt-4';
@@ -663,27 +663,122 @@ document.addEventListener('DOMContentLoaded', function() {
         const firstElement = unpaidSection.querySelector('.bg-yellow-50') || unpaidSection.firstElementChild;
         unpaidSection.insertBefore(searchContainer, firstElement.nextSibling);
         
-        // Simple direct search function
-        function runSimpleSearch() {
-            const searchText = searchInput.value.toLowerCase().trim();
-            if (!searchText) {
-                // If search text is empty, show all rows
-                unpaidSection.querySelectorAll('tbody tr').forEach(row => {
-                    row.style.display = '';
-                });
-                updateResultCounter();
-                return;
-            }
+        // Find all pagination links
+        const pagination = document.querySelector('.flex.items-center.space-x-2');
+        const allPaginationLinks = pagination ? pagination.querySelectorAll('a') : [];
+        
+        // Get the current page and total pages
+        const currentUrl = new URL(window.location.href);
+        const currentPage = parseInt(currentUrl.searchParams.get('unpaid_page') || '1');
+        const lastPage = allPaginationLinks.length > 0 ? 
+            parseInt(allPaginationLinks[allPaginationLinks.length - 1].textContent.trim()) : 1;
+        
+        // Function to load all pages and search them
+        async function loadAllPagesAndSearch(searchText) {
+            // Show loading indicator
+            const loadingIndicator = document.createElement('div');
+            loadingIndicator.id = 'searchLoadingIndicator';
+            loadingIndicator.className = 'fixed top-0 left-0 w-full h-full bg-black bg-opacity-50 flex items-center justify-center z-50';
+            loadingIndicator.innerHTML = `
+                <div class="bg-white p-5 rounded-lg shadow-lg text-center">
+                    <div class="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-500 mx-auto mb-2"></div>
+                    <p class="text-lg font-medium">Пребарување на сите страници...</p>
+                </div>
+            `;
+            document.body.appendChild(loadingIndicator);
             
-            // Go through each row
-            unpaidSection.querySelectorAll('tbody tr').forEach(row => {
-                // Get all text content from the row
-                const rowContent = row.textContent.toLowerCase();
+            try {
+                // Convert to Latin if Cyrillic
+                const latinSearchText = convertCyrillicToLatin(searchText);
                 
-                // If the row contains the search text, show it, otherwise hide it
-                if (rowContent.includes(searchText)) {
-                    row.style.display = '';
+                // Store all found companies
+                const allMatchingCompanies = new Set();
+                
+                // Fetch all pages to find matching companies
+                for (let page = 1; page <= lastPage; page++) {
+                    if (page !== currentPage) {
+                        // Create URL for fetching the page content
+                        const pageUrl = new URL(window.location.href);
+                        pageUrl.searchParams.set('unpaid_page', page.toString());
+                        
+                        // Fetch the page content
+                        const response = await fetch(pageUrl.toString());
+                        const html = await response.text();
+                        
+                        // Create a temporary element to parse the HTML
+                        const tempDiv = document.createElement('div');
+                        tempDiv.innerHTML = html;
+                        
+                        // Find all company cells in the page
+                        const companyCells = tempDiv.querySelectorAll('#unpaidTransactionsSection tbody > tr > td:nth-child(2)');
+                        
+                        // Check each company for matches
+                        companyCells.forEach(cell => {
+                            const companyText = cell.textContent.toLowerCase();
+                            const latinCompanyText = convertCyrillicToLatin(companyText);
+                            
+                            if (companyText.includes(searchText.toLowerCase()) || 
+                                latinCompanyText.includes(latinSearchText)) {
+                                // Extract company name (first line of text)
+                                const companyName = cell.childNodes[0].textContent.trim();
+                                allMatchingCompanies.add(companyName);
+                            }
+                        });
+                    }
+                }
+                
+                // Add matches from current page
+                const currentPageCompanyCells = unpaidSection.querySelectorAll('tbody > tr > td:nth-child(2)');
+                currentPageCompanyCells.forEach(cell => {
+                    const companyText = cell.textContent.toLowerCase();
+                    const latinCompanyText = convertCyrillicToLatin(companyText);
+                    
+                    if (companyText.includes(searchText.toLowerCase()) || 
+                        latinCompanyText.includes(latinSearchText)) {
+                        // Extract company name (first line of text)
+                        const companyName = cell.childNodes[0].textContent.trim();
+                        allMatchingCompanies.add(companyName);
+                    }
+                });
+                
+                // If we found matches on any page, filter the current page
+                if (allMatchingCompanies.size > 0) {
+                    filterCurrentPage(allMatchingCompanies);
                 } else {
+                    // No matches found
+                    alert('Нема пронајдени резултати на ниту една страница.');
+                }
+            } catch (error) {
+                console.error('Error searching across pages:', error);
+                alert('Се појави грешка при пребарувањето низ страниците.');
+            } finally {
+                // Remove loading indicator
+                document.getElementById('searchLoadingIndicator').remove();
+            }
+        }
+        
+        // Function to filter the current page based on matching companies
+        function filterCurrentPage(matchingCompanies) {
+            const tbody = unpaidSection.querySelector('tbody');
+            if (!tbody) return;
+            
+            // Process all rows in the current page
+            const rows = Array.from(tbody.children);
+            
+            rows.forEach(row => {
+                const companyCell = row.querySelector('td:nth-child(2)');
+                if (!companyCell) return;
+                
+                const companyName = companyCell.childNodes[0].textContent.trim();
+                
+                if (matchingCompanies.has(companyName)) {
+                    // Show this row
+                    row.style.display = '';
+                    
+                    // Ensure all nested tables and content are visible
+                    ensureNestedContentVisible(row);
+                } else {
+                    // Hide this row
                     row.style.display = 'none';
                 }
             });
@@ -692,14 +787,110 @@ document.addEventListener('DOMContentLoaded', function() {
             updateResultCounter();
         }
         
+        // Function to ensure all nested content is visible
+        function ensureNestedContentVisible(element) {
+            // Make the element itself visible
+            element.style.display = '';
+            
+            // Process all direct child elements
+            Array.from(element.children).forEach(child => {
+                // Make each child visible
+                child.style.display = '';
+                
+                // If this is a table cell with a nested table
+                if (child.tagName === 'TD') {
+                    // Find any nested tables
+                    const nestedTables = child.querySelectorAll('table');
+                    nestedTables.forEach(table => {
+                        // Make the table visible
+                        table.style.display = '';
+                        
+                        // Make all table elements visible
+                        const tableElements = table.querySelectorAll('*');
+                        tableElements.forEach(el => {
+                            el.style.display = '';
+                        });
+                    });
+                }
+                
+                // Recursively process any other nested elements
+                ensureNestedContentVisible(child);
+            });
+        }
+        
+        // Improved search function
+        function runSearch() {
+            const searchText = searchInput.value.toLowerCase().trim();
+            
+            // If search is empty, show everything
+            if (!searchText) {
+                // Show all rows
+                const rows = unpaidSection.querySelectorAll('tbody tr');
+                rows.forEach(row => {
+                    row.style.display = '';
+                    ensureNestedContentVisible(row);
+                });
+                
+                // Remove any previous result messages
+                const prevResults = document.getElementById('searchResultMessage');
+                if (prevResults) prevResults.remove();
+                
+                updateResultCounter();
+                return;
+            }
+            
+            // Check if we should search across all pages
+            // For simplicity, always search across pages if more than one page exists
+            if (lastPage > 1) {
+                loadAllPagesAndSearch(searchText);
+                return;
+            }
+            
+            // Simple search for single page
+            const latinSearchText = convertCyrillicToLatin(searchText);
+            
+            // Track companies that match
+            const matchingCompanies = new Set();
+            
+            // Find all matching companies on this page
+            const companyCells = unpaidSection.querySelectorAll('tbody > tr > td:nth-child(2)');
+            companyCells.forEach(cell => {
+                const companyText = cell.textContent.toLowerCase();
+                const latinCompanyText = convertCyrillicToLatin(companyText);
+                
+                if (companyText.includes(searchText) || latinCompanyText.includes(latinSearchText)) {
+                    const companyName = cell.childNodes[0].textContent.trim();
+                    matchingCompanies.add(companyName);
+                }
+            });
+            
+            filterCurrentPage(matchingCompanies);
+        }
+        
+        // Function to convert Cyrillic to Latin
+        function convertCyrillicToLatin(text) {
+            const cyrillicMap = {
+                'а': 'a', 'б': 'b', 'в': 'v', 'г': 'g', 'д': 'd', 'ѓ': 'gj', 'е': 'e',
+                'ж': 'zh', 'з': 'z', 'ѕ': 'dz', 'и': 'i', 'ј': 'j', 'к': 'k', 'л': 'l',
+                'љ': 'lj', 'м': 'm', 'н': 'n', 'њ': 'nj', 'о': 'o', 'п': 'p', 'р': 'r',
+                'с': 's', 'т': 't', 'ќ': 'kj', 'у': 'u', 'ф': 'f', 'х': 'h', 'ц': 'c',
+                'ч': 'ch', 'џ': 'dzh', 'ш': 'sh', 'А': 'A', 'Б': 'B', 'В': 'V', 'Г': 'G',
+                'Д': 'D', 'Ѓ': 'GJ', 'Е': 'E', 'Ж': 'ZH', 'З': 'Z', 'Ѕ': 'DZ', 'И': 'I',
+                'Ј': 'J', 'К': 'K', 'Л': 'L', 'Љ': 'LJ', 'М': 'M', 'Н': 'N', 'Њ': 'NJ',
+                'О': 'O', 'П': 'P', 'Р': 'R', 'С': 'S', 'Т': 'T', 'Ќ': 'KJ', 'У': 'U',
+                'Ф': 'F', 'Х': 'H', 'Ц': 'C', 'Ч': 'CH', 'Џ': 'DZH', 'Ш': 'SH'
+            };
+            
+            return text.split('').map(char => cyrillicMap[char] || char).join('');
+        }
+        
         // Update the "showing X of Y results" counter
         function updateResultCounter() {
             const resultsText = unpaidSection.querySelector('.text-sm.text-gray-700');
             if (!resultsText) return;
             
-            const allRows = unpaidSection.querySelectorAll('tbody tr');
+            const allRows = unpaidSection.querySelectorAll('tbody > tr');
             const visibleRows = Array.from(allRows).filter(row => row.style.display !== 'none').length;
-            const totalRows = allRows.length;
             
             const firstSpan = resultsText.querySelector('span:first-of-type');
             if (firstSpan) {
@@ -708,20 +899,154 @@ document.addEventListener('DOMContentLoaded', function() {
         }
         
         // Add event listeners
-        searchButton.addEventListener('click', runSimpleSearch);
+        searchButton.addEventListener('click', runSearch);
         searchInput.addEventListener('keypress', function(e) {
             if (e.key === 'Enter') {
-                runSimpleSearch();
+                runSearch();
                 e.preventDefault();
             }
         });
         
         clearButton.addEventListener('click', function() {
             searchInput.value = '';
-            runSimpleSearch();
+            // Remove any previous result messages
+            const prevResults = document.getElementById('searchResultMessage');
+            if (prevResults) prevResults.remove();
+            runSearch();
         });
+        
+        // Add code to preserve scroll position when changing items per page
+        const perPageSelect = document.getElementById('unpaidPerPage');
+        if (perPageSelect) {
+            // Save current implementation
+            const originalChangePerPage = window.changeUnpaidPerPage;
+            
+            // Override with our improved version
+            window.changeUnpaidPerPage = function(perPage) {
+                // Save scroll position to session storage
+                sessionStorage.setItem('unpaidScrollPosition', window.scrollY);
+                
+                // Call the original function
+                if (typeof originalChangePerPage === 'function') {
+                    originalChangePerPage(perPage);
+                } else {
+                    // Fallback implementation
+                    const url = new URL(window.location.href);
+                    url.searchParams.set('unpaid_per_page', perPage);
+                    url.searchParams.set('unpaid_page', 1);
+                    window.location.href = url.toString();
+                }
+            };
+        }
+        
+        // Restore scroll position on page load
+        const savedScrollPosition = sessionStorage.getItem('unpaidScrollPosition');
+        if (savedScrollPosition) {
+            // Add a small delay to ensure the page is fully loaded
+            setTimeout(function() {
+                window.scrollTo(0, savedScrollPosition);
+                sessionStorage.removeItem('unpaidScrollPosition');
+            }, 100);
+        }
     }
 });
+// document.addEventListener('DOMContentLoaded', function() {
+//     // Create a simple search box and button
+//     const searchContainer = document.createElement('div');
+//     searchContainer.className = 'flex items-center mb-4 mt-4';
+    
+//     const searchLabel = document.createElement('span');
+//     searchLabel.textContent = 'Пребарувај : ';
+//     searchLabel.className = 'mr-2 font-bold';
+    
+//     const searchInput = document.createElement('input');
+//     searchInput.type = 'text';
+//     searchInput.id = 'simpleSearchInput';
+//     searchInput.placeholder = 'Внесете текст за пребарување...';
+//     searchInput.className = 'bg-white border border-gray-300 rounded px-3 py-2 text-sm w-64 mr-2';
+    
+//     const searchButton = document.createElement('button');
+//     searchButton.type = 'button';
+//     searchButton.id = 'simpleSearchButton';
+//     searchButton.className = 'bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg transition duration-150 ease-in-out';
+//     searchButton.textContent = 'Пребарај';
+    
+//     const clearButton = document.createElement('button');
+//     clearButton.type = 'button';
+//     clearButton.id = 'simpleClearButton';
+//     clearButton.className = 'bg-gray-300 hover:bg-gray-400 text-gray-800 px-4 py-2 rounded-lg ml-2 transition duration-150 ease-in-out';
+//     clearButton.textContent = 'Исчисти';
+    
+//     searchContainer.appendChild(searchLabel);
+//     searchContainer.appendChild(searchInput);
+//     searchContainer.appendChild(searchButton);
+//     searchContainer.appendChild(clearButton);
+    
+//     // Find the unpaid transactions section and add the search box
+//     const unpaidSection = document.getElementById('unpaidTransactionsSection');
+//     if (unpaidSection) {
+//         const firstElement = unpaidSection.querySelector('.bg-yellow-50') || unpaidSection.firstElementChild;
+//         unpaidSection.insertBefore(searchContainer, firstElement.nextSibling);
+        
+//         // Simple direct search function
+//         function runSimpleSearch() {
+//             const searchText = searchInput.value.toLowerCase().trim();
+//             if (!searchText) {
+//                 // If search text is empty, show all rows
+//                 unpaidSection.querySelectorAll('tbody tr').forEach(row => {
+//                     row.style.display = '';
+//                 });
+//                 updateResultCounter();
+//                 return;
+//             }
+            
+//             // Go through each row
+//             unpaidSection.querySelectorAll('tbody tr').forEach(row => {
+//                 // Get all text content from the row
+//                 const rowContent = row.textContent.toLowerCase();
+                
+//                 // If the row contains the search text, show it, otherwise hide it
+//                 if (rowContent.includes(searchText)) {
+//                     row.style.display = '';
+//                 } else {
+//                     row.style.display = 'none';
+//                 }
+//             });
+            
+//             // Update the results counter
+//             updateResultCounter();
+//         }
+        
+//         // Update the "showing X of Y results" counter
+//         function updateResultCounter() {
+//             const resultsText = unpaidSection.querySelector('.text-sm.text-gray-700');
+//             if (!resultsText) return;
+            
+//             const allRows = unpaidSection.querySelectorAll('tbody tr');
+//             const visibleRows = Array.from(allRows).filter(row => row.style.display !== 'none').length;
+//             const totalRows = allRows.length;
+            
+//             const firstSpan = resultsText.querySelector('span:first-of-type');
+//             if (firstSpan) {
+//                 firstSpan.textContent = visibleRows;
+//             }
+//         }
+        
+//         // Add event listeners
+//         searchButton.addEventListener('click', runSimpleSearch);
+//         searchInput.addEventListener('keypress', function(e) {
+//             if (e.key === 'Enter') {
+//                 runSimpleSearch();
+//                 e.preventDefault();
+//             }
+//         });
+        
+//         clearButton.addEventListener('click', function() {
+//             searchInput.value = '';
+//             runSimpleSearch();
+//         });
+//     }
+// });
 </script>
 
 

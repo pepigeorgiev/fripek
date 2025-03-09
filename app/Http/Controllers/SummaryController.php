@@ -692,7 +692,6 @@ private function getTransactionsForSummary($date)
 }
 
 
-
 private function paginateUnpaidTransactions($selectedDate, $companies)
 {
     try {
@@ -714,130 +713,150 @@ private function paginateUnpaidTransactions($selectedDate, $companies)
             ];
         }
 
-        // Get all company-date pairs with unpaid transactions first (lightweight query)
-        $companyDatePairs = DB::table('daily_transactions')
-            ->select('company_id', 'transaction_date')
-            ->whereIn('company_id', $cashCompanyIds)
-            ->where('is_paid', false)
+        // Get all unpaid transactions
+        $allTransactions = DailyTransaction::with(['breadType', 'company'])
             ->whereNotNull('bread_type_id')
-            ->groupBy('company_id', 'transaction_date')
-            ->havingRaw('SUM(delivered - returned - COALESCE(gratis, 0)) > 0')
+            ->whereHas('breadType')
+            ->where('is_paid', false)
+            ->whereIn('company_id', $cashCompanyIds)
+            ->where(DB::raw('delivered - returned - COALESCE(gratis, 0)'), '>', 0)
             ->orderBy('transaction_date', 'desc')
             ->get();
         
-        // Count total for pagination
-        $total = $companyDatePairs->count();
-        $lastPage = max(1, ceil($total / $perPage));
-        $page = max(1, min($page, $lastPage));
+        // Group transactions by company
+        $groupedByCompany = [];
+        $companyDatePairs = [];
+        $totalAmount = 0;
         
-        // Get the specific pairs for this page
-        $paginatedPairs = $companyDatePairs->forPage($page, $perPage);
+        // First, group the transactions by company
+        foreach ($allTransactions as $transaction) {
+            $companyId = $transaction->company_id;
+            $date = Carbon::parse($transaction->transaction_date)->toDateString();
+            $pairKey = $companyId . '_' . $date;
+            
+            if (!isset($groupedByCompany[$companyId])) {
+                $company = $companies->firstWhere('id', $companyId);
+                if (!$company) continue;
+                
+                $groupedByCompany[$companyId] = [
+                    'company_name' => $company->name,
+                    'company_id' => $companyId,
+                    'dates' => []
+                ];
+            }
+            
+            if (!isset($companyDatePairs[$pairKey])) {
+                $companyDatePairs[$pairKey] = [
+                    'company_id' => $companyId,
+                    'date' => $date,
+                    'transactions' => []
+                ];
+            }
+            
+            $companyDatePairs[$pairKey]['transactions'][] = $transaction;
+        }
         
-        $result = [];
-        $allTotal = 0; // This will store the accurate grand total
+        // Process the grouped transactions to create the final result format
+        $allResults = [];
+        $totalEntries = 0;
         
-        // Process each company-date pair for display
-        foreach ($paginatedPairs as $pair) {
-            // Get all transactions for this company and date
-            $transactions = DailyTransaction::with(['breadType', 'company'])
-                ->whereNotNull('bread_type_id')
-                ->whereHas('breadType')
-                ->where('is_paid', false)
-                ->whereHas('company', function($query) {
-                    $query->where('type', 'cash');
-                })
-                ->where('company_id', $pair->company_id)
-                ->whereDate('transaction_date', $pair->transaction_date)
-                ->where(DB::raw('delivered - returned - COALESCE(gratis, 0)'), '>', 0)
-                ->get();
+        // Sort company IDs alphabetically by company name
+        $companyIds = array_keys($groupedByCompany);
+        usort($companyIds, function($a, $b) use ($groupedByCompany) {
+            return strcmp($groupedByCompany[$a]['company_name'], $groupedByCompany[$b]['company_name']);
+        });
+        
+        // For each company, process all its date groups
+        foreach ($companyIds as $companyId) {
+            $companyData = $groupedByCompany[$companyId];
+            $companyName = $companyData['company_name'];
             
-            if ($transactions->isEmpty()) continue;
+            // Get all date pairs for this company
+            $companyPairs = array_filter($companyDatePairs, function($pair) use ($companyId) {
+                return $pair['company_id'] == $companyId;
+            });
             
-            // Get the company
-            $company = $companies->firstWhere('id', $pair->company_id);
-            if (!$company) continue;
+            // Sort dates in descending order
+            usort($companyPairs, function($a, $b) {
+                return strcmp($b['date'], $a['date']);
+            });
             
-            // Create payment entry
-            $payment = [
-                'company' => $company->name,
-                'company_id' => $pair->company_id,
-                'transaction_date' => $pair->transaction_date,
-                'breads' => []
-            ];
-            
-            $paymentTotal = 0;
-            $hasNetBread = false;
-            
-            // Process each transaction
-            foreach ($transactions as $transaction) {
-                if (!$transaction->breadType) continue;
+            // Process each date for this company
+            foreach ($companyPairs as $pair) {
+                $date = $pair['date'];
+                $transactions = $pair['transactions'];
                 
-                $delivered = $transaction->delivered;
-                $returned = $transaction->returned;
-                $gratis = $transaction->gratis ?? 0;
-                
-                $netBreads = $delivered - $returned - $gratis;
-                
-                // Skip if no net bread
-                if ($netBreads <= 0) continue;
-                
-                $hasNetBread = true;
-                
-                $prices = $transaction->breadType->getPriceForCompany($pair->company_id, $pair->transaction_date);
-                $price = $prices['price'];
-                
-                $totalForType = $netBreads * $price;
-                
-                $payment['breads'][$transaction->breadType->name] = [
-                    'delivered' => $delivered,
-                    'returned' => $returned,
-                    'gratis' => $gratis,
-                    'total' => $netBreads,
-                    'price' => $price,
-                    'potential_total' => $totalForType
+                // Prepare data for this company-date combination
+                $payment = [
+                    'company' => $companyName,
+                    'company_id' => $companyId,
+                    'transaction_date' => $date,
+                    'breads' => []
                 ];
                 
-                $paymentTotal += $totalForType;
-            }
-            
-            // Only include if there are actual unpaid amounts
-            if ($hasNetBread && $paymentTotal > 0) {
-                $payment['total_amount'] = $paymentTotal;
-                $result[] = $payment;
-                $allTotal += $paymentTotal; // Add to the grand total
+                $paymentTotal = 0;
+                
+                // Process all transactions for this date
+                foreach ($transactions as $transaction) {
+                    if (!$transaction->breadType) continue;
+                    
+                    $breadName = $transaction->breadType->name;
+                    $delivered = $transaction->delivered;
+                    $returned = $transaction->returned;
+                    $gratis = $transaction->gratis ?? 0;
+                    $netBreads = $delivered - $returned - $gratis;
+                    
+                    if ($netBreads <= 0) continue;
+                    
+                    $price = $transaction->breadType->getPriceForCompany($companyId, $date)['price'];
+                    $totalForBread = $netBreads * $price;
+                    
+                    // Initialize or update bread data
+                    if (!isset($payment['breads'][$breadName])) {
+                        $payment['breads'][$breadName] = [
+                            'delivered' => 0,
+                            'returned' => 0,
+                            'gratis' => 0,
+                            'total' => 0,
+                            'price' => $price,
+                            'potential_total' => 0
+                        ];
+                    }
+                    
+                    $payment['breads'][$breadName]['delivered'] += $delivered;
+                    $payment['breads'][$breadName]['returned'] += $returned;
+                    $payment['breads'][$breadName]['gratis'] += $gratis;
+                    $payment['breads'][$breadName]['total'] += $netBreads;
+                    $payment['breads'][$breadName]['potential_total'] += $totalForBread;
+                    
+                    $paymentTotal += $totalForBread;
+                }
+                
+                if ($paymentTotal > 0) {
+                    $payment['total_amount'] = $paymentTotal;
+                    $allResults[] = $payment;
+                    $totalAmount += $paymentTotal;
+                    $totalEntries++;
+                }
             }
         }
         
-        // Calculate the accurate grand total for ALL unpaid transactions (not just paginated ones)
-        $accurateTotal = 0;
+        // Calculate pagination
+        $total = $totalEntries;
+        $lastPage = max(1, ceil($total / $perPage));
+        $page = max(1, min($page, $lastPage));
+        $offset = ($page - 1) * $perPage;
         
-        foreach ($companyDatePairs as $pair) {
-            $pairTotal = DailyTransaction::where('company_id', $pair->company_id)
-                ->whereDate('transaction_date', $pair->transaction_date)
-                ->where('is_paid', false)
-                ->where(DB::raw('delivered - returned - COALESCE(gratis, 0)'), '>', 0)
-                ->with('breadType')
-                ->get()
-                ->sum(function ($transaction) use ($pair) {
-                    if (!$transaction->breadType) return 0;
-                    
-                    $netBreads = $transaction->delivered - $transaction->returned - ($transaction->gratis ?? 0);
-                    if ($netBreads <= 0) return 0;
-                    
-                    $price = $transaction->breadType->getPriceForCompany($pair->company_id, $pair->transaction_date)['price'];
-                    return $netBreads * $price;
-                });
-            
-            $accurateTotal += $pairTotal;
-        }
+        // Get paginated results
+        $paginatedResults = array_slice($allResults, $offset, $perPage);
         
         return [
-            'items' => $result,
+            'items' => $paginatedResults,
             'current_page' => $page,
             'per_page' => $perPage,
             'last_page' => $lastPage,
             'total' => $total,
-            'total_amount' => $accurateTotal // Use the accurately calculated total
+            'total_amount' => $totalAmount
         ];
         
     } catch (\Exception $e) {
@@ -856,6 +875,7 @@ private function paginateUnpaidTransactions($selectedDate, $companies)
         ];
     }
 }
+
 
 
 
