@@ -117,16 +117,27 @@ class SummaryController extends Controller
             $breadSales->whereIn('company_id', $user->companies->pluck('id'));
         } 
         // If admin and no specific user selected (All Users view)
-        elseif ($currentUser->isAdmin() || $currentUser->role === 'super_admin') {
-            // Get fresh aggregated totals for TODAY only
-            $breadSales = BreadSale::whereDate('transaction_date', Carbon::today())
-                ->select('bread_type_id')
-                ->selectRaw('SUM(CASE WHEN DATE(transaction_date) = ? THEN returned_amount ELSE 0 END) as returned_amount', [$selectedDate])
-                ->selectRaw('SUM(CASE WHEN DATE(transaction_date) = ? THEN sold_amount ELSE 0 END) as sold_amount', [$selectedDate])
-                ->selectRaw('SUM(CASE WHEN DATE(transaction_date) = ? THEN old_bread_sold ELSE 0 END) as old_bread_sold', [$selectedDate])
-                ->selectRaw('SUM(CASE WHEN DATE(transaction_date) = ? THEN returned_amount_1 ELSE 0 END) as returned_amount_1', [$selectedDate])
-                ->groupBy('bread_type_id');
-        }
+        // If admin and no specific user selected (All Users view)
+elseif ($currentUser->isAdmin() || $currentUser->role === 'super_admin') {
+    // Change this line
+    $breadSales = BreadSale::whereDate('transaction_date', $selectedDate) // Changed from Carbon::today()
+        ->select('bread_type_id')
+        ->selectRaw('SUM(CASE WHEN DATE(transaction_date) = ? THEN returned_amount ELSE 0 END) as returned_amount', [$selectedDate])
+        ->selectRaw('SUM(CASE WHEN DATE(transaction_date) = ? THEN sold_amount ELSE 0 END) as sold_amount', [$selectedDate])
+        ->selectRaw('SUM(CASE WHEN DATE(transaction_date) = ? THEN old_bread_sold ELSE 0 END) as old_bread_sold', [$selectedDate])
+        ->selectRaw('SUM(CASE WHEN DATE(transaction_date) = ? THEN returned_amount_1 ELSE 0 END) as returned_amount_1', [$selectedDate])
+        ->groupBy('bread_type_id');
+}
+        // elseif ($currentUser->isAdmin() || $currentUser->role === 'super_admin') {
+        //     // Get fresh aggregated totals for TODAY only
+        //     $breadSales = BreadSale::whereDate('transaction_date', Carbon::today())
+        //         ->select('bread_type_id')
+        //         ->selectRaw('SUM(CASE WHEN DATE(transaction_date) = ? THEN returned_amount ELSE 0 END) as returned_amount', [$selectedDate])
+        //         ->selectRaw('SUM(CASE WHEN DATE(transaction_date) = ? THEN sold_amount ELSE 0 END) as sold_amount', [$selectedDate])
+        //         ->selectRaw('SUM(CASE WHEN DATE(transaction_date) = ? THEN old_bread_sold ELSE 0 END) as old_bread_sold', [$selectedDate])
+        //         ->selectRaw('SUM(CASE WHEN DATE(transaction_date) = ? THEN returned_amount_1 ELSE 0 END) as returned_amount_1', [$selectedDate])
+        //         ->groupBy('bread_type_id');
+        // }
 
 
             $allTransactions = $this->getTransactionsForSummary($selectedDate);
@@ -243,47 +254,7 @@ class SummaryController extends Controller
         return $counts;
     }
 
-//     private function calculateBreadCounts($transactions, $date, $breadSales)
-// {
-//     $counts = [];
-//     $allBreadTypes = BreadType::where('is_active', true)->get();
-    
-//     // Initialize counts for all bread types
-//     foreach ($allBreadTypes as $breadType) {
-//         // Only use bread sales data if it exists for this specific bread type
-//         $breadSale = $breadSales->get($breadType->id);
-        
-//         $counts[$breadType->name] = [
-//             'sent' => 0,
-//             'returned' => $breadSale ? $breadSale->returned_amount : 0,
-//             'sold' => $breadSale ? $breadSale->sold_amount : 0,
-//             'price' => $breadType->price,
-//             'total_price' => 0
-//         ];
-//     }
-    
-//     // Add transaction data if exists
-//     if (!empty($transactions)) {
-//         foreach ($transactions as $companyTransactions) {
-//             foreach ($companyTransactions as $transaction) {
-//                 $breadType = $transaction->breadType;
-//                 if (!$breadType) continue;
-                
-//                 $breadTypeName = $breadType->name;
-//                 if (isset($counts[$breadTypeName])) {
-//                     $counts[$breadTypeName]['sent'] += $transaction->delivered;
-//                 }
-//             }
-//         }
-//     }
-    
-//     // Calculate totals using the correct data
-//     foreach ($counts as $breadTypeName => &$count) {
-//         $count['total_price'] = $count['sold'] * $count['price'];
-//     }
-    
-//     return $counts;
-// }
+
 
 
 private function calculateAllPayments($transactions, $breadPrices, $userCompanies)
@@ -372,93 +343,6 @@ private function calculateAllPayments($transactions, $breadPrices, $userCompanie
 }
 
 
-// private function calculateAllPayments($transactions, $breadPrices, $userCompanies)
-// {
-//     $cashPayments = [];
-//     $invoicePayments = [];
-//     $overallTotal = 0;
-//     $overallInvoiceTotal = 0;
-//     $selectedDate = request('date', now()->toDateString());
-
-//     foreach ($transactions as $companyId => $companyTransactions) {
-//         $company = $userCompanies->firstWhere('id', $companyId);
-//         if (!$company) continue;
-
-//         $payment = [
-//             'company' => $company->name,
-//             'company_id' => $companyId,
-//             'breads' => [],
-//             'breadTotals' => [], // Track totals per bread type
-//             'total' => 0
-//         ];
-
-//         foreach ($companyTransactions as $transaction) {
-//             // Skip if bread type is missing
-//             if (!$transaction->breadType) continue;
-            
-//             // For cash companies, include only if it's paid
-//             if ($company->type === 'cash' && !$transaction->is_paid) {
-//                 continue;
-//             }
-
-//             // For paid transactions, include only if paid on the selected date
-//             if ($transaction->is_paid && 
-//                 $transaction->paid_date !== null && 
-//                 $transaction->paid_date !== $selectedDate) {
-//                 continue;
-//             }
-
-//             $breadName = $transaction->breadType->name;
-//             $delivered = $transaction->delivered;
-//             $returned = $transaction->returned;
-//             $gratis = $transaction->gratis ?? 0;
-//             $netBreads = $delivered - $returned - $gratis;
-            
-//             if ($netBreads <= 0) continue;
-            
-//             $price = $transaction->breadType->getPriceForCompany($company->id, $transaction->transaction_date)['price'];
-//             $totalForBread = $netBreads * $price;
-            
-//             // Initialize this bread type if not already tracked
-//             if (!isset($payment['breadTotals'][$breadName])) {
-//                 $payment['breadTotals'][$breadName] = [
-//                     'netBreads' => 0,
-//                     'price' => $price,
-//                     'total' => 0
-//                 ];
-//             }
-            
-//             // Add this transaction's values to the bread type totals
-//             $payment['breadTotals'][$breadName]['netBreads'] += $netBreads;
-//             $payment['breadTotals'][$breadName]['total'] += $totalForBread;
-//             $payment['total'] += $totalForBread;
-//         }
-        
-//         // Now format the bread details for display
-//         foreach ($payment['breadTotals'] as $breadName => $totals) {
-//             $payment['breads'][$breadName] = "{$totals['netBreads']} x {$totals['price']} = " . 
-//                 number_format($totals['total'], 2);
-//         }
-
-//         if ($payment['total'] > 0) {
-//             if ($company->type === 'cash') {
-//                 $cashPayments[] = $payment;
-//                 $overallTotal += $payment['total'];
-//             } else {
-//                 $invoicePayments[] = $payment;
-//                 $overallInvoiceTotal += $payment['total'];
-//             }
-//         }
-//     }
-
-//     return [
-//         'cashPayments' => $cashPayments,
-//         'invoicePayments' => $invoicePayments,
-//         'overallTotal' => $overallTotal,
-//         'overallInvoiceTotal' => $overallInvoiceTotal
-//     ];
-// }
-
 
 
 
@@ -514,22 +398,7 @@ private function getTransactionsForSummary($date)
     return $allTransactions->groupBy('company_id');
 }
 
-// private function getTransactionsForSummary($date)
-// {
-//     return DailyTransaction::with(['breadType', 'company'])
-//         ->where(function ($query) use ($date) {
-//             $query->where(function ($q) use ($date) {
-//                 // Include transactions from the selected date
-//                 $q->whereDate('transaction_date', $date);
-//             })->orWhere(function ($q) use ($date) {
-//                 // Include transactions that were paid on the selected date
-//                 $q->where('is_paid', true)
-//                     ->whereDate('paid_date', $date);
-//             });
-//         })
-//         ->get()
-//         ->groupBy('company_id');
-// }
+
 
 
 
@@ -1167,9 +1036,7 @@ private function getUnpaidTransactions($selectedDate, $companies)
 
 
 
-/**
- * Updated markAsPaid method for individual transactions
- */
+
 
  public function markAsPaid(Request $request)
 {
@@ -1220,9 +1087,7 @@ private function getUnpaidTransactions($selectedDate, $companies)
     }
 }
 
-/**
- * Corrected markMultipleAsPaid method to prevent duplication of quantities
- */
+
 public function markMultipleAsPaid(Request $request)
 {
     try {
