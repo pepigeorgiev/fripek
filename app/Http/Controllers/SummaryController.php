@@ -198,50 +198,92 @@ class SummaryController extends Controller
     
 
 
-    
-    
-
     private function calculateBreadCounts($transactions, $date, $breadSales)
-{
-    $counts = [];
-    $allBreadTypes = BreadType::where('is_active', true)->get();
-    
-    // Initialize counts for all bread types
-    foreach ($allBreadTypes as $breadType) {
-        // Only use bread sales data if it exists for this specific bread type
-        $breadSale = $breadSales->get($breadType->id);
+    {
+        $counts = [];
+        $allBreadTypes = BreadType::where('is_active', true)->get();
         
-        $counts[$breadType->name] = [
-            'sent' => 0,
-            'returned' => $breadSale ? $breadSale->returned_amount : 0,
-            'sold' => $breadSale ? $breadSale->sold_amount : 0,
-            'price' => $breadType->price,
-            'total_price' => 0
-        ];
-    }
-    
-    // Add transaction data if exists
-    if (!empty($transactions)) {
-        foreach ($transactions as $companyTransactions) {
-            foreach ($companyTransactions as $transaction) {
-                $breadType = $transaction->breadType;
-                if (!$breadType) continue;
-                
-                $breadTypeName = $breadType->name;
-                if (isset($counts[$breadTypeName])) {
-                    $counts[$breadTypeName]['sent'] += $transaction->delivered;
+        // Initialize counts for all bread types
+        foreach ($allBreadTypes as $breadType) {
+            // Only use bread sales data if it exists for this specific bread type
+            $breadSale = $breadSales->get($breadType->id);
+            
+            // For tables 1 & 2, we want to use the base price of the bread type
+            $basePrice = $breadType->price;
+            
+            $counts[$breadType->name] = [
+                'sent' => 0,
+                'returned' => $breadSale ? $breadSale->returned_amount : 0,
+                'sold' => $breadSale ? $breadSale->sold_amount : 0,
+                'price' => $basePrice, // This is the base price, not the company-specific price
+                'total_price' => 0
+            ];
+        }
+        
+        // Add transaction data if exists
+        if (!empty($transactions)) {
+            foreach ($transactions as $companyTransactions) {
+                foreach ($companyTransactions as $transaction) {
+                    $breadType = $transaction->breadType;
+                    if (!$breadType) continue;
+                    
+                    $breadTypeName = $breadType->name;
+                    if (isset($counts[$breadTypeName])) {
+                        $counts[$breadTypeName]['sent'] += $transaction->delivered;
+                    }
                 }
             }
         }
+        
+        // Calculate totals using the base price
+        foreach ($counts as $breadTypeName => &$count) {
+            $count['total_price'] = $count['sold'] * $count['price'];
+        }
+        
+        return $counts;
     }
+
+//     private function calculateBreadCounts($transactions, $date, $breadSales)
+// {
+//     $counts = [];
+//     $allBreadTypes = BreadType::where('is_active', true)->get();
     
-    // Calculate totals using the correct data
-    foreach ($counts as $breadTypeName => &$count) {
-        $count['total_price'] = $count['sold'] * $count['price'];
-    }
+//     // Initialize counts for all bread types
+//     foreach ($allBreadTypes as $breadType) {
+//         // Only use bread sales data if it exists for this specific bread type
+//         $breadSale = $breadSales->get($breadType->id);
+        
+//         $counts[$breadType->name] = [
+//             'sent' => 0,
+//             'returned' => $breadSale ? $breadSale->returned_amount : 0,
+//             'sold' => $breadSale ? $breadSale->sold_amount : 0,
+//             'price' => $breadType->price,
+//             'total_price' => 0
+//         ];
+//     }
     
-    return $counts;
-}
+//     // Add transaction data if exists
+//     if (!empty($transactions)) {
+//         foreach ($transactions as $companyTransactions) {
+//             foreach ($companyTransactions as $transaction) {
+//                 $breadType = $transaction->breadType;
+//                 if (!$breadType) continue;
+                
+//                 $breadTypeName = $breadType->name;
+//                 if (isset($counts[$breadTypeName])) {
+//                     $counts[$breadTypeName]['sent'] += $transaction->delivered;
+//                 }
+//             }
+//         }
+//     }
+    
+//     // Calculate totals using the correct data
+//     foreach ($counts as $breadTypeName => &$count) {
+//         $count['total_price'] = $count['sold'] * $count['price'];
+//     }
+    
+//     return $counts;
+// }
 
 
 private function calculateAllPayments($transactions, $breadPrices, $userCompanies)
@@ -260,20 +302,17 @@ private function calculateAllPayments($transactions, $breadPrices, $userCompanie
             'company' => $company->name,
             'company_id' => $companyId,
             'breads' => [],
-            'breadTotals' => [], // Track totals per bread type
+            'breadTotals' => [],
             'total' => 0
         ];
 
         foreach ($companyTransactions as $transaction) {
-            // Skip if bread type is missing
             if (!$transaction->breadType) continue;
             
-            // For cash companies, include only if it's paid
             if ($company->type === 'cash' && !$transaction->is_paid) {
                 continue;
             }
 
-            // For paid transactions, include only if paid on the selected date
             if ($transaction->is_paid && 
                 $transaction->paid_date !== null && 
                 $transaction->paid_date !== $selectedDate) {
@@ -288,10 +327,13 @@ private function calculateAllPayments($transactions, $breadPrices, $userCompanie
             
             if ($netBreads <= 0) continue;
             
-            $price = $transaction->breadType->getPriceForCompany($company->id, $transaction->transaction_date)['price'];
+            // Ensure we're using the correct pricing method from the bread type model
+            // This should match what's used in DailyTransactionController
+            $priceData = $transaction->breadType->getPriceForCompany($company->id, $transaction->transaction_date);
+            $price = $priceData['price'];
+            
             $totalForBread = $netBreads * $price;
             
-            // Initialize this bread type if not already tracked
             if (!isset($payment['breadTotals'][$breadName])) {
                 $payment['breadTotals'][$breadName] = [
                     'netBreads' => 0,
@@ -300,13 +342,11 @@ private function calculateAllPayments($transactions, $breadPrices, $userCompanie
                 ];
             }
             
-            // Add this transaction's values to the bread type totals
             $payment['breadTotals'][$breadName]['netBreads'] += $netBreads;
             $payment['breadTotals'][$breadName]['total'] += $totalForBread;
             $payment['total'] += $totalForBread;
         }
         
-        // Now format the bread details for display
         foreach ($payment['breadTotals'] as $breadName => $totals) {
             $payment['breads'][$breadName] = "{$totals['netBreads']} x {$totals['price']} = " . 
                 number_format($totals['total'], 2);
@@ -330,6 +370,94 @@ private function calculateAllPayments($transactions, $breadPrices, $userCompanie
         'overallInvoiceTotal' => $overallInvoiceTotal
     ];
 }
+
+
+// private function calculateAllPayments($transactions, $breadPrices, $userCompanies)
+// {
+//     $cashPayments = [];
+//     $invoicePayments = [];
+//     $overallTotal = 0;
+//     $overallInvoiceTotal = 0;
+//     $selectedDate = request('date', now()->toDateString());
+
+//     foreach ($transactions as $companyId => $companyTransactions) {
+//         $company = $userCompanies->firstWhere('id', $companyId);
+//         if (!$company) continue;
+
+//         $payment = [
+//             'company' => $company->name,
+//             'company_id' => $companyId,
+//             'breads' => [],
+//             'breadTotals' => [], // Track totals per bread type
+//             'total' => 0
+//         ];
+
+//         foreach ($companyTransactions as $transaction) {
+//             // Skip if bread type is missing
+//             if (!$transaction->breadType) continue;
+            
+//             // For cash companies, include only if it's paid
+//             if ($company->type === 'cash' && !$transaction->is_paid) {
+//                 continue;
+//             }
+
+//             // For paid transactions, include only if paid on the selected date
+//             if ($transaction->is_paid && 
+//                 $transaction->paid_date !== null && 
+//                 $transaction->paid_date !== $selectedDate) {
+//                 continue;
+//             }
+
+//             $breadName = $transaction->breadType->name;
+//             $delivered = $transaction->delivered;
+//             $returned = $transaction->returned;
+//             $gratis = $transaction->gratis ?? 0;
+//             $netBreads = $delivered - $returned - $gratis;
+            
+//             if ($netBreads <= 0) continue;
+            
+//             $price = $transaction->breadType->getPriceForCompany($company->id, $transaction->transaction_date)['price'];
+//             $totalForBread = $netBreads * $price;
+            
+//             // Initialize this bread type if not already tracked
+//             if (!isset($payment['breadTotals'][$breadName])) {
+//                 $payment['breadTotals'][$breadName] = [
+//                     'netBreads' => 0,
+//                     'price' => $price,
+//                     'total' => 0
+//                 ];
+//             }
+            
+//             // Add this transaction's values to the bread type totals
+//             $payment['breadTotals'][$breadName]['netBreads'] += $netBreads;
+//             $payment['breadTotals'][$breadName]['total'] += $totalForBread;
+//             $payment['total'] += $totalForBread;
+//         }
+        
+//         // Now format the bread details for display
+//         foreach ($payment['breadTotals'] as $breadName => $totals) {
+//             $payment['breads'][$breadName] = "{$totals['netBreads']} x {$totals['price']} = " . 
+//                 number_format($totals['total'], 2);
+//         }
+
+//         if ($payment['total'] > 0) {
+//             if ($company->type === 'cash') {
+//                 $cashPayments[] = $payment;
+//                 $overallTotal += $payment['total'];
+//             } else {
+//                 $invoicePayments[] = $payment;
+//                 $overallInvoiceTotal += $payment['total'];
+//             }
+//         }
+//     }
+
+//     return [
+//         'cashPayments' => $cashPayments,
+//         'invoicePayments' => $invoicePayments,
+//         'overallTotal' => $overallTotal,
+//         'overallInvoiceTotal' => $overallInvoiceTotal
+//     ];
+// }
 
 
 

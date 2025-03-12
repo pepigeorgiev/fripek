@@ -232,7 +232,8 @@ public function update(Request $request, BreadType $breadType)
         return view('bread-types.company-prices', compact('breadType', 'companies'));
     }
 
-public function updateCompanyPrices(Request $request, BreadType $breadType, Company $company)
+
+    public function updateCompanyPrices(Request $request, BreadType $breadType, Company $company)
 {
     $data = $request->validate([
         'companies.'.$company->id.'.price' => 'required|numeric|min:0',
@@ -242,6 +243,26 @@ public function updateCompanyPrices(Request $request, BreadType $breadType, Comp
     ]);
 
     $companyData = $data['companies'][$company->id];
+    
+    // Check if price_group has changed and update the price based on price group
+    $selectedPriceGroup = (int)$companyData['price_group'];
+    $priceGroupField = $selectedPriceGroup > 0 ? "price_group_{$selectedPriceGroup}" : "price";
+    $groupPrice = $breadType->$priceGroupField ?? $breadType->price;
+    
+    // If the price is different from the group price and not manually changed, use the group price
+    if ($selectedPriceGroup > 0 && !$request->has('manual_price_override') && 
+        abs((float)$companyData['price'] - (float)$groupPrice) < 0.01) {
+        $companyData['price'] = $groupPrice;
+    }
+    
+    // Log the price calculation
+    \Log::info("Updating company price from UI", [
+        'bread_type' => $breadType->name,
+        'company' => $company->name,
+        'selected_price_group' => $selectedPriceGroup,
+        'group_price' => $groupPrice,
+        'final_price' => $companyData['price']
+    ]);
     
     // Add created_by to the data array
     $pivotData = [
@@ -270,6 +291,44 @@ public function updateCompanyPrices(Request $request, BreadType $breadType, Comp
 
     return back()->with('success', 'Цените се успешно зачувани за ' . $company->name);
 }
+// public function updateCompanyPrices(Request $request, BreadType $breadType, Company $company)
+// {
+//     $data = $request->validate([
+//         'companies.'.$company->id.'.price' => 'required|numeric|min:0',
+//         'companies.'.$company->id.'.old_price' => 'required|numeric|min:0',
+//         'companies.'.$company->id.'.price_group' => 'required|integer|min:0|max:5',
+//         'companies.'.$company->id.'.valid_from' => 'required|date|after_or_equal:today',
+//     ]);
+
+//     $companyData = $data['companies'][$company->id];
+    
+//     // Add created_by to the data array
+//     $pivotData = [
+//         'price' => $companyData['price'],
+//         'old_price' => $companyData['old_price'],
+//         'price_group' => $companyData['price_group'],
+//         'valid_from' => $companyData['valid_from'],
+//         'created_by' => auth()->id()
+//     ];
+    
+//     // Check if the relationship exists
+//     $existingRelation = $breadType->companies()
+//         ->where('company_id', $company->id)
+//         ->exists();
+
+//     if ($existingRelation) {
+//         $breadType->companies()->updateExistingPivot($company->id, $pivotData);
+//     } else {
+//         $breadType->companies()->attach($company->id, $pivotData);
+//     }
+
+//     // Also update the company's price_group if it changed
+//     if ($company->price_group != $companyData['price_group']) {
+//         $company->update(['price_group' => $companyData['price_group']]);
+//     }
+
+//     return back()->with('success', 'Цените се успешно зачувани за ' . $company->name);
+// }
 
 
 

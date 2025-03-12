@@ -1,4 +1,12 @@
+@php
+    \Log::debug('Bread counts and prices in summary view', [
+        'company' => $company->toArray(),
+        'breadCounts' => $breadCounts
+    ]);
+@endphp
+
 @extends('layouts.app')
+
 
 @section('content')
 <style>
@@ -950,103 +958,7 @@
         }
     }
 });
-// document.addEventListener('DOMContentLoaded', function() {
-//     // Create a simple search box and button
-//     const searchContainer = document.createElement('div');
-//     searchContainer.className = 'flex items-center mb-4 mt-4';
-    
-//     const searchLabel = document.createElement('span');
-//     searchLabel.textContent = 'Пребарувај : ';
-//     searchLabel.className = 'mr-2 font-bold';
-    
-//     const searchInput = document.createElement('input');
-//     searchInput.type = 'text';
-//     searchInput.id = 'simpleSearchInput';
-//     searchInput.placeholder = 'Внесете текст за пребарување...';
-//     searchInput.className = 'bg-white border border-gray-300 rounded px-3 py-2 text-sm w-64 mr-2';
-    
-//     const searchButton = document.createElement('button');
-//     searchButton.type = 'button';
-//     searchButton.id = 'simpleSearchButton';
-//     searchButton.className = 'bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg transition duration-150 ease-in-out';
-//     searchButton.textContent = 'Пребарај';
-    
-//     const clearButton = document.createElement('button');
-//     clearButton.type = 'button';
-//     clearButton.id = 'simpleClearButton';
-//     clearButton.className = 'bg-gray-300 hover:bg-gray-400 text-gray-800 px-4 py-2 rounded-lg ml-2 transition duration-150 ease-in-out';
-//     clearButton.textContent = 'Исчисти';
-    
-//     searchContainer.appendChild(searchLabel);
-//     searchContainer.appendChild(searchInput);
-//     searchContainer.appendChild(searchButton);
-//     searchContainer.appendChild(clearButton);
-    
-//     // Find the unpaid transactions section and add the search box
-//     const unpaidSection = document.getElementById('unpaidTransactionsSection');
-//     if (unpaidSection) {
-//         const firstElement = unpaidSection.querySelector('.bg-yellow-50') || unpaidSection.firstElementChild;
-//         unpaidSection.insertBefore(searchContainer, firstElement.nextSibling);
-        
-//         // Simple direct search function
-//         function runSimpleSearch() {
-//             const searchText = searchInput.value.toLowerCase().trim();
-//             if (!searchText) {
-//                 // If search text is empty, show all rows
-//                 unpaidSection.querySelectorAll('tbody tr').forEach(row => {
-//                     row.style.display = '';
-//                 });
-//                 updateResultCounter();
-//                 return;
-//             }
-            
-//             // Go through each row
-//             unpaidSection.querySelectorAll('tbody tr').forEach(row => {
-//                 // Get all text content from the row
-//                 const rowContent = row.textContent.toLowerCase();
-                
-//                 // If the row contains the search text, show it, otherwise hide it
-//                 if (rowContent.includes(searchText)) {
-//                     row.style.display = '';
-//                 } else {
-//                     row.style.display = 'none';
-//                 }
-//             });
-            
-//             // Update the results counter
-//             updateResultCounter();
-//         }
-        
-//         // Update the "showing X of Y results" counter
-//         function updateResultCounter() {
-//             const resultsText = unpaidSection.querySelector('.text-sm.text-gray-700');
-//             if (!resultsText) return;
-            
-//             const allRows = unpaidSection.querySelectorAll('tbody tr');
-//             const visibleRows = Array.from(allRows).filter(row => row.style.display !== 'none').length;
-//             const totalRows = allRows.length;
-            
-//             const firstSpan = resultsText.querySelector('span:first-of-type');
-//             if (firstSpan) {
-//                 firstSpan.textContent = visibleRows;
-//             }
-//         }
-        
-//         // Add event listeners
-//         searchButton.addEventListener('click', runSimpleSearch);
-//         searchInput.addEventListener('keypress', function(e) {
-//             if (e.key === 'Enter') {
-//                 runSimpleSearch();
-//                 e.preventDefault();
-//             }
-//         });
-        
-//         clearButton.addEventListener('click', function() {
-//             searchInput.value = '';
-//             runSimpleSearch();
-//         });
-//     }
-// });
+
 </script>
 
 

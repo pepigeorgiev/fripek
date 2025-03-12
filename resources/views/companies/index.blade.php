@@ -26,6 +26,7 @@
                 @endforeach
             </select>
         </div>
+        
 
         <div class="w-64">
             <label class="block text-sm font-medium text-gray-700 mb-2">Пребарај компанија</label>
@@ -240,6 +241,7 @@
             </div>
 
             <form action="{{ route('companies.update', $company) }}" method="POST" class="p-4">
+                
     @csrf
     @method('PUT')
     
@@ -329,6 +331,9 @@
         <option value="5" {{ $company->price_group == 5 ? 'selected' : '' }}>Ценовна група 5</option>
     </select>
 </div>
+<a href="{{ route('companies.manage-bread-types', $company) }}" class="btn btn-sm btn-info" title="Управувај со лебови">
+                <i class="fas fa-bread-slice"></i> Поврзи Артикли
+            </a>
                 
 
                 <div class="flex space-x-3 mt-6">

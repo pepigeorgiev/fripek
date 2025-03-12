@@ -141,51 +141,88 @@ class DailyTransaction extends Model
             $this->transaction_date
         );
     }
-    
-    
-    public static function calculatePriceForBreadType(BreadType $breadType, Company $company, $date)
+
+    public static function calculatePriceForBreadType($breadType, $company, $date)
     {
-        // Log the call for debugging
-        Log::debug('Calculating price for bread type', [
-            'bread_type' => $breadType->name,
-            'company' => $company->name,
-            'company_price_group' => $company->price_group,
-            'date' => $date instanceof \DateTime ? $date->format('Y-m-d') : $date
-        ]);
-        
-        // Format date if it's a DateTime object
-        if ($date instanceof \DateTime) {
-            $date = $date->format('Y-m-d');
-        }
-        
-        // Step 1: Check for specific price in the pivot table
+        // First check if there's a specific price in the pivot table
         $specificPrice = DB::table('bread_type_company')
             ->where('bread_type_id', $breadType->id)
             ->where('company_id', $company->id)
             ->where('valid_from', '<=', $date)
             ->orderBy('valid_from', 'desc')
-            ->value('price');
+            ->first();
             
-        if ($specificPrice !== null) {
-            Log::debug('Using specific price from pivot table', ['price' => $specificPrice]);
-            return $specificPrice;
+        if ($specificPrice && isset($specificPrice->price)) {
+            \Log::debug('Using specific price from pivot table', ['price' => $specificPrice->price]);
+            return $specificPrice->price;
         }
         
-        // Step 2: Use company's price group if set
+        // If no specific price exists, calculate based on price group
         $priceGroup = $company->price_group;
-        if ($priceGroup > 0) {
+        \Log::debug('Calculating price for bread type', [
+            'bread_type' => $breadType->name,
+            'company' => $company->name,
+            'company_price_group' => $priceGroup,
+            'date' => $date
+        ]);
+        
+        // Determine price based on company's price group
+        if ($priceGroup === 0 || $priceGroup === null) {
+            return $breadType->price;
+        } else {
             $priceGroupField = "price_group_{$priceGroup}";
-            
-            if (isset($breadType->$priceGroupField) && $breadType->$priceGroupField !== null) {
-                Log::debug("Using price group {$priceGroup}", ['price' => $breadType->$priceGroupField]);
+            if (isset($breadType->$priceGroupField) && $breadType->$priceGroupField > 0) {
                 return $breadType->$priceGroupField;
+            } else {
+                return $breadType->price;
             }
         }
-        
-        // Step 3: Fall back to default price
-        Log::debug('Using default price', ['price' => $breadType->price]);
-        return $breadType->price;
     }
+    
+    
+    // public static function calculatePriceForBreadType(BreadType $breadType, Company $company, $date)
+    // {
+    //     // Log the call for debugging
+    //     Log::debug('Calculating price for bread type', [
+    //         'bread_type' => $breadType->name,
+    //         'company' => $company->name,
+    //         'company_price_group' => $company->price_group,
+    //         'date' => $date instanceof \DateTime ? $date->format('Y-m-d') : $date
+    //     ]);
+        
+    //     // Format date if it's a DateTime object
+    //     if ($date instanceof \DateTime) {
+    //         $date = $date->format('Y-m-d');
+    //     }
+        
+    //     // Step 1: Check for specific price in the pivot table
+    //     $specificPrice = DB::table('bread_type_company')
+    //         ->where('bread_type_id', $breadType->id)
+    //         ->where('company_id', $company->id)
+    //         ->where('valid_from', '<=', $date)
+    //         ->orderBy('valid_from', 'desc')
+    //         ->value('price');
+            
+    //     if ($specificPrice !== null) {
+    //         Log::debug('Using specific price from pivot table', ['price' => $specificPrice]);
+    //         return $specificPrice;
+    //     }
+        
+    //     // Step 2: Use company's price group if set
+    //     $priceGroup = $company->price_group;
+    //     if ($priceGroup > 0) {
+    //         $priceGroupField = "price_group_{$priceGroup}";
+            
+    //         if (isset($breadType->$priceGroupField) && $breadType->$priceGroupField !== null) {
+    //             Log::debug("Using price group {$priceGroup}", ['price' => $breadType->$priceGroupField]);
+    //             return $breadType->$priceGroupField;
+    //         }
+    //     }
+        
+    //     // Step 3: Fall back to default price
+    //     Log::debug('Using default price', ['price' => $breadType->price]);
+    //     return $breadType->price;
+    // }
 
     public function breadType()
     {

@@ -54,7 +54,51 @@
     
     <div class="bg-white p-2 md:p-6 rounded shadow">
         <!-- Mobile-friendly grid -->
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-2 md:gap-4 mb-4 md:mb-6">
+
+        <!-- Replace your company selection section with this form-based approach -->
+        <form id="filterForm" method="GET" action="{{ route('daily-transactions.create') }}">
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-2 md:gap-4 mb-4 md:mb-6">
+        <div>
+            <label for="company_id" class="block text-sm font-medium text-gray-700">Компанија</label>
+            <select id="company_id" name="company_id" class="company-select mt-1 block w-full text-sm md:text-base rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500" onchange="this.form.submit()">
+                <option value="">Изберете компанија</option>
+                @foreach($companies as $company)
+                    <option value="{{ $company->id }}" {{ $selectedCompanyId == $company->id ? 'selected' : '' }}>
+                        {{ $company->name }}
+                    </option>
+                @endforeach
+            </select>
+        </div>
+        <div>
+                <label for="transaction_date" class="block text-sm font-medium text-gray-700">Дата</label>
+                <input type="date" id="transaction_date" name="transaction_date" 
+                    class="mt-1 block w-full text-sm md:text-base rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                    value="{{ $date }}">
+            </div>
+    </div>
+</form>
+        <!-- <form id="filterForm" method="GET" action="{{ route('daily-transactions.create') }}">
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-2 md:gap-4 mb-4 md:mb-6">
+        <div>
+            <label for="company_id" class="block text-sm font-medium text-gray-700">Компанија</label>
+            <select id="company_id" name="company_id" class="company-select mt-1 block w-full text-sm md:text-base rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500" onchange="this.form.submit()">
+                <option value="">Изберете компанија</option>
+                @foreach($companies as $company)
+                    <option value="{{ $company->id }}" {{ $selectedCompanyId == $company->id ? 'selected' : '' }}>
+                        {{ $company->name }}
+                    </option>
+                @endforeach
+            </select>
+        </div> -->
+        <!-- <div>
+            <label for="date" class="block text-sm font-medium text-gray-700">Дата</label>
+            <input type="date" id="date" name="date" 
+                class="mt-1 block w-full text-sm md:text-base rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                value="{{ $date }}" onchange="this.form.submit()">
+        </div> -->
+    <!-- </div>
+</form> -->
+        <!-- <div class="grid grid-cols-1 md:grid-cols-2 gap-2 md:gap-4 mb-4 md:mb-6">
         <div>
     <label for="company_id" class="block text-sm font-medium text-gray-700">Компанија</label>
     <select id="company_id" name="company_id" class="company-select mt-1 block w-full text-sm md:text-base rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
@@ -65,14 +109,68 @@
             </option>
         @endforeach
     </select>
-        </div>
+        </div> -->
 
-<div>
-                <label for="transaction_date" class="block text-sm font-medium text-gray-700">Дата</label>
-                <input type="date" id="transaction_date" name="transaction_date" 
-                    class="mt-1 block w-full text-sm md:text-base rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
-                    value="{{ $date }}">
-            </div>
+       <!-- Replace the existing company select JavaScript with this: -->
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Update hidden form fields with values from URL
+    const urlParams = new URLSearchParams(window.location.search);
+    const companyId = urlParams.get('company_id');
+    const transactionDate = urlParams.get('date');
+    
+    console.log('URL parameters:', { companyId, transactionDate });
+    
+    // Set values in the hidden fields
+    const formCompanyId = document.getElementById('form_company_id');
+    const formTransactionDate = document.getElementById('form_transaction_date');
+    
+    if (formCompanyId && companyId) {
+        formCompanyId.value = companyId;
+        console.log('Set form_company_id to:', companyId);
+    }
+    
+    if (formTransactionDate && transactionDate) {
+        formTransactionDate.value = transactionDate;
+        console.log('Set form_transaction_date to:', transactionDate);
+    }
+    
+    // If using summary button flow, ensure form values are set before summary
+    const summaryButton = document.querySelector('button[type="button"]');
+    if (summaryButton) {
+        summaryButton.addEventListener('click', function() {
+            // Update hidden form fields again before showing summary
+            if (formCompanyId) formCompanyId.value = companyId || '';
+            if (formTransactionDate) formTransactionDate.value = transactionDate || '';
+            
+            console.log('Updated before summary:', {
+                company_id: formCompanyId ? formCompanyId.value : 'field not found',
+                transaction_date: formTransactionDate ? formTransactionDate.value : 'field not found'
+            });
+        });
+    }
+    
+    // Debug form before submit
+    const transactionForm = document.getElementById('transactionForm');
+    if (transactionForm) {
+        transactionForm.addEventListener('submit', function(e) {
+            // For debugging only - log form values
+            const formData = new FormData(this);
+            console.log('Submitting form with company_id:', formData.get('company_id'));
+            console.log('Submitting form with transaction_date:', formData.get('transaction_date'));
+            
+            // Check if company_id is missing
+            if (!formData.get('company_id')) {
+                e.preventDefault();
+                alert('Потребно е да изберете компанија пред да зачувате трансакција.');
+                return false;
+            }
+        });
+    }
+});
+</script>
+
+
         </div>
 
         <!-- Toggle buttons -->
@@ -482,6 +580,68 @@ function handleError(error) {
     alert('Грешка при комуникација со серверот. Обидете се повторно.');
 }
 
+function getBreadTypePrice(breadTypeId, companyId) {
+    // Default price
+    let price = 0;
+    
+    try {
+        // Try to fetch the price from the server directly
+        const date = document.getElementById('transaction_date').value;
+        const xhr = new XMLHttpRequest();
+        // Make a synchronous request for simplicity
+        xhr.open('GET', `/api/get-bread-price/${breadTypeId}/${companyId}?date=${date}`, false);
+        
+        try {
+            xhr.send();
+            if (xhr.status === 200) {
+                const response = JSON.parse(xhr.responseText);
+                console.log(`Got price from server for bread type ${breadTypeId}: ${response.price}`);
+                return parseFloat(response.price) || 0;
+            }
+        } catch (error) {
+            console.error('Error fetching price from server:', error);
+            // Fall back to client-side calculation
+        }
+        
+        // If server request failed, fall back to client-side calculation
+        // Get the bread type data
+        const breadType = breadTypesData[breadTypeId];
+        if (!breadType) {
+            console.error(`Bread type ID ${breadTypeId} not found in data`);
+            return price;
+        }
+        
+        // Get company's price group
+        const companyPriceGroup = companiesData[companyId];
+        if (companyPriceGroup === undefined) {
+            console.error(`Company ID ${companyId} not found in data`);
+            return breadType.price; // Fall back to default price
+        }
+        
+        console.log(`Calculating price for bread type ${breadTypeId}, company ${companyId} with price group ${companyPriceGroup}`);
+        
+        // Determine price based on company's price group
+        if (companyPriceGroup === 0 || companyPriceGroup === null) {
+            // Use default price
+            price = parseFloat(breadType.price) || 0;
+        } else {
+            // Use price for specific group if available, otherwise default
+            const priceGroupField = `price_group_${companyPriceGroup}`;
+            if (breadType[priceGroupField] !== undefined && breadType[priceGroupField] !== null) {
+                price = parseFloat(breadType[priceGroupField]) || 0;
+            } else {
+                price = parseFloat(breadType.price) || 0;
+            }
+        }
+        
+        console.log(`Calculated client-side price: ${price} for bread type ${breadType.name}`);
+        return price;
+    } catch (e) {
+        console.error('Error getting bread type price:', e);
+        return 0;
+    }
+}
+
 // Replace this part in your existing script:
 // confirmButton.addEventListener('click', function() {
 //     modal.classList.add('hidden');
@@ -568,48 +728,48 @@ function handleError(error) {
     // });
     
     // Function to get the price for a bread type based on company's price group
-    function getBreadTypePrice(breadTypeId, companyId) {
-        // Default price
-        let price = 0;
+    // function getBreadTypePrice(breadTypeId, companyId) {
+    //     // Default price
+    //     let price = 0;
         
-        try {
-            // Get the bread type data
-            const breadType = breadTypesData[breadTypeId];
-            if (!breadType) {
-                console.error(`Bread type ID ${breadTypeId} not found in data`);
-                return price;
-            }
+    //     try {
+    //         // Get the bread type data
+    //         const breadType = breadTypesData[breadTypeId];
+    //         if (!breadType) {
+    //             console.error(`Bread type ID ${breadTypeId} not found in data`);
+    //             return price;
+    //         }
             
-            // Get company's price group
-            const companyPriceGroup = companiesData[companyId];
-            if (companyPriceGroup === undefined) {
-                console.error(`Company ID ${companyId} not found in data`);
-                return breadType.price; // Fall back to default price
-            }
+    //         // Get company's price group
+    //         const companyPriceGroup = companiesData[companyId];
+    //         if (companyPriceGroup === undefined) {
+    //             console.error(`Company ID ${companyId} not found in data`);
+    //             return breadType.price; // Fall back to default price
+    //         }
             
-            console.log(`Getting price for bread type ${breadTypeId}, company ${companyId} with price group ${companyPriceGroup}`);
+    //         console.log(`Getting price for bread type ${breadTypeId}, company ${companyId} with price group ${companyPriceGroup}`);
             
-            // Determine price based on company's price group
-            if (companyPriceGroup === 0 || companyPriceGroup === null) {
-                // Use default price
-                price = parseFloat(breadType.price) || 0;
-            } else {
-                // Use price for specific group if available, otherwise default
-                const priceGroupField = `price_group_${companyPriceGroup}`;
-                if (breadType[priceGroupField] !== undefined && breadType[priceGroupField] !== null) {
-                    price = parseFloat(breadType[priceGroupField]) || 0;
-                } else {
-                    price = parseFloat(breadType.price) || 0;
-                }
-            }
+    //         // Determine price based on company's price group
+    //         if (companyPriceGroup === 0 || companyPriceGroup === null) {
+    //             // Use default price
+    //             price = parseFloat(breadType.price) || 0;
+    //         } else {
+    //             // Use price for specific group if available, otherwise default
+    //             const priceGroupField = `price_group_${companyPriceGroup}`;
+    //             if (breadType[priceGroupField] !== undefined && breadType[priceGroupField] !== null) {
+    //                 price = parseFloat(breadType[priceGroupField]) || 0;
+    //             } else {
+    //                 price = parseFloat(breadType.price) || 0;
+    //             }
+    //         }
             
-            console.log(`Selected price: ${price} for bread type ${breadType.name}`);
-            return price;
-        } catch (e) {
-            console.error('Error getting bread type price:', e);
-            return 0;
-        }
-    }
+    //         console.log(`Selected price: ${price} for bread type ${breadType.name}`);
+    //         return price;
+    //     } catch (e) {
+    //         console.error('Error getting bread type price:', e);
+    //         return 0;
+    //     }
+    // }
     
     // Function to show transaction summary
     function showTransactionSummary(companyId) {
@@ -789,6 +949,22 @@ $.ajaxSetup({
             });
             return false; // Prevent error from showing
         }
+    }
+});
+
+document.addEventListener('DOMContentLoaded', function() {
+    // Get the company select element
+    const companySelect = document.getElementById('company_id');
+    
+    if (companySelect) {
+        companySelect.addEventListener('change', function() {
+            // Get the selected company ID
+            const selectedCompanyId = this.value;
+            const currentDate = document.getElementById('transaction_date').value;
+            
+            // Redirect to the same page with the company parameter
+            window.location.href = `{{ route('daily-transactions.create') }}?company_id=${selectedCompanyId}&date=${currentDate}`;
+        });
     }
 });
 
