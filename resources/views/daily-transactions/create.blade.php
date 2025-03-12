@@ -77,41 +77,7 @@
             </div>
     </div>
 </form>
-        <!-- <form id="filterForm" method="GET" action="{{ route('daily-transactions.create') }}">
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-2 md:gap-4 mb-4 md:mb-6">
-        <div>
-            <label for="company_id" class="block text-sm font-medium text-gray-700">Компанија</label>
-            <select id="company_id" name="company_id" class="company-select mt-1 block w-full text-sm md:text-base rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500" onchange="this.form.submit()">
-                <option value="">Изберете компанија</option>
-                @foreach($companies as $company)
-                    <option value="{{ $company->id }}" {{ $selectedCompanyId == $company->id ? 'selected' : '' }}>
-                        {{ $company->name }}
-                    </option>
-                @endforeach
-            </select>
-        </div> -->
-        <!-- <div>
-            <label for="date" class="block text-sm font-medium text-gray-700">Дата</label>
-            <input type="date" id="date" name="date" 
-                class="mt-1 block w-full text-sm md:text-base rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
-                value="{{ $date }}" onchange="this.form.submit()">
-        </div> -->
-    <!-- </div>
-</form> -->
-        <!-- <div class="grid grid-cols-1 md:grid-cols-2 gap-2 md:gap-4 mb-4 md:mb-6">
-        <div>
-    <label for="company_id" class="block text-sm font-medium text-gray-700">Компанија</label>
-    <select id="company_id" name="company_id" class="company-select mt-1 block w-full text-sm md:text-base rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
-        <option value="">Изберете компанија</option>
-        @foreach($companies as $company)
-            <option value="{{ $company->id }}" {{ $selectedCompanyId == $company->id ? 'selected' : '' }}>
-                {{ $company->name }}
-            </option>
-        @endforeach
-    </select>
-        </div> -->
-
-       <!-- Replace the existing company select JavaScript with this: -->
+        
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     // Update hidden form fields with values from URL

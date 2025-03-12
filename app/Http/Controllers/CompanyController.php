@@ -191,51 +191,6 @@ class CompanyController extends Controller
         ->with('success', 'Листата на лебови е успешно ажурирана за ' . $company->name);
 }
 
-// public function updateBreadTypes(Request $request, Company $company)
-// {
-//     $validated = $request->validate([
-//         'bread_types' => 'nullable|array',
-//         'bread_types.*' => 'exists:bread_types,id',
-//     ]);
-
-//     // Get current date for valid_from
-//     $validFrom = now()->toDateString();
-    
-//     // Get existing bread type relationships
-//     $currentBreadTypes = $company->breadTypes()->pluck('bread_types.id')->toArray();
-    
-//     // Prepare bread types to sync
-//     $breadTypesToSync = [];
-//     foreach ($validated['bread_types'] ?? [] as $breadTypeId) {
-//         $breadType = BreadType::find($breadTypeId);
-        
-//         // Skip if bread type doesn't exist
-//         if (!$breadType) continue;
-        
-//         // If this is a new relationship, set up the pivot data
-//         if (!in_array($breadTypeId, $currentBreadTypes)) {
-//             // Calculate price based on company's price group
-//             $priceInfo = $breadType->getPriceForCompany($company->id);
-            
-//             $breadTypesToSync[$breadTypeId] = [
-//                 'price' => $priceInfo['price'],
-//                 'old_price' => $priceInfo['old_price'],
-//                 'price_group' => $company->price_group,
-//                 'valid_from' => $validFrom,
-//                 'created_by' => auth()->id()
-//             ];
-//         } else {
-//             // For existing relationships, just keep them
-//             $breadTypesToSync[] = $breadTypeId;
-//         }
-//     }
-
-//     // Sync the bread types with the company
-//     $company->breadTypes()->sync($breadTypesToSync);
-
-//     return redirect()->route('companies.manage-bread-types', $company)
-//         ->with('success', 'Листата на лебови е успешно ажурирана за ' . $company->name);
-// }
 
 
     public function bulkAssignUser(Request $request)

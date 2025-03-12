@@ -38,147 +38,79 @@ class InvoiceExport extends DefaultValueBinder implements FromCollection, WithHe
         return parent::bindValue($cell, $value);
     }
 
-
     public function collection()
-{
-    $result = new Collection();
+    {
+        $result = new Collection();
 
-    $query = "
-        WITH latest_prices AS (
+        $query = "
+            WITH latest_prices AS (
+                SELECT 
+                    bread_type_id,
+                    company_id,
+                    price,
+                    valid_from,
+                    ROW_NUMBER() OVER (PARTITION BY bread_type_id, company_id ORDER BY valid_from DESC) as rn
+                FROM bread_type_company
+                WHERE valid_from <= ?
+            )
             SELECT 
-                bread_type_id,
-                company_id,
-                price,
-                valid_from,
-                ROW_NUMBER() OVER (PARTITION BY bread_type_id, company_id ORDER BY valid_from DESC) as rn
-            FROM bread_type_company
-            WHERE valid_from <= ?
-        )
-        SELECT 
-            c.code as company_code,
-            c.name as company_name,
-            bt.code as bread_code,
-            bt.name as bread_name,
-            SUM(dt.delivered - dt.returned) as quantity,
-            COALESCE(lp.price, bt.price) as price
-        FROM daily_transactions dt
-        JOIN companies c ON dt.company_id = c.id
-        JOIN bread_types bt ON dt.bread_type_id = bt.id
-        LEFT JOIN latest_prices lp ON lp.bread_type_id = dt.bread_type_id 
-            AND lp.company_id = dt.company_id
-            AND lp.rn = 1
-        WHERE c.type = 'invoice'
-        AND dt.transaction_date BETWEEN ? AND ?
-        GROUP BY 
-            c.code,
-            c.name,
-            bt.code,
-            bt.name,
-            COALESCE(lp.price, bt.price)
-        HAVING SUM(dt.delivered - dt.returned) > 0
-        ORDER BY 
-            c.code,
-            c.name,  -- Added this line to order by company name as well
-            bt.code
-    ";
+                c.code as company_code,
+                c.name as company_name,
+                bt.code as bread_code,
+                bt.name as bread_name,
+                SUM(dt.delivered - dt.returned) as quantity,
+                COALESCE(lp.price, bt.price) as price,
+                c.mygpm_business_unit
+            FROM daily_transactions dt
+            JOIN companies c ON dt.company_id = c.id
+            JOIN bread_types bt ON dt.bread_type_id = bt.id
+            LEFT JOIN latest_prices lp ON lp.bread_type_id = dt.bread_type_id 
+                AND lp.company_id = dt.company_id
+                AND lp.rn = 1
+            WHERE c.type = 'invoice'
+            AND dt.transaction_date BETWEEN ? AND ?
+            GROUP BY 
+                c.code,
+                c.name,
+                bt.code,
+                bt.name,
+                COALESCE(lp.price, bt.price),
+                c.mygpm_business_unit
+            HAVING SUM(dt.delivered - dt.returned) > 0
+            ORDER BY 
+                c.code,
+                c.name,
+                bt.code
+        ";
 
-    // Log the query parameters
-    \Log::info('Executing export query with params:', [
-        'end_date' => $this->endDate,
-        'start_date' => $this->startDate
-    ]);
-
-    $transactions = \DB::select($query, [$this->endDate, $this->startDate, $this->endDate]);
-
-    \Log::info('Query results:', [
-        'count' => count($transactions),
-        'data' => $transactions
-    ]);
-
-    foreach ($transactions as $transaction) {
-        $result->push([
-            Date::dateTimeToExcel(Carbon::parse($this->endDate)),
-            $transaction->company_code,
-            $transaction->company_name,
-            $transaction->bread_code,
-            $transaction->bread_name,
-            $transaction->quantity,
-            (float)$transaction->price
+        // Log the query parameters
+        \Log::info('Executing export query with params:', [
+            'end_date' => $this->endDate,
+            'start_date' => $this->startDate
         ]);
+
+        $transactions = \DB::select($query, [$this->endDate, $this->startDate, $this->endDate]);
+
+        \Log::info('Query results:', [
+            'count' => count($transactions),
+            'data' => $transactions
+        ]);
+
+        foreach ($transactions as $transaction) {
+            $result->push([
+                Date::dateTimeToExcel(Carbon::parse($this->endDate)),
+                $transaction->company_code,
+                $transaction->company_name,
+                $transaction->bread_code,
+                $transaction->bread_name,
+                $transaction->quantity,
+                (float)$transaction->price,
+                $transaction->mygpm_business_unit
+            ]);
+        }
+
+        return $result;
     }
-
-    return $result;
-}
-
-    // public function collection()
-    // {
-    //     $result = new Collection();
-
-    //     $query = "
-    //         WITH latest_prices AS (
-    //             SELECT 
-    //                 bread_type_id,
-    //                 company_id,
-    //                 price,
-    //                 valid_from,
-    //                 ROW_NUMBER() OVER (PARTITION BY bread_type_id, company_id ORDER BY valid_from DESC) as rn
-    //             FROM bread_type_company
-    //             WHERE valid_from <= ?
-    //         )
-    //         SELECT 
-    //             c.code as company_code,
-    //             c.name as company_name,
-    //             bt.code as bread_code,
-    //             bt.name as bread_name,
-    //             SUM(dt.delivered - dt.returned) as quantity,
-    //             COALESCE(lp.price, bt.price) as price
-    //         FROM daily_transactions dt
-    //         JOIN companies c ON dt.company_id = c.id
-    //         JOIN bread_types bt ON dt.bread_type_id = bt.id
-    //         LEFT JOIN latest_prices lp ON lp.bread_type_id = dt.bread_type_id 
-    //             AND lp.company_id = dt.company_id
-    //             AND lp.rn = 1
-    //         WHERE c.type = 'invoice'
-    //         AND dt.transaction_date BETWEEN ? AND ?
-    //         GROUP BY 
-    //             c.code,
-    //             c.name,
-    //             bt.code,
-    //             bt.name,
-    //             COALESCE(lp.price, bt.price)
-    //         HAVING SUM(dt.delivered - dt.returned) > 0
-    //         ORDER BY 
-    //             c.code,
-    //             bt.code
-    //     ";
-
-    //     // Log the query parameters
-    //     \Log::info('Executing export query with params:', [
-    //         'end_date' => $this->endDate,
-    //         'start_date' => $this->startDate
-    //     ]);
-
-    //     $transactions = \DB::select($query, [$this->endDate, $this->startDate, $this->endDate]);
-
-    //     \Log::info('Query results:', [
-    //         'count' => count($transactions),
-    //         'data' => $transactions
-    //     ]);
-
-    //     foreach ($transactions as $transaction) {
-    //         $result->push([
-    //             Date::dateTimeToExcel(Carbon::parse($this->endDate)),
-    //             $transaction->company_code,
-    //             $transaction->company_name,
-    //             $transaction->bread_code,
-    //             $transaction->bread_name,
-    //             $transaction->quantity,
-    //             (float)$transaction->price
-    //         ]);
-    //     }
-
-    //     return $result;
-    // }
 
     public function headings(): array
     {
@@ -189,7 +121,8 @@ class InvoiceExport extends DefaultValueBinder implements FromCollection, WithHe
             'Код на леб',
             'Име на леб',
             'Количина',
-            'Цена'
+            'Цена',
+            'Деловна единица'
         ];
     }
 
