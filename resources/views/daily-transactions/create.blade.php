@@ -48,6 +48,201 @@
 <link href="https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.13/css/select2.min.css" rel="stylesheet" />
 <script src="https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.13/js/select2.min.js"></script>
 
+<script>
+
+    // Wait for jQuery and DOM to be fully loaded
+// Wait for jQuery and DOM to be fully loaded
+document.addEventListener('DOMContentLoaded', function() {
+    // Check if jQuery is available
+    function waitForJQuery(callback) {
+        if (window.jQuery) {
+            callback();
+        } else {
+            console.log('Waiting for jQuery...');
+            setTimeout(function() { waitForJQuery(callback); }, 100);
+        }
+    }
+    
+    // Initialize Select2 after jQuery is available
+    waitForJQuery(function() {
+        try {
+            // Make sure the company_id element exists before trying to initialize Select2
+            if ($('#company_id').length) {
+                console.log('Initializing Select2...');
+                $('#company_id').select2({
+                    placeholder: 'Изберете компанија',
+                    allowClear: true,
+                    width: '100%',
+                    dropdownParent: $('body')
+                }).on('select2:open', function() {
+                    // Ensure dropdown is above other elements
+                    $('.select2-dropdown').css('z-index', '9999');
+                }).on('change', function() {
+                    // Update hidden field immediately when selection changes
+                    const formCompanyId = document.getElementById('form_company_id');
+                    if (formCompanyId) {
+                        formCompanyId.value = this.value;
+                        console.log('Updated hidden company_id to:', this.value);
+                    }
+                    
+                    // Get the selected company ID and current date
+                    const selectedCompanyId = this.value;
+                    const currentDate = document.getElementById('transaction_date').value;
+                    
+                    // Submit the form to refresh connected bread types
+                    if (selectedCompanyId) {
+                        window.location.href = `/daily-transactions/create?company_id=${selectedCompanyId}&date=${currentDate}`;
+                    }
+                });
+                console.log('Select2 initialized successfully');
+            } else {
+                console.error('company_id element not found');
+            }
+        } catch (e) {
+            console.error('Error initializing Select2:', e);
+            fallbackToRegularSelect();
+        }
+    });
+    
+    function fallbackToRegularSelect() {
+        const companySelect = document.getElementById('company_id');
+        if (companySelect) {
+            companySelect.classList.add('form-control');
+            companySelect.removeAttribute('disabled');
+            
+            // Add direct event handler if Select2 fails
+            companySelect.addEventListener('change', function() {
+                const selectedCompanyId = this.value;
+                const currentDate = document.getElementById('transaction_date').value;
+                
+                // Update hidden field
+                const formCompanyId = document.getElementById('form_company_id');
+                if (formCompanyId) {
+                    formCompanyId.value = selectedCompanyId;
+                }
+                
+                // Navigate to refresh connected bread types
+                if (selectedCompanyId) {
+                    window.location.href = `/daily-transactions/create?company_id=${selectedCompanyId}&date=${currentDate}`;
+                }
+            });
+        }
+    }
+    
+    // Add refresh button with proper timing
+    const addRefreshButton = function() {
+        const companySelectContainer = document.querySelector('#company_id').parentNode;
+        if (!companySelectContainer) return;
+        
+        // Check if button already exists to prevent duplicates
+        if (companySelectContainer.querySelector('button[type="button"]')) return;
+        
+        companySelectContainer.style.position = 'relative';
+        
+        const refreshButton = document.createElement('button');
+        refreshButton.type = 'button';
+        refreshButton.className = 'absolute right-0 top-0 mt-7 mr-2 text-blue-500';
+        refreshButton.innerHTML = '<i class="fas fa-sync-alt"></i>';
+        refreshButton.onclick = function() {
+            window.location.reload();
+        };
+        
+        companySelectContainer.appendChild(refreshButton);
+    };
+    
+    // Add refresh button after a delay to ensure Select2 is initialized
+    setTimeout(addRefreshButton, 300);
+    
+    // Global form field update function
+    function updateHiddenFormFields() {
+        const companySelect = document.getElementById('company_id');
+        const dateInput = document.getElementById('transaction_date');
+        const formCompanyId = document.getElementById('form_company_id');
+        const formTransactionDate = document.getElementById('form_transaction_date');
+        
+        if (companySelect && formCompanyId) {
+            formCompanyId.value = companySelect.value;
+        }
+        
+        if (dateInput && formTransactionDate) {
+            formTransactionDate.value = dateInput.value;
+        }
+    }
+    
+    // Run this once on page load
+    updateHiddenFormFields();
+    
+    // Also update when date changes (company is handled by Select2 change event)
+    const dateInput = document.getElementById('transaction_date');
+    if (dateInput) {
+        dateInput.addEventListener('change', function() {
+            updateHiddenFormFields();
+            
+            // Also refresh page with new date
+            const companyId = document.getElementById('company_id').value;
+            if (companyId) {
+                window.location.href = `/daily-transactions/create?company_id=${companyId}&date=${this.value}`;
+            }
+        });
+    }
+    
+    // Fix the filterForm behavior
+    const filterForm = document.getElementById('filterForm');
+    if (filterForm) {
+        // Remove the onchange attribute from company select
+        const companySelect = document.getElementById('company_id');
+        if (companySelect) {
+            companySelect.removeAttribute('onchange');
+        }
+        
+        // Handle form submission manually
+        filterForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const companyId = document.getElementById('company_id').value;
+            const date = document.getElementById('transaction_date').value;
+            
+            window.location.href = `/daily-transactions/create?company_id=${companyId}&date=${date}`;
+        });
+    }
+});
+// document.addEventListener('DOMContentLoaded', function() {
+//     // Initialize Select2 with a timeout to ensure it loads properly
+//     setTimeout(function() {
+//         try {
+//             $('#company_id').select2({
+//                 placeholder: 'Изберете компанија',
+//                 allowClear: true,
+//                 width: '100%',
+//                 dropdownParent: $('body') // Ensures dropdown shows above other elements
+//             });
+//             console.log('Select2 initialized successfully');
+//         } catch (e) {
+//             console.error('Error initializing Select2:', e);
+            
+//             // Fallback to regular select if Select2 fails
+//             const companySelect = document.getElementById('company_id');
+//             if (companySelect) {
+//                 companySelect.classList.add('form-control');
+//                 companySelect.removeAttribute('disabled');
+//             }
+//         }
+//     }, 100);
+    
+//     // Add refresh button next to company dropdown
+//     const companySelectContainer = document.querySelector('#company_id').parentNode;
+//     const refreshButton = document.createElement('button');
+//     refreshButton.type = 'button';
+//     refreshButton.className = 'absolute right-0 top-0 mt-7 mr-2 text-blue-500';
+//     refreshButton.innerHTML = '<i class="fas fa-sync-alt"></i>';
+//     refreshButton.onclick = function() {
+//         window.location.reload();
+//     };
+//     companySelectContainer.style.position = 'relative';
+//     companySelectContainer.appendChild(refreshButton);
+// });
+</script>
+
 <!-- Remove container padding for mobile -->
 <div class="mx-auto md:p-0">
     <h1 class="text-xl md:text-2xl font-bold mb-2 md:mb-4 px-2 md:px-0">Дневни Трансакции</h1>
@@ -56,6 +251,27 @@
         <!-- Mobile-friendly grid -->
 
         <!-- Replace your company selection section with this form-based approach -->
+        <!-- <form id="filterForm" method="GET" action="{{ route('daily-transactions.create') }}">
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-2 md:gap-4 mb-4 md:mb-6">
+        <div>
+            <label for="company_id" class="block text-sm font-medium text-gray-700">Компанија</label>
+            <select id="company_id" name="company_id" class="company-select mt-1 block w-full text-sm md:text-base rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+                <option value="">Изберете компанија</option>
+                @foreach($companies as $company)
+                    <option value="{{ $company->id }}" {{ $selectedCompanyId == $company->id ? 'selected' : '' }}>
+                        {{ $company->name }}
+                    </option>
+                @endforeach
+            </select>
+        </div>
+        <div>
+            <label for="transaction_date" class="block text-sm font-medium text-gray-700">Дата</label>
+            <input type="date" id="transaction_date" name="transaction_date" 
+                class="mt-1 block w-full text-sm md:text-base rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                value="{{ $date }}">
+        </div>
+    </div>
+</form> -->
         <form id="filterForm" method="GET" action="{{ route('daily-transactions.create') }}">
     <div class="grid grid-cols-1 md:grid-cols-2 gap-2 md:gap-4 mb-4 md:mb-6">
         <div>
@@ -78,7 +294,177 @@
     </div>
 </form>
         
+
 <script>
+    document.addEventListener('DOMContentLoaded', function() {
+    // Make bread names clickable to focus on input
+    function setupBreadNameClicks() {
+        document.querySelectorAll('tbody tr').forEach(row => {
+            const nameCell = row.querySelector('td:first-child');
+            if (!nameCell) return;
+            
+            // Make the bread name clickable
+            nameCell.style.cursor = 'pointer';
+            nameCell.classList.add('hover:bg-gray-100');
+            
+            nameCell.addEventListener('click', function() {
+                const deliveredInput = row.querySelector('.delivered-input');
+                if (deliveredInput) {
+                    deliveredInput.focus();
+                    // Clear the value if it's 0
+                    if (deliveredInput.value === '0') {
+                        deliveredInput.value = '';
+                    }
+                }
+            });
+        });
+    }
+    
+    // Setup input field event handlers
+    function setupInputHandlers() {
+        document.querySelectorAll('.delivered-input, .returned-input, .gratis-input').forEach(input => {
+            const rowIndex = input.getAttribute('data-row');
+            
+            // Clear value on focus if it's 0
+            input.addEventListener('focus', function() {
+                if (this.value === '0') {
+                    this.value = '';
+                }
+            });
+            
+            // Reset to 0 if left empty on blur
+            input.addEventListener('blur', function() {
+                if (this.value === '') {
+                    this.value = '0';
+                }
+                calculateRowTotal(rowIndex);
+            });
+            
+            // Calculate total on input change
+            input.addEventListener('input', function() {
+                calculateRowTotal(rowIndex);
+            });
+        });
+    }
+    
+    // Calculate the total for a specific row
+    function calculateRowTotal(index) {
+        const delivered = parseInt(document.querySelector(`input[name="transactions[${index}][delivered]"]`).value) || 0;
+        const returned = parseInt(document.querySelector(`input[name="transactions[${index}][returned]"]`).value) || 0;
+        const gratis = parseInt(document.querySelector(`input[name="transactions[${index}][gratis]"]`).value) || 0;
+        
+        const total = delivered - returned - gratis;
+        const totalElement = document.querySelector(`#total-${index}`);
+        if (totalElement) {
+            totalElement.textContent = total;
+        }
+    }
+    
+    // Helper function to select and clear if zero
+    function selectAndClearIfZero(input) {
+        input.select();
+        if (input.value === '0') {
+            input.value = '';
+        }
+    }
+    
+    // Add keyboard navigation between fields
+    function setupKeyboardNavigation() {
+        document.querySelectorAll('.delivered-input, .returned-input, .gratis-input').forEach(input => {
+            input.addEventListener('keydown', function(e) {
+                const rowIndex = parseInt(this.getAttribute('data-row'));
+                const isDelivered = this.classList.contains('delivered-input');
+                const isReturned = this.classList.contains('returned-input');
+                const isGratis = this.classList.contains('gratis-input');
+                
+                // Handle keyboard navigation
+                switch (e.key) {
+                    case 'ArrowDown':
+                        // Move to same type of input in next row
+                        const nextRowInput = document.querySelector(`input[data-row="${rowIndex + 1}"]${isDelivered ? '.delivered-input' : isReturned ? '.returned-input' : '.gratis-input'}`);
+                        if (nextRowInput) {
+                            e.preventDefault();
+                            selectAndClearIfZero(nextRowInput);
+                        }
+                        break;
+                        
+                    case 'ArrowUp':
+                        // Move to same type of input in previous row
+                        const prevRowInput = document.querySelector(`input[data-row="${rowIndex - 1}"]${isDelivered ? '.delivered-input' : isReturned ? '.returned-input' : '.gratis-input'}`);
+                        if (prevRowInput) {
+                            e.preventDefault();
+                            selectAndClearIfZero(prevRowInput);
+                        }
+                        break;
+                        
+                    case 'ArrowRight':
+                        // Only if at end of input
+                        if (this.selectionStart === this.value.length) {
+                            e.preventDefault();
+                            // Move to next input in same row
+                            if (isDelivered) {
+                                const returnedInput = document.querySelector(`input[data-row="${rowIndex}"].returned-input`);
+                                if (returnedInput) selectAndClearIfZero(returnedInput);
+                            } else if (isReturned) {
+                                const gratisInput = document.querySelector(`input[data-row="${rowIndex}"].gratis-input`);
+                                if (gratisInput) selectAndClearIfZero(gratisInput);
+                            }
+                        }
+                        break;
+                        
+                    case 'ArrowLeft':
+                        // Only if at start of input
+                        if (this.selectionStart === 0) {
+                            e.preventDefault();
+                            // Move to previous input in same row
+                            if (isReturned) {
+                                const deliveredInput = document.querySelector(`input[data-row="${rowIndex}"].delivered-input`);
+                                if (deliveredInput) selectAndClearIfZero(deliveredInput);
+                            } else if (isGratis) {
+                                const returnedInput = document.querySelector(`input[data-row="${rowIndex}"].returned-input`);
+                                if (returnedInput) selectAndClearIfZero(returnedInput);
+                            }
+                        }
+                        break;
+                        
+                    case 'Enter':
+                        e.preventDefault();
+                        // Move to next input in row or first input in next row
+                        if (isDelivered) {
+                            const returnedInput = document.querySelector(`input[data-row="${rowIndex}"].returned-input`);
+                            if (returnedInput) selectAndClearIfZero(returnedInput);
+                        } else if (isReturned) {
+                            const gratisInput = document.querySelector(`input[data-row="${rowIndex}"].gratis-input`);
+                            if (gratisInput) selectAndClearIfZero(gratisInput);
+                        } else if (isGratis) {
+                            // Move to delivered input in next row
+                            const nextDeliveredInput = document.querySelector(`input[data-row="${rowIndex + 1}"].delivered-input`);
+                            if (nextDeliveredInput) selectAndClearIfZero(nextDeliveredInput);
+                        }
+                        break;
+                }
+            });
+        });
+    }
+    
+    // Initialize all functionality
+    function initialize() {
+        setupBreadNameClicks();
+        setupInputHandlers();
+        setupKeyboardNavigation();
+        
+        // Calculate all row totals on page load
+        document.querySelectorAll('.delivered-input').forEach(input => {
+            const rowIndex = input.getAttribute('data-row');
+            if (rowIndex) {
+                calculateRowTotal(rowIndex);
+            }
+        });
+    }
+    
+    // Run initialization
+    initialize();
+});
 document.addEventListener('DOMContentLoaded', function() {
     // Update hidden form fields with values from URL
     const urlParams = new URLSearchParams(window.location.search);
@@ -135,6 +521,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 </script>
+
 
 
         </div>
@@ -845,6 +1232,7 @@ function getBreadTypePrice(breadTypeId, companyId) {
 
         <!-- Old Bread Sales Section -->
         <div id="oldBreadSalesSection" class="hidden mt-4 px-2 md:px-0">
+        <!-- <form id="oldBreadSalesForm" action="{{ route('daily-transactions.store-old-bread') }}" method="POST"> -->
         <form id="oldBreadSalesForm" action="{{ route('daily-transactions.store-old-bread') }}" method="POST">
         @csrf
                 <input type="hidden" name="transaction_date" value="{{ $date }}">
@@ -887,6 +1275,79 @@ function getBreadTypePrice(breadTypeId, companyId) {
     </div>
 </div>
 
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const filterForm = document.getElementById('filterForm');
+    const companySelect = document.getElementById('company_id');
+    const dateInput = document.getElementById('transaction_date');
+    
+    if (filterForm && companySelect && dateInput) {
+        // Store initial values in localStorage
+        if (dateInput.value) {
+            localStorage.setItem('lastTransactionDate', dateInput.value);
+        }
+        if (companySelect.value) {
+            localStorage.setItem('lastCompanyId', companySelect.value);
+        }
+        
+        // Remove the inline onchange handler
+        companySelect.removeAttribute('onchange');
+        
+        // Add change handler for company select
+        companySelect.addEventListener('change', function() {
+            // Store the selected company
+            localStorage.setItem('lastCompanyId', this.value);
+            
+            // Ensure date is preserved
+            const currentDate = dateInput.value || localStorage.getItem('lastTransactionDate');
+            if (currentDate) {
+                dateInput.value = currentDate;
+            }
+            
+            // Submit the form
+            filterForm.submit();
+        });
+        
+        // Add change handler for date input
+        dateInput.addEventListener('change', function() {
+            // Store the selected date
+            localStorage.setItem('lastTransactionDate', this.value);
+            
+            // Ensure company is preserved
+            const currentCompany = companySelect.value || localStorage.getItem('lastCompanyId');
+            if (currentCompany) {
+                companySelect.value = currentCompany;
+            }
+            
+            // Submit the form
+            filterForm.submit();
+        });
+        
+        // Restore values from localStorage if needed
+        const storedDate = localStorage.getItem('lastTransactionDate');
+        const storedCompany = localStorage.getItem('lastCompanyId');
+        
+        let needsSubmit = false;
+        
+        if (storedDate && storedDate !== dateInput.value) {
+            dateInput.value = storedDate;
+            needsSubmit = true;
+        }
+        
+        if (storedCompany && storedCompany !== companySelect.value) {
+            companySelect.value = storedCompany;
+            needsSubmit = true;
+        }
+        
+        // If values were restored and a company is selected, submit the form
+        if (needsSubmit && companySelect.value) {
+            setTimeout(function() {
+                filterForm.submit();
+            }, 200);
+        }
+    }
+});
+</script>
 
 
 <script>
@@ -918,21 +1379,78 @@ $.ajaxSetup({
     }
 });
 
+
+
 document.addEventListener('DOMContentLoaded', function() {
-    // Get the company select element
     const companySelect = document.getElementById('company_id');
+    const dateInput = document.getElementById('transaction_date');
+    const filterForm = document.getElementById('filterForm');
     
+    // Remove the inline onchange attribute
     if (companySelect) {
+        companySelect.removeAttribute('onchange');
+        
+        // Add our custom event listener for company changes
         companySelect.addEventListener('change', function() {
-            // Get the selected company ID
-            const selectedCompanyId = this.value;
-            const currentDate = document.getElementById('transaction_date').value;
+            const currentDate = dateInput.value;
             
-            // Redirect to the same page with the company parameter
-            window.location.href = `{{ route('daily-transactions.create') }}?company_id=${selectedCompanyId}&date=${currentDate}`;
+            // Save the date in localStorage
+            if (currentDate) {
+                localStorage.setItem('lastTransactionDate', currentDate);
+            }
+            
+            // Always include the current date parameter with company changes
+            const url = new URL(filterForm.action, window.location.origin);
+            url.searchParams.set('company_id', this.value);
+            url.searchParams.set('date', currentDate);
+            
+            // Navigate to the URL
+            window.location.href = url.toString();
         });
     }
+    
+    // Add event listener for date changes
+    if (dateInput) {
+        dateInput.addEventListener('change', function() {
+            // Save to localStorage
+            localStorage.setItem('lastTransactionDate', this.value);
+            
+            // If company is selected, include both parameters
+            const companyId = companySelect.value;
+            const url = new URL(filterForm.action, window.location.origin);
+            
+            if (companyId) {
+                url.searchParams.set('company_id', companyId);
+            }
+            url.searchParams.set('date', this.value);
+            
+            // Navigate to the URL
+            window.location.href = url.toString();
+        });
+    }
+    
+    // Check if we need to restore date from localStorage
+    const storedDate = localStorage.getItem('lastTransactionDate');
+    if (storedDate && dateInput && (!dateInput.value || dateInput.value !== storedDate)) {
+        console.log('Restoring date from localStorage:', storedDate);
+        dateInput.value = storedDate;
+    }
 });
+// document.addEventListener('DOMContentLoaded', function() {
+//     // Get the company select element
+//     const companySelect = document.getElementById('company_id');
+    
+//     if (companySelect) {
+//         companySelect.addEventListener('change', function() {
+//             // Get the selected company ID
+//             const selectedCompanyId = this.value;
+//             const currentDate = document.getElementById('transaction_date').value;
+            
+//             // Redirect to the same page with the company parameter
+//             window.location.href = `{{ route('daily-transactions.create') }}?company_id=${selectedCompanyId}&date=${currentDate}`;
+//         });
+//     }
+// });
 
 // Replace all existing form handlers with this consolidated version
 document.addEventListener('DOMContentLoaded', function() {
@@ -1217,6 +1735,265 @@ document.addEventListener('DOMContentLoaded', function() {
         input.addEventListener('input', () => calculateRowTotal(row));
     });
 });
+
+document.addEventListener('DOMContentLoaded', function() {
+    // Get references to key elements
+    const filterForm = document.getElementById('filterForm');
+    const companySelect = document.getElementById('company_id');
+    const dateInput = document.getElementById('transaction_date');
+    
+    if (!filterForm || !companySelect || !dateInput) return;
+    
+    // Store initial date value to localStorage
+    if (dateInput.value) {
+        localStorage.setItem('lastTransactionDate', dateInput.value);
+    }
+    
+    // Override the inline onchange handler
+    companySelect.removeAttribute('onchange');
+    
+    // Custom handler for company select change
+    companySelect.addEventListener('change', function() {
+        // Store current date
+        const currentDate = dateInput.value || localStorage.getItem('lastTransactionDate');
+        
+        if (currentDate) {
+            // Ensure there's a date parameter in the URL
+            const url = new URL(filterForm.action, window.location.origin);
+            url.searchParams.set('company_id', this.value);
+            url.searchParams.set('date', currentDate);
+            
+            // Navigate directly instead of form submission
+            window.location.href = url.toString();
+        } else {
+            // If no date, normal form submission
+            filterForm.submit();
+        }
+    });
+    
+    // Handle date changes directly
+    dateInput.addEventListener('change', function() {
+        // Store the date in localStorage
+        localStorage.setItem('lastTransactionDate', this.value);
+        
+        // If company is selected, submit the form to refresh data
+        if (companySelect.value) {
+            const url = new URL(filterForm.action, window.location.origin);
+            url.searchParams.set('company_id', companySelect.value);
+            url.searchParams.set('date', this.value);
+            
+            window.location.href = url.toString();
+        }
+    });
+    
+    // Check if we need to restore date from localStorage
+    window.addEventListener('load', function() {
+        const storedDate = localStorage.getItem('lastTransactionDate');
+        
+        // If URL has no date parameter but localStorage has a date
+        if (storedDate && (!dateInput.value || dateInput.value === new Date().toISOString().slice(0, 10))) {
+            console.log('Restoring date from localStorage:', storedDate);
+            dateInput.value = storedDate;
+            
+            // If company is already selected, refresh with the stored date
+            if (companySelect.value) {
+                const url = new URL(filterForm.action, window.location.origin);
+                url.searchParams.set('company_id', companySelect.value);
+                url.searchParams.set('date', storedDate);
+                
+                // Only redirect if URL would change
+                if (url.toString() !== window.location.href) {
+                    window.location.href = url.toString();
+                }
+            }
+        }
+    });
+});
+document.addEventListener('DOMContentLoaded', function() {
+    // Get references to key elements
+    const filterForm = document.getElementById('filterForm');
+    const companySelect = document.getElementById('company_id');
+    const dateInput = document.getElementById('transaction_date');
+    
+    if (!filterForm || !companySelect || !dateInput) return;
+    
+    // Store initial date value to localStorage
+    if (dateInput.value) {
+        localStorage.setItem('lastTransactionDate', dateInput.value);
+    }
+    
+    // Override the inline onchange handler
+    companySelect.removeAttribute('onchange');
+    
+    // Custom handler for company select change
+    companySelect.addEventListener('change', function() {
+        // Store current date
+        const currentDate = dateInput.value || localStorage.getItem('lastTransactionDate');
+        
+        if (currentDate) {
+            // Ensure there's a date parameter in the URL
+            const url = new URL(filterForm.action, window.location.origin);
+            url.searchParams.set('company_id', this.value);
+            url.searchParams.set('date', currentDate);
+            
+            // Navigate directly instead of form submission
+            window.location.href = url.toString();
+        } else {
+            // If no date, normal form submission
+            filterForm.submit();
+        }
+    });
+    
+    // Handle date changes directly
+    dateInput.addEventListener('change', function() {
+        // Store the date in localStorage
+        localStorage.setItem('lastTransactionDate', this.value);
+        
+        // If company is selected, submit the form to refresh data
+        if (companySelect.value) {
+            const url = new URL(filterForm.action, window.location.origin);
+            url.searchParams.set('company_id', companySelect.value);
+            url.searchParams.set('date', this.value);
+            
+            window.location.href = url.toString();
+        }
+    });
+    
+    // Check if we need to restore date from localStorage
+    window.addEventListener('load', function() {
+        const storedDate = localStorage.getItem('lastTransactionDate');
+        
+        // If URL has no date parameter but localStorage has a date
+        if (storedDate && (!dateInput.value || dateInput.value === new Date().toISOString().slice(0, 10))) {
+            console.log('Restoring date from localStorage:', storedDate);
+            dateInput.value = storedDate;
+            
+            // If company is already selected, refresh with the stored date
+            if (companySelect.value) {
+                const url = new URL(filterForm.action, window.location.origin);
+                url.searchParams.set('company_id', companySelect.value);
+                url.searchParams.set('date', storedDate);
+                
+                // Only redirect if URL would change
+                if (url.toString() !== window.location.href) {
+                    window.location.href = url.toString();
+                }
+            }
+        }
+    });
+});
+// document.addEventListener('DOMContentLoaded', function() {
+//     const companySelect = document.getElementById('company_id');
+//     const dateInput = document.getElementById('transaction_date');
+//     const filterForm = document.getElementById('filterForm');
+    
+//     // Store initial date
+//     const initialDate = dateInput ? dateInput.value : '';
+//     localStorage.setItem('lastSelectedDate', initialDate);
+    
+//     // Handle date input change
+//     if (dateInput) {
+//         // Add event listener for date changes
+//         dateInput.addEventListener('change', function() {
+//             // Store the selected date
+//             localStorage.setItem('lastSelectedDate', this.value);
+            
+//             // Add a hidden input to the form to ensure date is included
+//             ensureDateParameter(this.value, filterForm);
+            
+//             // Submit the form to update with the new date
+//             filterForm.submit();
+//         });
+//     }
+    
+//     // Ensure parameters are preserved during form submission
+//     if (filterForm) {
+//         filterForm.addEventListener('submit', function(e) {
+//             // Don't prevent default - we want the normal form submission
+            
+//             // But ensure the date parameter is included
+//             if (dateInput && dateInput.value) {
+//                 ensureDateParameter(dateInput.value, this);
+//             } else {
+//                 // If no date in the input, try to get from localStorage
+//                 const savedDate = localStorage.getItem('lastSelectedDate');
+//                 if (savedDate) {
+//                     ensureDateParameter(savedDate, this);
+//                 }
+//             }
+            
+//             // Log what we're submitting
+//             console.log('Submitting form with date:', dateInput.value);
+//         });
+//     }
+    
+//     // Check if we need to restore date from localStorage
+//     if (dateInput) {
+//         const savedDate = localStorage.getItem('lastSelectedDate');
+//         if (savedDate && savedDate !== dateInput.value) {
+//             console.log('Restoring date from localStorage:', savedDate);
+//             dateInput.value = savedDate;
+            
+//             // If company is selected, auto-submit to refresh with correct date
+//             if (companySelect && companySelect.value) {
+//                 // Short delay to allow other scripts to initialize
+//                 setTimeout(function() {
+//                     ensureDateParameter(savedDate, filterForm);
+//                     filterForm.submit();
+//                 }, 100);
+//             }
+//         }
+//     }
+    
+//     // Helper function to ensure date parameter exists in the form
+//     function ensureDateParameter(dateValue, form) {
+//         // Check if we already have a hidden date field
+//         let hiddenDate = form.querySelector('input[type="hidden"][name="date"]');
+        
+//         if (!hiddenDate) {
+//             // Create a hidden field for the date
+//             hiddenDate = document.createElement('input');
+//             hiddenDate.type = 'hidden';
+//             hiddenDate.name = 'date';
+//             form.appendChild(hiddenDate);
+//         }
+        
+//         // Set the value
+//         hiddenDate.value = dateValue;
+//         console.log('Added hidden date parameter:', dateValue);
+//     }
+// });
+// document.addEventListener('DOMContentLoaded', function() {
+//     const companySelect = document.getElementById('company_id');
+//     const dateInput = document.getElementById('transaction_date');
+//     const filterForm = document.getElementById('filterForm');
+
+//     if (companySelect && filterForm) {
+//         companySelect.addEventListener('change', function() {
+//             // Make sure hidden fields are updated first
+//             const formCompanyId = document.getElementById('form_company_id');
+//             if (formCompanyId) {
+//                 formCompanyId.value = this.value;
+//             }
+            
+//             // Then submit the form
+//             filterForm.submit();
+//         });
+//     }
+
+//     if (dateInput && filterForm) {
+//         dateInput.addEventListener('change', function() {
+//             // Update hidden fields if present
+//             const formTransactionDate = document.getElementById('form_transaction_date');
+//             if (formTransactionDate) {
+//                 formTransactionDate.value = this.value;
+//             }
+            
+//             // Submit the form
+//             filterForm.submit();
+//         });
+//     }
+// });
 </script>
 
 
@@ -1272,132 +2049,170 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 </script>
 <script>
-// ddocument.addEventListener('DOMContentLoaded', function() {
-    const transactionForm = document.getElementById('transactionForm');
-    const updateExistingCheckbox = document.getElementById('update_existing_transaction');
+
+    // Add this at the top of your script section to prevent infinite loops
+let isProcessing = false;
+
+// Create a debounced function to limit execution frequency
+function debounce(func, wait) {
+    let timeout;
+    return function() {
+        const context = this, args = arguments;
+        clearTimeout(timeout);
+        timeout = setTimeout(function() {
+            func.apply(context, args);
+        }, wait);
+    };
+}
+
+// Prevent duplicate event handlers
+function safeAddEventListener(element, event, handler) {
+    if (!element) return;
     
-    // Skip if form doesn't exist on this page
-    if (!transactionForm) return;
+    // Remove any existing handlers to prevent duplicates
+    element.removeEventListener(event, handler);
     
-    // Set up form submission handler
-    transactionForm.addEventListener('submit', function(e) {
-        e.preventDefault();
+    // Add the new handler
+    element.addEventListener(event, handler);
+}
+
+// Add a function to force cleanup if page seems stuck
+setTimeout(function() {
+    if (document.readyState !== 'complete') {
+        console.warn('Page load timeout - refreshing Select2');
+        try {
+            $('#company_id').select2('destroy');
+            $('#company_id').select2();
+        } catch (e) {}
+    }
+}, 5000);
+
+// // ddocument.addEventListener('DOMContentLoaded', function() {
+//     const transactionForm = document.getElementById('transactionForm');
+//     const updateExistingCheckbox = document.getElementById('update_existing_transaction');
+    
+//     // Skip if form doesn't exist on this page
+//     if (!transactionForm) return;
+    
+//     // Set up form submission handler
+//     transactionForm.addEventListener('submit', function(e) {
+//         e.preventDefault();
         
-        const formData = new FormData(this);
-        const companyId = formData.get('company_id');
-        const transactionDate = formData.get('transaction_date');
+//         const formData = new FormData(this);
+//         const companyId = formData.get('company_id');
+//         const transactionDate = formData.get('transaction_date');
         
-        // Validation
-        if (!companyId) {
-            alert('Ве молиме изберете компанија');
-            return false;
-        }
+//         // Validation
+//         if (!companyId) {
+//             alert('Ве молиме изберете компанија');
+//             return false;
+//         }
         
-        // Handle differently based on checkbox
-        if (updateExistingCheckbox && updateExistingCheckbox.checked) {
-            // Process for update existing transactions
-            const transactions = [];
+//         // Handle differently based on checkbox
+//         if (updateExistingCheckbox && updateExistingCheckbox.checked) {
+//             // Process for update existing transactions
+//             const transactions = [];
             
-            // Find all transaction inputs and group by row
-            const inputElements = document.querySelectorAll('input[name^="transactions"]');
-            const transactionsByRow = {};
+//             // Find all transaction inputs and group by row
+//             const inputElements = document.querySelectorAll('input[name^="transactions"]');
+//             const transactionsByRow = {};
             
-            inputElements.forEach(input => {
-                const match = input.name.match(/transactions\[(\d+)\]\[(\w+)\]/);
-                if (match) {
-                    const rowIndex = match[1];
-                    const field = match[2];
+//             inputElements.forEach(input => {
+//                 const match = input.name.match(/transactions\[(\d+)\]\[(\w+)\]/);
+//                 if (match) {
+//                     const rowIndex = match[1];
+//                     const field = match[2];
                     
-                    if (!transactionsByRow[rowIndex]) {
-                        transactionsByRow[rowIndex] = {};
-                    }
+//                     if (!transactionsByRow[rowIndex]) {
+//                         transactionsByRow[rowIndex] = {};
+//                     }
                     
-                    // Parse number values, keep bread_type_id as string
-                    transactionsByRow[rowIndex][field] = field === 'bread_type_id' 
-                        ? input.value 
-                        : parseInt(input.value) || 0;
-                }
-            });
+//                     // Parse number values, keep bread_type_id as string
+//                     transactionsByRow[rowIndex][field] = field === 'bread_type_id' 
+//                         ? input.value 
+//                         : parseInt(input.value) || 0;
+//                 }
+//             });
             
-            // Convert to array and filter out zero deliveries
-            Object.values(transactionsByRow).forEach(transaction => {
-                if (transaction.delivered > 0) {
-                    transactions.push(transaction);
-                }
-            });
+//             // Convert to array and filter out zero deliveries
+//             Object.values(transactionsByRow).forEach(transaction => {
+//                 if (transaction.delivered > 0) {
+//                     transactions.push(transaction);
+//                 }
+//             });
             
-            // Create request payload
-            const payload = {
-                company_id: companyId,
-                transaction_date: transactionDate,
-                transactions: transactions
-            };
+//             // Create request payload
+//             const payload = {
+//                 company_id: companyId,
+//                 transaction_date: transactionDate,
+//                 transactions: transactions
+//             };
             
-            console.log('Update payload:', payload);
+//             console.log('Update payload:', payload);
             
-            // Send using fetch API
-            fetch(window.location.origin + '/update-daily-transaction', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
-                },
-                body: JSON.stringify(payload)
-            })
-            .then(response => {
-                if (!response.ok) {
-                    throw new Error('Network response was not ok: ' + response.status);
-                }
-                return response.json();
-            })
-            .then(data => {
-                if (data.success) {
-                    alert('Трансакциите се успешно ажурирани.');
-                    window.location.href = '/daily-transactions/create?' + 
-                        'company_id=' + companyId + 
-                        '&date=' + transactionDate;
-                } else {
-                    alert(data.message || 'Грешка при ажурирање.');
-                }
-            })
-            .catch(error => {
-                console.error('Error updating transactions:', error);
-                alert('Грешка при комуникација со серверот.');
-            });
-        } else {
-            // Regular form submission for new transactions
-            fetch(transactionForm.action, {
-                method: 'POST',
-                body: formData,
-                headers: {
-                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
-                }
-            })
-            .then(response => {
-                if (!response.ok) {
-                    throw new Error('Network response was not ok: ' + response.status);
-                }
-                return response.json();
-            })
-            .then(data => {
-                if (data.success) {
-                    alert('Успешно ажурирање на дневни трансакции.');
-                    window.location.href = '/daily-transactions/create?' + 
-                        'company_id=' + companyId + 
-                        '&date=' + transactionDate;
-                } else {
-                    alert(data.message || 'Грешка при зачувување.');
-                }
-            })
-            .catch(error => {
-                console.error('Error saving transactions:', error);
-                alert('Грешка при зачувување. Обидете се повторно.');
-            });
-        }
+//             // Send using fetch API
+//             fetch(window.location.origin + '/update-daily-transaction', {
+//                 method: 'POST',
+//                 headers: {
+//                     'Content-Type': 'application/json',
+//                     'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+//                 },
+//                 body: JSON.stringify(payload)
+//             })
+//             .then(response => {
+//                 if (!response.ok) {
+//                     throw new Error('Network response was not ok: ' + response.status);
+//                 }
+//                 return response.json();
+//             })
+//             .then(data => {
+//                 if (data.success) {
+//                     alert('Трансакциите се успешно ажурирани.');
+//                     window.location.href = '/daily-transactions/create?' + 
+//                         'company_id=' + companyId + 
+//                         '&date=' + transactionDate;
+//                 } else {
+//                     alert(data.message || 'Грешка при ажурирање.');
+//                 }
+//             })
+//             .catch(error => {
+//                 console.error('Error updating transactions:', error);
+//                 alert('Грешка при комуникација со серверот.');
+//             });
+//         } else {
+//             // Regular form submission for new transactions
+//             fetch(transactionForm.action, {
+//                 method: 'POST',
+//                 body: formData,
+//                 headers: {
+//                     'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+//                 }
+//             })
+//             .then(response => {
+//                 if (!response.ok) {
+//                     throw new Error('Network response was not ok: ' + response.status);
+//                 }
+//                 return response.json();
+//             })
+//             .then(data => {
+//                 if (data.success) {
+//                     alert('Успешно ажурирање на дневни трансакции.');
+//                     window.location.href = '/daily-transactions/create?' + 
+//                         'company_id=' + companyId + 
+//                         '&date=' + transactionDate;
+//                 } else {
+//                     alert(data.message || 'Грешка при зачувување.');
+//                 }
+//             })
+//             .catch(error => {
+//                 console.error('Error saving transactions:', error);
+//                 alert('Грешка при зачувување. Обидете се повторно.');
+//             });
+//         }
         
-        return false;
-    });
-});
+//         return false;
+//     });
+// });
 </script>
 
 <script>
@@ -1412,6 +2227,76 @@ document.addEventListener('DOMContentLoaded', function() {
             this.setAttribute('inputmode', 'numeric');
             this.setAttribute('pattern', '[0-9]*');
         });
+    });
+});
+
+// Simple fix for toggling between daily transactions and old bread sales
+document.addEventListener('DOMContentLoaded', function() {
+    // Get references to buttons and sections
+    const dailyTransactionsButton = document.getElementById('dailyTransactionsButton');
+    const oldBreadSalesButton = document.getElementById('oldBreadSalesButton');
+    const dailyTransactionsSection = document.getElementById('dailyTransactionsSection');
+    const oldBreadSalesSection = document.getElementById('oldBreadSalesSection');
+    
+    // Store current company ID when switching to old bread sales
+    oldBreadSalesButton.addEventListener('click', function() {
+        // Show old bread section, hide daily transactions
+        oldBreadSalesSection.classList.remove('hidden');
+        dailyTransactionsSection.classList.add('hidden');
+        
+        // Update button styles
+        oldBreadSalesButton.classList.remove('bg-gray-500');
+        oldBreadSalesButton.classList.add('bg-blue-500');
+        dailyTransactionsButton.classList.remove('bg-blue-500');
+        dailyTransactionsButton.classList.add('bg-gray-500');
+        
+        // Save company selection and clear it
+        const companySelect = document.getElementById('company_id');
+        if (companySelect) {
+            // Save current value
+            localStorage.setItem('saved_company_id', companySelect.value);
+            
+            // Clear the company selection
+            if (window.jQuery && $('#company_id').select2) {
+                try {
+                    $('#company_id').val('').trigger('change');
+                } catch (e) {
+                    companySelect.value = '';
+                }
+            } else {
+                companySelect.value = '';
+            }
+        }
+    });
+    
+    // Restore company ID when switching back to daily transactions
+    dailyTransactionsButton.addEventListener('click', function() {
+        // Show daily transactions, hide old bread
+        dailyTransactionsSection.classList.remove('hidden');
+        oldBreadSalesSection.classList.add('hidden');
+        
+        // Update button styles
+        dailyTransactionsButton.classList.remove('bg-gray-500');
+        dailyTransactionsButton.classList.add('bg-blue-500');
+        oldBreadSalesButton.classList.remove('bg-blue-500');
+        oldBreadSalesButton.classList.add('bg-gray-500');
+        
+        // Restore company selection
+        const companySelect = document.getElementById('company_id');
+        if (companySelect) {
+            const savedCompanyId = localStorage.getItem('saved_company_id');
+            if (savedCompanyId) {
+                if (window.jQuery && $('#company_id').select2) {
+                    try {
+                        $('#company_id').val(savedCompanyId).trigger('change');
+                    } catch (e) {
+                        companySelect.value = savedCompanyId;
+                    }
+                } else {
+                    companySelect.value = savedCompanyId;
+                }
+            }
+        }
     });
 });
 </script>

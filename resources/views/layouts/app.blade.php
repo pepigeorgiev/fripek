@@ -9,9 +9,9 @@
     <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
-<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+<!-- <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" /> -->
+    <!-- <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script> -->
 
     <!-- Add Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
@@ -118,7 +118,7 @@
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 
     <!-- PWA Debug Script -->
-    <script>
+    <!-- <script>
         window.addEventListener('load', function() {
             console.log('Checking PWA status...');
             
@@ -151,36 +151,80 @@
                     console.error('Error loading manifest:', error);
                 });
         });
-    </script>
+    </script> -->
 
     <!-- PWA Install Script -->
     <script>
         if ('serviceWorker' in navigator) {
-            window.addEventListener('load', () => {
-                navigator.serviceWorker.register('/sw.js')
-                    .then(registration => {
-                        console.log('ServiceWorker registration successful with scope: ', registration.scope);
-                        
-                        // Check if we can install
-                        window.addEventListener('beforeinstallprompt', (e) => {
-                            e.preventDefault();
-                            console.log('Install prompt available');
-                            
-                            const installButton = document.getElementById('pwa-install');
-                            if (installButton) {
-                                installButton.style.display = 'block';
-                                installButton.addEventListener('click', () => {
-                                    console.log('Install button clicked');
-                                    e.prompt();
-                                });
-                            }
-                        });
-                    })
-                    .catch(error => {
-                        console.error('ServiceWorker registration failed: ', error);
-                    });
-            });
+    window.addEventListener('load', () => {
+        // Check if running in standalone mode
+        if (window.matchMedia('(display-mode: standalone)').matches) {
+            console.log('App is running in standalone mode');
         }
+        
+        // Log manifest loading
+        fetch('{{ asset('manifest.json') }}')
+            .then(response => response.json())
+            .then(data => {
+                console.log('Manifest loaded successfully:', data);
+            })
+            .catch(error => {
+                console.error('Error loading manifest:', error);
+            });
+        
+        // Register service worker
+        navigator.serviceWorker.register('/sw.js')
+            .then(registration => {
+                console.log('ServiceWorker registration successful with scope: ', registration.scope);
+                
+                // Check if we can install
+                window.addEventListener('beforeinstallprompt', (e) => {
+                    e.preventDefault();
+                    console.log('Install prompt available');
+                    
+                    const installButton = document.getElementById('pwa-install');
+                    if (installButton) {
+                        installButton.style.display = 'block';
+                        installButton.addEventListener('click', () => {
+                            console.log('Install button clicked');
+                            e.prompt();
+                        });
+                    }
+                });
+            })
+            .catch(error => {
+                console.error('ServiceWorker registration failed: ', error);
+            });
+    });
+} else {
+    console.log('Service Worker is not supported');
+}
+        // if ('serviceWorker' in navigator) {
+        //     window.addEventListener('load', () => {
+        //         navigator.serviceWorker.register('/sw.js')
+        //             .then(registration => {
+        //                 console.log('ServiceWorker registration successful with scope: ', registration.scope);
+                        
+        //                 // Check if we can install
+        //                 window.addEventListener('beforeinstallprompt', (e) => {
+        //                     e.preventDefault();
+        //                     console.log('Install prompt available');
+                            
+        //                     const installButton = document.getElementById('pwa-install');
+        //                     if (installButton) {
+        //                         installButton.style.display = 'block';
+        //                         installButton.addEventListener('click', () => {
+        //                             console.log('Install button clicked');
+        //                             e.prompt();
+        //                         });
+        //                     }
+        //                 });
+        //             })
+        //             .catch(error => {
+        //                 console.error('ServiceWorker registration failed: ', error);
+        //             });
+        //     });
+        // }
     </script>
 
     <link rel="manifest" href="/manifest.json">
