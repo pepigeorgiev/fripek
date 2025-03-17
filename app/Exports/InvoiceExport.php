@@ -58,15 +58,17 @@ class InvoiceExport extends DefaultValueBinder implements FromCollection, WithHe
                 c.name as company_name,
                 bt.code as bread_code,
                 bt.name as bread_name,
-                SUM(dt.delivered - dt.returned) as quantity,
+                SUM(dt.delivered - dt.returned - dt.gratis) as quantity,
                 COALESCE(lp.price, bt.price) as price,
-                c.mygpm_business_unit
+                c.mygpm_business_unit,
+                cu.user_id
             FROM daily_transactions dt
             JOIN companies c ON dt.company_id = c.id
             JOIN bread_types bt ON dt.bread_type_id = bt.id
             LEFT JOIN latest_prices lp ON lp.bread_type_id = dt.bread_type_id 
                 AND lp.company_id = dt.company_id
                 AND lp.rn = 1
+            LEFT JOIN company_user cu ON c.id = cu.company_id
             WHERE c.type = 'invoice'
             AND dt.transaction_date BETWEEN ? AND ?
             GROUP BY 
@@ -75,9 +77,11 @@ class InvoiceExport extends DefaultValueBinder implements FromCollection, WithHe
                 bt.code,
                 bt.name,
                 COALESCE(lp.price, bt.price),
-                c.mygpm_business_unit
-            HAVING SUM(dt.delivered - dt.returned) > 0
+                c.mygpm_business_unit,
+                cu.user_id
+            HAVING SUM(dt.delivered - dt.returned - dt.gratis) > 0
             ORDER BY 
+                cu.user_id,
                 c.code,
                 c.name,
                 bt.code
