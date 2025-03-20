@@ -1323,33 +1323,8 @@ restoreFormState: function() {
     // Set initial form hidden values
     this.updateHiddenFormFields();
 }
-    
-    // Restore form state from localStorage
-//     restoreFormState: function() {
-//         const el = this.elements;
-        
-//         // Restore date from localStorage if not in URL
-//         const storedDate = localStorage.getItem('lastTransactionDate');
-//         if (storedDate && (!el.dateInput.value || el.dateInput.value === new Date().toISOString().slice(0, 10))) {
-//             el.dateInput.value = storedDate;
-            
-//             // If company is already selected, refresh with the stored date
-//             if (el.companySelect.value) {
-//                 const url = new URL(el.filterForm.action, window.location.origin);
-//                 url.searchParams.set('company_id', el.companySelect.value);
-//                 url.searchParams.set('date', storedDate);
-                
-//                 // Only redirect if URL would change
-//                 if (url.toString() !== window.location.href) {
-//                     window.location.href = url.toString();
-//                 }
-//             }
-//         }
-        
-//         // Set initial form hidden values
-//         this.updateHiddenFormFields();
-//     }
- };
+};
+
 
 // Execute when DOM is ready
 document.addEventListener('DOMContentLoaded', function() {
@@ -1419,6 +1394,172 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 });
+// Transliteration maps
+const latinToCyrillicMap = {
+    'a': 'а', 'b': 'б', 'v': 'в', 'g': 'г', 'd': 'д', 'e': 'е', 'zh': 'ж', 'z': 'з', 
+    'i': 'и', 'j': 'ј', 'k': 'к', 'l': 'л', 'm': 'м', 'n': 'н', 'o': 'о', 'p': 'п', 
+    'r': 'р', 's': 'с', 't': 'т', 'u': 'у', 'f': 'ф', 'h': 'х', 'c': 'ц', 'ch': 'ч', 
+    'sh': 'ш', 'dj': 'џ', 'gj': 'ѓ', 'kj': 'ќ', 'lj': 'љ', 'nj': 'њ'
+};
+
+// Create reverse map (Cyrillic to Latin)
+const cyrillicToLatinMap = {};
+for (const [latin, cyrillic] of Object.entries(latinToCyrillicMap)) {
+    cyrillicToLatinMap[cyrillic] = latin;
+}
+
+// Function to transliterate Latin to Cyrillic
+function latinToCyrillic(input) {
+    if (!input) return '';
+    
+    let result = input.toLowerCase();
+    
+    // First replace two-character combinations
+    result = result.replace(/(ch|sh|zh|dj|gj|kj|lj|nj)/g, function(match) {
+        return latinToCyrillicMap[match] || match;
+    });
+    
+    // Then replace single characters
+    result = result.replace(/[a-z]/g, function(match) {
+        return latinToCyrillicMap[match] || match;
+    });
+    
+    return result;
+}
+
+// Function to transliterate Cyrillic to Latin
+function cyrillicToLatin(input) {
+    if (!input) return '';
+    
+    let result = input.toLowerCase();
+    
+    // Replace Cyrillic characters with Latin equivalents
+    result = result.replace(/[а-џљњѓќ]/g, function(match) {
+        return cyrillicToLatinMap[match] || match;
+    });
+    
+    return result;
+}
+
+// Custom matcher function for Select2
+function customMatcher(params, data) {
+    // If there are no search terms, return all of the data
+    if ($.trim(params.term) === '') {
+        return data;
+    }
+    
+    // Do not display the item if there is no 'text' property
+    if (typeof data.text === 'undefined') {
+        return null;
+    }
+    
+    const searchTerm = params.term.toLowerCase();
+    const originalText = data.text.toLowerCase();
+    
+    // Case 1: Direct match (case insensitive)
+    if (originalText.indexOf(searchTerm) > -1) {
+        return data;
+    }
+    
+    // Case 2: If search term is Latin, convert to Cyrillic and search
+    const latinToCyrillicTerm = latinToCyrillic(searchTerm);
+    if (originalText.indexOf(latinToCyrillicTerm) > -1) {
+        return data;
+    }
+    
+    // Case 3: If search term is Cyrillic, convert to Latin and search in potentially Latin text
+    const cyrillicToLatinTerm = cyrillicToLatin(searchTerm);
+    if (originalText.indexOf(cyrillicToLatinTerm) > -1) {
+        return data;
+    }
+    
+    // Case 4: If company name is Cyrillic, convert to Latin and check if it contains the Latin search term
+    const companyNameInLatin = cyrillicToLatin(originalText);
+    if (companyNameInLatin.indexOf(searchTerm) > -1) {
+        return data;
+    }
+    
+    // Case 5: If company name is Latin, convert to Cyrillic and check if it contains the Cyrillic search term
+    const companyNameInCyrillic = latinToCyrillic(originalText);
+    if (companyNameInCyrillic.indexOf(searchTerm) > -1) {
+        return data;
+    }
+    
+    // If all checks fail, don't return anything
+    return null;
+}
+
+// Initialize Select2 when DOM is ready
+document.addEventListener('DOMContentLoaded', function() {
+    // Wait for jQuery and Select2 to be loaded
+    function waitForJQuery(callback) {
+        if (window.jQuery && window.jQuery.fn.select2) {
+            callback();
+        } else {
+            setTimeout(function() { waitForJQuery(callback); }, 100);
+        }
+    }
+    
+    waitForJQuery(function() {
+        try {
+            if ($('#company_id').length) {
+                $('#company_id').select2({
+                    placeholder: 'Изберете компанија',
+                    allowClear: true,
+                    width: '100%',
+                    dropdownParent: $('body'),
+                    matcher: customMatcher // Use our custom matcher
+                }).on('select2:select', function() {
+                    // Handle company selection
+                    const selectedCompanyId = this.value;
+                    const currentDate = document.getElementById('transaction_date').value;
+                    
+                    // Update hidden form field
+                    const formCompanyId = document.getElementById('form_company_id');
+                    if (formCompanyId) {
+                        formCompanyId.value = selectedCompanyId;
+                    }
+                    
+                    // Navigate to the URL with parameters
+                    if (selectedCompanyId) {
+                        // Use full URL to avoid any path issues
+                        const baseUrl = window.location.origin;
+                        window.location.href = `${baseUrl}/daily-transactions/create?company_id=${selectedCompanyId}&date=${currentDate}`;
+                    }
+                });
+                
+                console.log('Select2 initialized with transliteration support');
+            }
+        } catch (e) {
+            console.error('Error initializing Select2 with transliteration:', e);
+            
+            // Fallback to regular select
+            const companySelect = document.getElementById('company_id');
+            if (companySelect) {
+                companySelect.addEventListener('change', function() {
+                    const selectedCompanyId = this.value;
+                    const currentDate = document.getElementById('transaction_date').value;
+                    
+                    // Update hidden field
+                    const formCompanyId = document.getElementById('form_company_id');
+                    if (formCompanyId) {
+                        formCompanyId.value = selectedCompanyId;
+                    }
+                    
+                    // Navigate to refresh page
+                    if (selectedCompanyId) {
+                        const baseUrl = window.location.origin;
+                        window.location.href = `${baseUrl}/daily-transactions/create?company_id=${selectedCompanyId}&date=${currentDate}`;
+                    }
+                });
+            }
+        }
+    });
+});
 </script>
+
+
+
+
 
 @endsection
