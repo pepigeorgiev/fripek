@@ -34,16 +34,35 @@ class SummaryController extends Controller
             if ($selectedUserId) {
                 $selectedUser = User::find($selectedUserId);
                 $allCompanies = $selectedUser->companies;
-                $company = $selectedUser->companies()->first();
             } else {
                 // If no user selected, show all companies
                 $allCompanies = Company::all();
-                $company = $allCompanies->first();
             }
         } else {
             $allCompanies = $currentUser->companies;
-            $company = $currentUser->companies()->first();
         }
+        
+        // Use company_id from request if provided
+        $requestedCompanyId = $request->input('company_id');
+        if ($requestedCompanyId && $allCompanies->contains('id', $requestedCompanyId)) {
+            $company = $allCompanies->firstWhere('id', $requestedCompanyId);
+        } else {
+            $company = $allCompanies->first();
+        }
+        // if ($currentUser->isAdmin() || $currentUser->role === 'super_admin') {
+        //     if ($selectedUserId) {
+        //         $selectedUser = User::find($selectedUserId);
+        //         $allCompanies = $selectedUser->companies;
+        //         $company = $selectedUser->companies()->first();
+        //     } else {
+        //         // If no user selected, show all companies
+        //         $allCompanies = Company::all();
+        //         $company = $allCompanies->first();
+        //     }
+        // } else {
+        //     $allCompanies = $currentUser->companies;
+        //     $company = $currentUser->companies()->first();
+        // }
         
         if ($allCompanies->isEmpty()) {
             return redirect()->back()->with('error', 'Нема компанија поврзана со вашиот акаунт.');
@@ -143,8 +162,10 @@ elseif ($currentUser->isAdmin() || $currentUser->role === 'super_admin') {
             $allTransactions = $this->getTransactionsForSummary($selectedDate);
 
         $breadSales = $breadSales->get()->keyBy('bread_type_id');
+
+        $breadCounts = $this->calculateBreadCounts($transactions, $selectedDate, $breadSales, $company);
     
-        $breadCounts = $this->calculateBreadCounts($transactions, $selectedDate, $breadSales);
+        // $breadCounts = $this->calculateBreadCounts($transactions, $selectedDate, $breadSales);
         
         $paymentData = $this->calculateAllPayments(
             $allTransactions, 
@@ -202,14 +223,16 @@ elseif ($currentUser->isAdmin() || $currentUser->role === 'super_admin') {
             'paidTransactions' => $paidTransactions,
             'users' => $users,
             'selectedUserId' => $selectedUserId,
-            'currentUser' => $currentUser
+            'currentUser' => $currentUser,
+            'company' => $company,
+            'allCompanies' => $allCompanies
 
         ]);
     }
     
 
 
-    private function calculateBreadCounts($transactions, $date, $breadSales)
+    private function calculateBreadCounts($transactions, $date, $breadSales,$company)
     {
         $counts = [];
         $allBreadTypes = BreadType::where('is_active', true)->get();

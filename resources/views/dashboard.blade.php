@@ -67,6 +67,8 @@
                             <th class="text-left">Име на лебот</th>
                             <th class="text-right">Пратен</th>
                             <th class="text-right">Вратен</th>
+                            <th class="text-right">Гратис</th>
+
                         </tr>
                     </thead>
                     <tbody>
@@ -74,9 +76,12 @@
                             @if($transaction->breadType && ($transaction->delivered > 0 || $transaction->returned > 0))
                                 <tr>
                                     <td>{{ $transaction->breadType->name }}</td>
-                                    <td class="text-right">{{ $transaction->delivered }}</td>
-                                    <td class="text-right font-semibold {{ $transaction->returned > 0 ? 'text-red-600' : '' }}">
+                                    <td class="text-center">{{ $transaction->delivered }}</td>
+                                    <td class="text-center font-semibold {{ $transaction->returned > 0 ? 'text-red-600' : '' }}">
                                         {{ $transaction->returned }}
+                                    </td>
+                                    <td class="text-center font-semibold {{ $transaction->gratis > 0 ? 'text-blue-600' : '' }}">
+                                        {{ $transaction->gratis }}
                                     </td>
                                 </tr>
                             @endif

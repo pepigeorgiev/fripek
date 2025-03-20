@@ -125,14 +125,7 @@ class MonthlySummaryController extends Controller
     {
         $prices = $breadType->getPriceForCompany($company->id, $date);
         
-        // Debug logging
-        \Log::info('Getting price for bread', [
-            'bread_type' => $breadType->name,
-            'company_id' => $company->id,
-            'date' => $date,
-            'returned_price' => $prices['price'],
-            'default_price' => $breadType->price
-        ]);
+     
         
         return $prices['price'];
     }
@@ -149,13 +142,7 @@ class MonthlySummaryController extends Controller
                 ->orderBy('valid_from', 'desc')
                 ->first();
                 
-            \Log::info('Company specific price check', [
-                'bread_type' => $breadType->name,
-                'company_id' => $company->id,
-                'has_specific_price' => !is_null($companySpecificPrice),
-                'specific_price' => $companySpecificPrice ? $companySpecificPrice->pivot->price : null,
-                'valid_from' => $companySpecificPrice ? $companySpecificPrice->pivot->valid_from : null
-            ]);
+        
         }
     
         $transactions = DailyTransaction::where('company_id', $company->id)
@@ -179,12 +166,7 @@ class MonthlySummaryController extends Controller
                 // Get company-specific price for this date
                 $price = $this->getCompanyBreadPrice($company, $breadType, $dateStr);
                 
-                // Debug log the price being used
-                \Log::info('Using price for daily summary', [
-                    'date' => $dateStr,
-                    'bread_type' => $breadType->name,
-                    'price_used' => $price
-                ]);
+             
     
                 $dailySummaries[$dateStr][$breadType->id] = [
                     'name' => $breadType->name,

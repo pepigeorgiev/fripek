@@ -384,32 +384,7 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 });
 
-// document.addEventListener('DOMContentLoaded', function() {
-//     // Get all price group select inputs
-//     const priceGroupSelects = document.querySelectorAll('.price-group-select');
 
-//     // For each price group select
-//     priceGroupSelects.forEach(select => {
-//         // Add change event listener
-//         select.addEventListener('change', function() {
-//             const form = this.closest('form');
-//             const priceInput = form.querySelector('.company-price');
-//             const selectedOption = this.options[this.selectedIndex];
-            
-//             // Check if we have a selected option with data-price
-//             if (selectedOption && selectedOption.hasAttribute('data-price')) {
-//                 // Get price from data-price attribute
-//                 const newPrice = selectedOption.getAttribute('data-price');
-//                 console.log('Changing price to:', newPrice);
-                
-//                 // Update the price input value
-//                 if (newPrice && !isNaN(parseFloat(newPrice))) {
-//                     priceInput.value = parseFloat(newPrice).toFixed(2);
-//                 }
-//             }
-//         });
-//     });
-// });
 
 </script>
 @endsection

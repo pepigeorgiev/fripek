@@ -52,15 +52,7 @@ public function create()
     $date = request('date', now()->toDateString());
     $selectedCompanyId = request('company_id');
     
-    // More verbose logging
-    \Log::info('Request parameters:', [
-        'all' => request()->all(),
-        'company_id' => $selectedCompanyId,
-        'date' => $date,
-        'request_method' => request()->method(),
-        'user_is_admin' => $user->isAdmin(),
-        'companies_count' => $companies->count()
-    ]);
+
     
     // Start with all active bread types
     $breadTypes = BreadType::where('is_active', true)->get();
@@ -70,17 +62,14 @@ public function create()
         $selectedCompany = Company::find($selectedCompanyId);
         
         if ($selectedCompany) {
-            \Log::info('Found company:', ['id' => $selectedCompany->id, 'name' => $selectedCompany->name]);
             
             // Get bread types associated with this company
             $companyBreadTypes = $selectedCompany->breadTypes()->pluck('bread_types.id')->toArray();
             
-            \Log::info('Company bread types:', ['count' => count($companyBreadTypes), 'ids' => $companyBreadTypes]);
             
             // If company has specific bread types, filter to show only those
             if (!empty($companyBreadTypes)) {
                 $breadTypes = $breadTypes->whereIn('id', $companyBreadTypes)->values();
-                \Log::info('Filtered bread types:', ['count' => $breadTypes->count(), 'ids' => $breadTypes->pluck('id')]);
             }
         }
     }
@@ -140,10 +129,7 @@ public function create()
             'transactions.*.gratis' => 'required|integer|min:0',
         ]);
         
-        Log::info('Creating daily transactions', [
-            'company_id' => $validatedData['company_id'],
-            'date' => $validatedData['transaction_date']
-        ]);
+   
         
         try {
             DB::transaction(function () use ($validatedData, $request) {
@@ -151,13 +137,7 @@ public function create()
                 $isPaid = !$request->has('is_paid');
                 $shouldTrackPayment = $company->type === 'cash';
                 
-                // Enhanced logging - ADD THIS
-                Log::info('Company details for transaction', [
-                    'company_id' => $company->id,
-                    'company_name' => $company->name,
-                    'price_group' => $company->price_group,
-                    'type' => $company->type
-                ]);
+         
                 
                 // Get existing transactions for history
                 $existingTransactions = DailyTransaction::where([
@@ -178,12 +158,7 @@ public function create()
                             $validatedData['transaction_date']
                         );
                         
-                        // Log the calculated price
-                        Log::info('Price calculated for transaction', [
-                            'bread_type' => $breadType->name,
-                            'company_price_group' => $company->price_group,
-                            'calculated_price' => $price
-                        ]);
+                 
                 
                         // Create/update the transaction with the calculated price
                         $newTransaction = DailyTransaction::updateOrCreate(
@@ -235,7 +210,7 @@ public function create()
                                 'gratis' => $transaction['gratis'],
                                 'is_paid' => $transactionIsPaid,
                                 'paid_date' => $paidDate
-                                // 'price' => $price // Set the calculated price
+                                //  'price' => $price // Set the calculated price
                             ]
                         );
 
@@ -276,9 +251,7 @@ public function create()
 
 public function storeOldBreadSales(Request $request)
 {
-    Log::info('Processing old bread sales request', [
-        'request_data' => $request->all()
-    ]);
+
 
     $request->validate([
         'transaction_date' => 'required|date',
@@ -308,13 +281,7 @@ public function storeOldBreadSales(Request $request)
             $currentAmount = $transaction->old_bread_sold ?? 0;
             $newAmount = $currentAmount + intval($data['sold']);
 
-            // Log the accumulation
-            Log::info('Accumulating old bread sales', [
-                'bread_type_id' => $data['bread_type_id'],
-                'current_amount' => $currentAmount,
-                'adding_amount' => $data['sold'],
-                'new_total' => $newAmount
-            ]);
+      
 
             $transaction->old_bread_sold = $newAmount;
             $transaction->save();
@@ -529,6 +496,10 @@ private function recordPaymentHistory($transaction, $oldValues, $newValues)
 
 public function getBreadTypePrice($breadTypeId, $companyId)
 {
+    $cacheKey = "bread_price_{$breadTypeId}_{$companyId}";
+    \Cache::forget($cacheKey);
+
+
     $breadType = BreadType::find($breadTypeId);
     $company = Company::find($companyId);
     $date = request('date', now()->toDateString());
@@ -584,11 +555,7 @@ public function updateDailyTransaction(Request $request)
             'transactions.*.delivered' => 'required|integer|min:0',
         ]);
 
-        \Log::info('Updating daily transactions', [
-            'company_id' => $validatedData['company_id'],
-            'date' => $validatedData['transaction_date'],
-            'transactions_count' => count($validatedData['transactions'])
-        ]);
+  
 
         DB::beginTransaction();
 

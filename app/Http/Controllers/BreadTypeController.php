@@ -26,7 +26,6 @@ class BreadTypeController extends Controller
 
     public function store(Request $request)
 {
-    \Log::info('Received request to create bread type', ['request_data' => $request->all()]);
 
     try {
         $validated = $request->validate([
@@ -85,6 +84,7 @@ class BreadTypeController extends Controller
     }
 }
 
+
 public function update(Request $request, BreadType $breadType)
 {
     try {
@@ -107,12 +107,24 @@ public function update(Request $request, BreadType $breadType)
         $validated['is_active'] = $request->has('is_active');
         $validated['available_for_daily'] = $request->has('available_for_daily');
 
+        // Store the old price group values for comparison
+        $oldPriceGroups = [
+            'price' => $breadType->price,
+            'price_group_1' => $breadType->price_group_1,
+            'price_group_2' => $breadType->price_group_2,
+            'price_group_3' => $breadType->price_group_3,
+            'price_group_4' => $breadType->price_group_4,
+            'price_group_5' => $breadType->price_group_5,
+        ];
+
+        $validated['is_active'] = $request->has('is_active');
+        $validated['available_for_daily'] = $request->has('available_for_daily');
+
         // Check if prices have changed
         $pricesChanged = $breadType->price != $validated['price'] || 
                         $breadType->old_price != $validated['old_price'];
 
         DB::beginTransaction();
-
 
         if ($pricesChanged) {
             // Create a new price history record
@@ -124,7 +136,7 @@ public function update(Request $request, BreadType $breadType)
                 'created_by' => auth()->id()
             ]);
 
-            // Update the current prices and group prices in bread_types table
+            // Update the bread type with all fields
             $breadType->update([
                 'code' => $validated['code'],
                 'name' => $validated['name'],
@@ -137,7 +149,6 @@ public function update(Request $request, BreadType $breadType)
                 'old_price' => $validated['old_price'],
                 'is_active' => $validated['is_active'],
                 'available_for_daily' => $validated['available_for_daily'],
-                // 'last_price_change' => $validated['valid_from']
             ]);
         } else {
             // Update non-price fields and group prices
@@ -154,6 +165,119 @@ public function update(Request $request, BreadType $breadType)
             ]);
         }
 
+        // Check which price groups have changed
+$changedGroups = [];
+foreach(['price', 'price_group_1', 'price_group_2', 'price_group_3', 'price_group_4', 'price_group_5'] as $field) {
+    if(isset($validated[$field]) && isset($oldPriceGroups[$field]) && $oldPriceGroups[$field] != $validated[$field]) {
+        $changedGroups[$field] = $validated[$field];
+    }
+}
+
+// If any price groups changed, update company prices that use these groups
+if(!empty($changedGroups)) {
+    // Get all companies that have this bread type
+    $companies = Company::whereHas('breadTypes', function($query) use ($breadType) {
+        $query->where('bread_types.id', $breadType->id);
+    })->get();
+    
+    foreach($companies as $company) {
+        $priceGroup = $company->price_group;
+        $priceGroupField = $priceGroup > 0 ? "price_group_{$priceGroup}" : "price";
+        
+        // Only update if this price group has changed
+        if(isset($changedGroups[$priceGroupField])) {
+            $newPrice = $changedGroups[$priceGroupField];
+            $oldGroupPrice = $oldPriceGroups[$priceGroupField];
+            
+            // Get current pivot record
+            $currentPivot = DB::table('bread_type_company')
+                ->where('bread_type_id', $breadType->id)
+                ->where('company_id', $company->id)
+                ->orderBy('valid_from', 'desc')
+                ->first();
+            
+            // We want to update the price if:
+            // 1. There's no current pivot record, OR
+            // 2. The current price is 0, OR
+            // 3. The current price matches the old price group value (indicating it wasn't manually set)
+            // We DON'T want to update if the price was manually set to a different value than the price group
+            $shouldUpdate = !$currentPivot || 
+                            $currentPivot->price == 0 || 
+                            abs($currentPivot->price - $oldGroupPrice) < 0.01;
+            
+            if($shouldUpdate) {
+                // Create new pivot record with updated price
+                $breadType->companies()->attach($company->id, [
+                    'price' => $newPrice,
+                    'old_price' => $validated['old_price'],
+                    'price_group' => $priceGroup,
+                    'valid_from' => $validated['valid_from'],
+                    'created_by' => auth()->id()
+                ]);
+                
+             
+            } else {
+            
+            }
+        }
+    }
+}
+        
+        // // Check which price groups have changed
+        // $changedGroups = [];
+        // foreach(['price', 'price_group_1', 'price_group_2', 'price_group_3', 'price_group_4', 'price_group_5'] as $field) {
+        //     if(isset($validated[$field]) && isset($oldPriceGroups[$field]) && $oldPriceGroups[$field] != $validated[$field]) {
+        //         $changedGroups[$field] = $validated[$field];
+        //     }
+        // }
+        
+        // // If any price groups changed, update company prices that use these groups
+        // if(!empty($changedGroups)) {
+        //     // Get all companies that have this bread type
+        //     $companies = Company::whereHas('breadTypes', function($query) use ($breadType) {
+        //         $query->where('bread_type_id', $breadType->id);
+        //     })->get();
+            
+        //     foreach($companies as $company) {
+        //         $priceGroup = $company->price_group;
+        //         $priceGroupField = $priceGroup > 0 ? "price_group_{$priceGroup}" : "price";
+                
+        //         // Only update if this price group has changed
+        //         if(isset($changedGroups[$priceGroupField])) {
+        //             $newPrice = $changedGroups[$priceGroupField];
+                    
+        //             // Get current pivot record
+        //             $currentPivot = DB::table('bread_type_company')
+        //                 ->where('bread_type_id', $breadType->id)
+        //                 ->where('company_id', $company->id)
+        //                 ->orderBy('valid_from', 'desc')
+        //                 ->first();
+                    
+        //             // Only update if no manual override (price is same as old group price)
+        //             if(!$currentPivot || $currentPivot->price == 0 || 
+        //                abs($currentPivot->price - $oldPriceGroups[$priceGroupField]) < 0.01) {
+                        
+        //                 // Create new pivot record with updated price
+        //                 $breadType->companies()->attach($company->id, [
+        //                     'price' => $newPrice,
+        //                     'old_price' => $validated['old_price'],
+        //                     'price_group' => $priceGroup,
+        //                     'valid_from' => $validated['valid_from'],
+        //                     'created_by' => auth()->id()
+        //                 ]);
+                        
+        //                 \Log::info("Updated company price from bread type update", [
+        //                     'bread_type' => $breadType->name,
+        //                     'company' => $company->name,
+        //                     'price_group' => $priceGroup,
+        //                     'old_price' => $oldPriceGroups[$priceGroupField],
+        //                     'new_price' => $newPrice
+        //                 ]);
+        //             }
+        //         }
+        //     }
+        // }
+
         DB::commit();
 
         return redirect()
@@ -168,6 +292,68 @@ public function update(Request $request, BreadType $breadType)
             ->with('error', 'Се појави грешка при ажурирање на лебот.');
     }
 }
+
+//         // Check if prices have changed
+//         $pricesChanged = $breadType->price != $validated['price'] || 
+//                         $breadType->old_price != $validated['old_price'];
+
+//         DB::beginTransaction();
+
+
+//         if ($pricesChanged) {
+//             // Create a new price history record
+//             BreadPriceHistory::create([
+//                 'bread_type_id' => $breadType->id,
+//                 'price' => $validated['price'],
+//                 'old_price' => $validated['old_price'],
+//                 'valid_from' => $validated['valid_from'],
+//                 'created_by' => auth()->id()
+//             ]);
+
+//             // Update the current prices and group prices in bread_types table
+//             $breadType->update([
+//                 'code' => $validated['code'],
+//                 'name' => $validated['name'],
+//                 'price' => $validated['price'],
+//                 'price_group_1' => $validated['price_group_1'],
+//                 'price_group_2' => $validated['price_group_2'],
+//                 'price_group_3' => $validated['price_group_3'],
+//                 'price_group_4' => $validated['price_group_4'],
+//                 'price_group_5' => $validated['price_group_5'],
+//                 'old_price' => $validated['old_price'],
+//                 'is_active' => $validated['is_active'],
+//                 'available_for_daily' => $validated['available_for_daily'],
+//                 // 'last_price_change' => $validated['valid_from']
+//             ]);
+//         } else {
+//             // Update non-price fields and group prices
+//             $breadType->update([
+//                 'code' => $validated['code'],
+//                 'name' => $validated['name'],
+//                 'price_group_1' => $validated['price_group_1'],
+//                 'price_group_2' => $validated['price_group_2'],
+//                 'price_group_3' => $validated['price_group_3'],
+//                 'price_group_4' => $validated['price_group_4'],
+//                 'price_group_5' => $validated['price_group_5'],
+//                 'is_active' => $validated['is_active'],
+//                 'available_for_daily' => $validated['available_for_daily']
+//             ]);
+//         }
+
+//         DB::commit();
+
+//         return redirect()
+//             ->route('bread-types.index')
+//             ->with('success', 'Успешно ажурирање на лебот. ' . 
+//                 ($pricesChanged ? 'Новата цена ќе важи од ' . $validated['valid_from'] : ''));
+//     } catch (\Exception $e) {
+//         DB::rollBack();
+//         Log::error('Error updating bread type: ' . $e->getMessage());
+//         return back()
+//             ->withInput()
+//             ->with('error', 'Се појави грешка при ажурирање на лебот.');
+//     }
+// }
 
     
 
@@ -216,15 +402,7 @@ public function update(Request $request, BreadType $breadType)
                 ];
             }
             
-            // Debug - log price calculation
-            \Log::info("Company price calculation for {$company->name}", [
-                'bread_type' => $breadType->name,
-                'company_price_group' => $company->price_group,
-                'selected_price' => $company->pivot->price,
-                'price_group_1' => $breadType->price_group_1,
-                'price_group_2' => $breadType->price_group_2,
-                'price_group_3' => $breadType->price_group_3
-            ]);
+          
             
             return $company;
         });
@@ -255,14 +433,7 @@ public function update(Request $request, BreadType $breadType)
         $companyData['price'] = $groupPrice;
     }
     
-    // Log the price calculation
-    \Log::info("Updating company price from UI", [
-        'bread_type' => $breadType->name,
-        'company' => $company->name,
-        'selected_price_group' => $selectedPriceGroup,
-        'group_price' => $groupPrice,
-        'final_price' => $companyData['price']
-    ]);
+ 
     
     // Add created_by to the data array
     $pivotData = [
@@ -386,6 +557,3 @@ public function update(Request $request, BreadType $breadType)
             ->first();
     }
 }
-
-
-

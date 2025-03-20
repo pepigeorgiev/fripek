@@ -1,10 +1,3 @@
-@php
-    \Log::debug('Bread counts and prices in summary view', [
-        'company' => $company->toArray(),
-        'breadCounts' => $breadCounts
-    ]);
-@endphp
-
 @extends('layouts.app')
 
 

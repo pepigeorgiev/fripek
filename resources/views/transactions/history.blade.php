@@ -49,14 +49,8 @@
             </div>
 
             <div class="mt-4 flex items-center">
-                <!-- <label class="inline-flex items-center">
-                    <input type="checkbox" name="past_date_changes" value="1" 
-                           {{ request('past_date_changes') ? 'checked' : '' }}
-                           class="rounded border-gray-300 text-blue-600 shadow-sm">
-                    <span class="ml-2">Промени на минати датуми</span>
-                </label> -->
-
-                <button type="submit" class="ml-4 bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600">
+                <!-- Checkbox removed since we're always filtering zero changes -->
+                <button type="submit" class="ml-auto bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600">
                     Филтрирај
                 </button>
             </div>
@@ -77,6 +71,49 @@
             </thead>
             <tbody class="divide-y divide-gray-200">
                 @foreach($history as $record)
+                @php
+                    $hasSignificantChange = false;
+                    
+                    // Check if there are significant changes in delivered
+                    if (isset($record->old_values['delivered']) && isset($record->new_values['delivered'])) {
+                        $oldDelivered = (int)$record->old_values['delivered'];
+                        $newDelivered = (int)$record->new_values['delivered'];
+                        $deliveredDiff = abs($newDelivered - $oldDelivered);
+                        if ($deliveredDiff > 0) {
+                            $hasSignificantChange = true;
+                        }
+                    }
+                    
+                    // Check if there are significant changes in returned
+                    if (isset($record->old_values['returned']) && isset($record->new_values['returned'])) {
+                        $oldReturned = (int)$record->old_values['returned'];
+                        $newReturned = (int)$record->new_values['returned'];
+                        $returnedDiff = abs($newReturned - $oldReturned);
+                        if ($returnedDiff > 0) {
+                            $hasSignificantChange = true;
+                        }
+                    }
+                    
+                    // Check if there are significant changes in gratis
+                    if (isset($record->old_values['gratis']) && isset($record->new_values['gratis'])) {
+                        $oldGratis = (int)$record->old_values['gratis'];
+                        $newGratis = (int)$record->new_values['gratis'];
+                        $gratisDiff = abs($newGratis - $oldGratis);
+                        if ($gratisDiff > 0) {
+                            $hasSignificantChange = true;
+                        }
+                    }
+                    
+                    // Skip records without significant changes - always filter out zero changes regardless of checkbox
+                    if (!$hasSignificantChange) {
+                        continue;
+                    }
+                    
+                    $createdAt = \Carbon\Carbon::parse($record->created_at);
+                    // Flag changes made outside of working hours (5 AM to 11 AM)
+                    $isOutsideWorkingHours = !($createdAt->hour >= 5 && $createdAt->hour < 11);
+                    $isNotCurrentDate = $record->transaction && !$record->transaction->transaction_date->isToday();
+                @endphp
                 <tr class="hover:bg-gray-50">
                     <td class="px-6 py-4">{{ $record->created_at->format('d.m.Y H:i:s') }}</td>
                     <td class="px-6 py-4">{{ $record->user->name ?? 'N/A' }}</td>
@@ -88,14 +125,8 @@
                     </td>
                     <td class="px-6 py-4">
                         <div class="text-sm">
-                            @php
-                                $createdAt = \Carbon\Carbon::parse($record->created_at);
-                                $isLateNight = ($createdAt->hour >= 0 && $createdAt->hour < 5) || $createdAt->hour >= 24;
-                                $isNotCurrentDate = $record->transaction && !$record->transaction->transaction_date->isToday();
-                            @endphp
-                            
-                            @if($isLateNight)
-                                <span class="text-red-500 text-xs">Промена во доцни часови ({{ $record->created_at->format('H:i') }})</span>
+                            @if($isOutsideWorkingHours)
+                                <span class="text-red-500 text-xs">Промена надвор од работни часови ({{ $record->created_at->format('H:i') }})</span>
                             @endif
                             
                             @if($isNotCurrentDate)
@@ -108,10 +139,18 @@
                                     <span class="text-green-500">→ Ново: {{ $record->new_values['delivered'] ?? 'N/A' }}</span>
                                 </div>
                             @endif
+                            
                             @if(isset($record->old_values['returned']) || isset($record->new_values['returned']))
                                 <div class="text-sm">
                                     <span class="text-red-500">Старо вратено: {{ $record->old_values['returned'] ?? 'N/A' }}</span>
                                     <span class="text-green-500">→ Ново: {{ $record->new_values['returned'] ?? 'N/A' }}</span>
+                                </div>
+                            @endif
+                            
+                            @if(isset($record->old_values['gratis']) || isset($record->new_values['gratis']))
+                                <div class="text-sm">
+                                    <span class="text-red-500">Старо гратис: {{ $record->old_values['gratis'] ?? 'N/A' }}</span>
+                                    <span class="text-green-500">→ Ново: {{ $record->new_values['gratis'] ?? 'N/A' }}</span>
                                 </div>
                             @endif
                         </div>
@@ -127,4 +166,4 @@
         {{ $history->appends(request()->query())->links() }}
     </div>
 </div>
-@endsection 
+@endsection
