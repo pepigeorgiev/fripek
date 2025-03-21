@@ -1538,6 +1538,41 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 });
+document.addEventListener('DOMContentLoaded', function() {
+    // Wait for a moment to ensure the main script has finished initializing
+    setTimeout(function() {
+        // Get modal elements directly
+        const modal = document.getElementById('transactionSummaryModal');
+        const cancelButton = document.getElementById('cancelSummary');
+        const confirmButton = document.getElementById('confirmSummary');
+        
+        // Add cancel button handler
+        if (cancelButton && modal) {
+            // Remove any existing event listeners
+            cancelButton.replaceWith(cancelButton.cloneNode(true));
+            const newCancelButton = document.getElementById('cancelSummary');
+            
+            // Add fresh event listener
+            newCancelButton.addEventListener('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                modal.classList.add('hidden');
+            });
+        }
+        
+        // Make sure the confirm button still works with DailyTransactions
+        if (confirmButton && modal && typeof DailyTransactions !== 'undefined') {
+            // We don't want to replace this listener completely, as it contains logic
+            // Instead, let's just make sure the modal hides properly
+            confirmButton.addEventListener('click', function() {
+                // Just ensure the modal hides - the rest should be handled by existing code
+                modal.classList.add('hidden');
+            });
+        }
+        
+        console.log('Modal button handlers added');
+    }, 500); // Short delay to ensure everything else is loaded
+});
 </script>
 
 
