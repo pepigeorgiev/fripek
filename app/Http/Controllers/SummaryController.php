@@ -278,9 +278,7 @@ elseif ($currentUser->isAdmin() || $currentUser->role === 'super_admin') {
     }
 
 
-
-
-private function calculateAllPayments($transactions, $breadPrices, $userCompanies)
+    private function calculateAllPayments($transactions, $breadPrices, $userCompanies)
 {
     $cashPayments = [];
     $invoicePayments = [];
@@ -300,13 +298,18 @@ private function calculateAllPayments($transactions, $breadPrices, $userCompanie
             'total' => 0
         ];
 
+        // Flag to track if we have any transaction activity (including negative values)
+        $hasActivity = false;
+
         foreach ($companyTransactions as $transaction) {
             if (!$transaction->breadType) continue;
             
+            // For cash companies, check if transaction is paid
             if ($company->type === 'cash' && !$transaction->is_paid) {
                 continue;
             }
 
+            // For paid transactions, check if they were paid on the selected date
             if ($transaction->is_paid && 
                 $transaction->paid_date !== null && 
                 $transaction->paid_date !== $selectedDate) {
@@ -319,34 +322,51 @@ private function calculateAllPayments($transactions, $breadPrices, $userCompanie
             $gratis = $transaction->gratis ?? 0;
             $netBreads = $delivered - $returned - $gratis;
             
-            if ($netBreads <= 0) continue;
-            
-            // Ensure we're using the correct pricing method from the bread type model
-            // This should match what's used in DailyTransactionController
-            $priceData = $transaction->breadType->getPriceForCompany($company->id, $transaction->transaction_date);
-            $price = $priceData['price'];
-            
-            $totalForBread = $netBreads * $price;
-            
-            if (!isset($payment['breadTotals'][$breadName])) {
-                $payment['breadTotals'][$breadName] = [
-                    'netBreads' => 0,
-                    'price' => $price,
-                    'total' => 0
-                ];
+            // Important: Process transactions even with negative net bread value
+            // This ensures returns-only transactions are included
+            if ($delivered > 0 || $returned > 0 || $gratis > 0) {
+                $hasActivity = true;
+                
+                // Get price
+                $priceData = $transaction->breadType->getPriceForCompany($company->id, $transaction->transaction_date);
+                $price = $priceData['price'];
+                
+                $totalForBread = $netBreads * $price;
+                
+                if (!isset($payment['breadTotals'][$breadName])) {
+                    $payment['breadTotals'][$breadName] = [
+                        'netBreads' => 0,
+                        'price' => $price,
+                        'total' => 0
+                    ];
+                }
+                
+                $payment['breadTotals'][$breadName]['netBreads'] += $netBreads;
+                $payment['breadTotals'][$breadName]['total'] += $totalForBread;
+                $payment['total'] += $totalForBread;
             }
-            
-            $payment['breadTotals'][$breadName]['netBreads'] += $netBreads;
-            $payment['breadTotals'][$breadName]['total'] += $totalForBread;
-            $payment['total'] += $totalForBread;
         }
         
+        // Format bread info for display
         foreach ($payment['breadTotals'] as $breadName => $totals) {
-            $payment['breads'][$breadName] = "{$totals['netBreads']} x {$totals['price']} = " . 
-                number_format($totals['total'], 2);
+            $netBreadDisplay = $totals['netBreads'];
+            $priceDisplay = $totals['price'];
+            $totalDisplay = $totals['total'];
+            
+            // Use a different format/style for negative values
+            if ($netBreadDisplay < 0) {
+                // Format with minus sign AND parentheses for clarity
+                $payment['breads'][$breadName] = "(-" . abs($netBreadDisplay) . ") x " . $priceDisplay . " = (-" . 
+                    number_format(abs($totalDisplay), 2) . ")";
+            } else {
+                $payment['breads'][$breadName] = $netBreadDisplay . " x " . $priceDisplay . " = " . 
+                    number_format($totalDisplay, 2);
+            }
         }
+      
 
-        if ($payment['total'] > 0) {
+        // Include companies with activity (even if total is zero or negative)
+        if ($hasActivity) {
             if ($company->type === 'cash') {
                 $cashPayments[] = $payment;
                 $overallTotal += $payment['total'];
@@ -364,6 +384,92 @@ private function calculateAllPayments($transactions, $breadPrices, $userCompanie
         'overallInvoiceTotal' => $overallInvoiceTotal
     ];
 }
+
+
+// private function calculateAllPayments($transactions, $breadPrices, $userCompanies)
+// {
+//     $cashPayments = [];
+//     $invoicePayments = [];
+//     $overallTotal = 0;
+//     $overallInvoiceTotal = 0;
+//     $selectedDate = request('date', now()->toDateString());
+
+//     foreach ($transactions as $companyId => $companyTransactions) {
+//         $company = $userCompanies->firstWhere('id', $companyId);
+//         if (!$company) continue;
+
+//         $payment = [
+//             'company' => $company->name,
+//             'company_id' => $companyId,
+//             'breads' => [],
+//             'breadTotals' => [],
+//             'total' => 0
+//         ];
+
+//         foreach ($companyTransactions as $transaction) {
+//             if (!$transaction->breadType) continue;
+            
+//             if ($company->type === 'cash' && !$transaction->is_paid) {
+//                 continue;
+//             }
+
+//             if ($transaction->is_paid && 
+//                 $transaction->paid_date !== null && 
+//                 $transaction->paid_date !== $selectedDate) {
+//                 continue;
+//             }
+
+//             $breadName = $transaction->breadType->name;
+//             $delivered = $transaction->delivered;
+//             $returned = $transaction->returned;
+//             $gratis = $transaction->gratis ?? 0;
+//             $netBreads = $delivered - $returned - $gratis;
+            
+//             if ($netBreads <= 0) continue;
+            
+//             // Ensure we're using the correct pricing method from the bread type model
+//             // This should match what's used in DailyTransactionController
+//             $priceData = $transaction->breadType->getPriceForCompany($company->id, $transaction->transaction_date);
+//             $price = $priceData['price'];
+            
+//             $totalForBread = $netBreads * $price;
+            
+//             if (!isset($payment['breadTotals'][$breadName])) {
+//                 $payment['breadTotals'][$breadName] = [
+//                     'netBreads' => 0,
+//                     'price' => $price,
+//                     'total' => 0
+//                 ];
+//             }
+            
+//             $payment['breadTotals'][$breadName]['netBreads'] += $netBreads;
+//             $payment['breadTotals'][$breadName]['total'] += $totalForBread;
+//             $payment['total'] += $totalForBread;
+//         }
+        
+//         foreach ($payment['breadTotals'] as $breadName => $totals) {
+//             $payment['breads'][$breadName] = "{$totals['netBreads']} x {$totals['price']} = " . 
+//                 number_format($totals['total'], 2);
+//         }
+
+//         if ($payment['total'] > 0) {
+//             if ($company->type === 'cash') {
+//                 $cashPayments[] = $payment;
+//                 $overallTotal += $payment['total'];
+//             } else {
+//                 $invoicePayments[] = $payment;
+//                 $overallInvoiceTotal += $payment['total'];
+//             }
+//         }
+//     }
+
+//     return [
+//         'cashPayments' => $cashPayments,
+//         'invoicePayments' => $invoicePayments,
+//         'overallTotal' => $overallTotal,
+//         'overallInvoiceTotal' => $overallInvoiceTotal
+//     ];
+// }
 
 
 

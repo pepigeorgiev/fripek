@@ -830,25 +830,7 @@ handleCompanyChange: function() {
         window.location.href = url;
     }
 },
-    // handleCompanyChange: function() {
-    //     const el = this.elements;
-    //     const currentDate = el.dateInput.value;
-        
-    //     // Save the date in localStorage
-    //     if (currentDate) {
-    //         localStorage.setItem('lastTransactionDate', currentDate);
-    //     }
-        
-    //     // Update hidden field
-    //     if (el.formCompanyId) {
-    //         el.formCompanyId.value = el.companySelect.value;
-    //     }
-        
-    //     // Navigate to refresh bread types
-    //     if (el.companySelect.value) {
-    //         window.location.href = `/daily-transactions/create?company_id=${el.companySelect.value}&date=${currentDate}`;
-    //     }
-    // },
+   
     
     // Handle date input change
     handleDateChange: function() {
