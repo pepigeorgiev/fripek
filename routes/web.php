@@ -124,6 +124,12 @@ Route::get('/api/bread-type-price/{breadTypeId}/{companyId}', 'ApiController@get
 Route::get('/api/get-bread-price/{breadTypeId}/{companyId}', [App\Http\Controllers\DailyTransactionController::class, 'getBreadTypePrice']);
 
 
+Route::get('/api/refresh-csrf', function () {
+    return response()->json([
+        'token' => csrf_token(),
+    ]);
+});
+
 // Schema check for debugging
 Route::get('/check-schema', function() {
     $table = DB::select('DESCRIBE bread_types');
