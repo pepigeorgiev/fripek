@@ -729,11 +729,7 @@ private function getTransactionsForSummary($date)
         $sold = $request->input('sold', []);
         $selectedUserId = $request->input('selected_user_id');
         
-        \Log::info('Update request received', [
-            'date' => $date,
-            'returned_values' => $returned,
-            'sold_values' => $sold
-        ]);
+    
 
         $user = Auth::user();
         
@@ -758,10 +754,7 @@ private function getTransactionsForSummary($date)
             ->where('company_id', $company->id)
             ->delete();
             
-        \Log::info('Deleted existing records for date and company', [
-            'date' => $date,
-            'company_id' => $company->id
-        ]);
+    
 
         foreach ($returned as $breadName => $returnedAmount) {
             $breadType = BreadType::where('name', $breadName)->first();
@@ -790,11 +783,7 @@ private function getTransactionsForSummary($date)
             
             $breadSale->save();
             
-            \Log::info("Created new record for {$breadName}", [
-                'record_id' => $breadSale->id,
-                'returned_amount' => $returnedAmount,
-                'sold_amount' => $soldAmount
-            ]);
+         
         }
         
         \DB::commit();
@@ -1018,10 +1007,7 @@ private function getUnpaidTransactions($selectedDate, $companies)
         
         // Check if already cached for this request
         if ($requestInstance->has($cacheKey)) {
-            Log::info('Using cached unpaid transactions', [
-                'date' => $selectedDate,
-                'cache_key' => $cacheKey
-            ]);
+          
             return $requestInstance->get($cacheKey);
         }
         
@@ -1126,9 +1112,7 @@ private function getUnpaidTransactions($selectedDate, $companies)
             }
         }
 
-        Log::info('Processed unpaid transactions', [
-            'result_count' => count($result)
-        ]);
+       
         
         // Store in request cache
         $requestInstance->offsetSet($cacheKey, $result);
@@ -1196,14 +1180,7 @@ private function getUnpaidTransactions($selectedDate, $companies)
             $unpaidTransaction->paid_date = $todayDate;
             $unpaidTransaction->save();
             
-            // Create history record for audit
-            Log::info('Transaction marked as paid', [
-                'transaction_id' => $unpaidTransaction->id,
-                'user' => Auth::user()->name,
-                'company' => $unpaidTransaction->company->name,
-                'original_date' => $date,
-                'paid_date' => $todayDate
-            ]);
+       
         }
         
         DB::commit();
@@ -1247,14 +1224,7 @@ public function markMultipleAsPaid(Request $request)
                 $unpaidTransaction->paid_date = $todayDate;
                 $unpaidTransaction->save();
                 
-                // Create history record for audit
-                Log::info('Transaction marked as paid (bulk)', [
-                    'transaction_id' => $unpaidTransaction->id,
-                    'user' => Auth::user()->name,
-                    'company' => $unpaidTransaction->company->name,
-                    'original_date' => $date,
-                    'paid_date' => $todayDate
-                ]);
+              
             }
         }
         
