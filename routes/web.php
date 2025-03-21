@@ -130,6 +130,21 @@ Route::get('/api/refresh-csrf', function () {
     ]);
 });
 
+// Add these routes to your routes/web.php file
+
+Route::get('/api/refresh-csrf', function () {
+    return response()->json([
+        'token' => csrf_token(),
+    ]);
+});
+
+Route::get('/api/check-session', function () {
+    return response()->json([
+        'status' => 'active',
+        'timestamp' => now()->timestamp
+    ]);
+});
+
 // Schema check for debugging
 Route::get('/check-schema', function() {
     $table = DB::select('DESCRIBE bread_types');

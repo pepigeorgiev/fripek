@@ -1538,6 +1538,181 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 });
+// Global CSRF token error handler
+document.addEventListener('DOMContentLoaded', function() {
+    // Intercept all fetch requests
+    const originalFetch = window.fetch;
+    window.fetch = async function(url, options = {}) {
+        try {
+            const response = await originalFetch(url, options);
+            
+            // Check for 419 CSRF token errors
+            if (response.status === 419) {
+                console.log('CSRF token expired. Refreshing token...');
+                
+                // Get a new CSRF token
+                try {
+                    const tokenResponse = await originalFetch('/api/refresh-csrf', {
+                        method: 'GET',
+                        headers: {
+                            'X-Requested-With': 'XMLHttpRequest'
+                        }
+                    });
+                    
+                    if (tokenResponse.ok) {
+                        const tokenData = await tokenResponse.json();
+                        
+                        if (tokenData.token) {
+                            // Update all CSRF tokens in the DOM
+                            document.querySelectorAll('[name="_token"]').forEach(input => {
+                                input.value = tokenData.token;
+                            });
+                            
+                            document.querySelectorAll('meta[name="csrf-token"]').forEach(meta => {
+                                meta.setAttribute('content', tokenData.token);
+                            });
+                            
+                            console.log('CSRF token refreshed. Retrying request...');
+                            
+                            // Retry the original request with the new token
+                            if (options && options.headers) {
+                                options.headers['X-CSRF-TOKEN'] = tokenData.token;
+                            }
+                            
+                            return originalFetch(url, options);
+                        }
+                    }
+                } catch (tokenError) {
+                    console.error('Error refreshing token:', tokenError);
+                }
+                
+                // If we can't refresh the token, reload the page
+                alert('Вашата сесија е истечена. Страницата ќе се вчита повторно.');
+                location.reload();
+                return response;
+            }
+            
+            return response;
+        } catch (error) {
+            console.error('Fetch error:', error);
+            throw error;
+        }
+    };
+    
+    // Also intercept XMLHttpRequest for older code
+    const originalXhrOpen = XMLHttpRequest.prototype.open;
+    const originalXhrSend = XMLHttpRequest.prototype.send;
+    
+    XMLHttpRequest.prototype.open = function() {
+        this._url = arguments[1];
+        this._method = arguments[0];
+        return originalXhrOpen.apply(this, arguments);
+    };
+    
+    XMLHttpRequest.prototype.send = function() {
+        const xhr = this;
+        const originalOnReadyStateChange = xhr.onreadystatechange;
+        
+        xhr.onreadystatechange = function() {
+            if (xhr.readyState === 4) {
+                if (xhr.status === 419) {
+                    console.log('CSRF token expired in XHR. Refreshing token...');
+                    
+                    // Create a new XHR to get a fresh token
+                    const tokenXhr = new XMLHttpRequest();
+                    tokenXhr.open('GET', '/api/refresh-csrf', false); // Synchronous for simplicity
+                    tokenXhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
+                    
+                    try {
+                        tokenXhr.send();
+                        
+                        if (tokenXhr.status === 200) {
+                            const response = JSON.parse(tokenXhr.responseText);
+                            
+                            if (response.token) {
+                                // Update all CSRF tokens in the DOM
+                                document.querySelectorAll('[name="_token"]').forEach(input => {
+                                    input.value = response.token;
+                                });
+                                
+                                document.querySelectorAll('meta[name="csrf-token"]').forEach(meta => {
+                                    meta.setAttribute('content', response.token);
+                                });
+                                
+                                console.log('CSRF token refreshed. Reloading page...');
+                                
+                                // For XHR, just reload the page to restart the flow
+                                alert('Вашата сесија е истечена. Страницата ќе се вчита повторно.');
+                                location.reload();
+                                return;
+                            }
+                        }
+                    } catch (e) {
+                        console.error('Error refreshing CSRF token:', e);
+                    }
+                    
+                    // If we can't refresh the token, reload the page
+                    alert('Вашата сесија е истечена. Страницата ќе се вчита повторно.');
+                    location.reload();
+                    return;
+                }
+            }
+            
+            if (originalOnReadyStateChange) {
+                originalOnReadyStateChange.apply(xhr, arguments);
+            }
+        };
+        
+        return originalXhrSend.apply(xhr, arguments);
+    };
+    
+    // Direct event handler for modal cancel button
+    const cancelButton = document.getElementById('cancelSummary');
+    const modal = document.getElementById('transactionSummaryModal');
+    
+    if (cancelButton && modal) {
+        cancelButton.addEventListener('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            modal.classList.add('hidden');
+        });
+    }
+    
+    // Refresh CSRF token on page load to ensure it's fresh
+    function refreshCSRFTokenOnLoad() {
+        try {
+            fetch('/api/refresh-csrf', {
+                method: 'GET',
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.token) {
+                    // Update all CSRF tokens in the DOM
+                    document.querySelectorAll('[name="_token"]').forEach(input => {
+                        input.value = data.token;
+                    });
+                    
+                    document.querySelectorAll('meta[name="csrf-token"]').forEach(meta => {
+                        meta.setAttribute('content', data.token);
+                    });
+                    
+                    console.log('CSRF token refreshed on page load');
+                }
+            })
+            .catch(error => {
+                console.error('Error refreshing CSRF token on load:', error);
+            });
+        } catch (e) {
+            console.error('Error in CSRF token refresh:', e);
+        }
+    }
+    
+    // Call the refresh function with a slight delay to ensure the page is fully loaded
+    setTimeout(refreshCSRFTokenOnLoad, 500);
+});
 </script>
 
 
