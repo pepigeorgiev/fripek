@@ -1573,6 +1573,149 @@ document.addEventListener('DOMContentLoaded', function() {
         console.log('Modal button handlers added');
     }, 500); // Short delay to ensure everything else is loaded
 });
+// Add this code at the end of your script section
+
+// Global AJAX error handler to catch 419 errors (CSRF token mismatch)
+document.addEventListener('DOMContentLoaded', function() {
+    // Add global fetch error handler
+    const originalFetch = window.fetch;
+    window.fetch = async function(url, options) {
+        try {
+            const response = await originalFetch(url, options);
+            
+            // Check for 419 status (CSRF token expired)
+            if (response.status === 419) {
+                console.log('CSRF token expired, refreshing page...');
+                alert('Сесијата е истечена. Страницата ќе се освежи автоматски.');
+                window.location.reload();
+                return new Response(JSON.stringify({ error: 'Session expired, refreshing page' }));
+            }
+            
+            return response;
+        } catch (error) {
+            console.error('Fetch error:', error);
+            
+            // If network error, could also be a token issue, try reloading
+            if (error.name === 'TypeError' && error.message.includes('Failed to fetch')) {
+                // Store the current form data in sessionStorage before reload
+                try {
+                    const formData = {};
+                    document.querySelectorAll('input, select, textarea').forEach(input => {
+                        if (input.name && input.type !== 'file' && input.type !== 'password') {
+                            formData[input.name] = input.value;
+                        }
+                    });
+                    sessionStorage.setItem('form_data_backup', JSON.stringify(formData));
+                    sessionStorage.setItem('last_url', window.location.href);
+                } catch (e) {
+                    console.error('Error saving form data:', e);
+                }
+                
+                alert('Изгубена е конекција со серверот. Страницата ќе се освежи автоматски.');
+                window.location.reload();
+            }
+            
+            throw error;
+        }
+    };
+    
+    // Add XMLHttpRequest error handler for older code
+    const originalXhrOpen = XMLHttpRequest.prototype.open;
+    XMLHttpRequest.prototype.open = function(method, url, async, user, password) {
+        this.addEventListener('load', function() {
+            if (this.status === 419) {
+                console.log('CSRF token expired in XHR, refreshing page...');
+                alert('Сесијата е истечена. Страницата ќе се освежи автоматски.');
+                window.location.reload();
+            }
+        });
+        return originalXhrOpen.apply(this, arguments);
+    };
+    
+    // Restore form data if we're returning from a refresh
+    if (sessionStorage.getItem('form_data_backup') && sessionStorage.getItem('last_url') === window.location.href) {
+        try {
+            const formData = JSON.parse(sessionStorage.getItem('form_data_backup'));
+            
+            // Wait a bit for the page to fully initialize
+            setTimeout(() => {
+                Object.entries(formData).forEach(([name, value]) => {
+                    const input = document.querySelector(`[name="${name}"]`);
+                    if (input) {
+                        if (input.tagName === 'SELECT' && window.jQuery && $(input).data('select2')) {
+                            $(input).val(value).trigger('change');
+                        } else {
+                            input.value = value;
+                        }
+                    }
+                });
+                
+                // Clear the storage after restoring
+                sessionStorage.removeItem('form_data_backup');
+                sessionStorage.removeItem('last_url');
+                
+                console.log('Form data restored after refresh');
+            }, 1000);
+        } catch (e) {
+            console.error('Error restoring form data:', e);
+        }
+    }
+    
+    // Also add a periodic check for token freshness
+    setInterval(function() {
+        // Check if we have an active session by making a lightweight request
+        fetch('/api/check-session', { 
+            method: 'GET',
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        })
+        .then(response => {
+            if (response.status === 419 || response.status === 401) {
+                console.log('Session expired during periodic check');
+                alert('Сесијата е истечена. Страницата ќе се освежи автоматски.');
+                window.location.reload();
+            }
+        })
+        .catch(error => {
+            console.error('Error checking session:', error);
+        });
+    }, 30 * 60 * 1000); // Check every 30 minutes
+});
+
+// Add to DailyTransactions object initialization
+if (typeof DailyTransactions !== 'undefined') {
+    // Add a session recovery method
+    DailyTransactions.refreshCSRFToken = function() {
+        fetch('/api/refresh-csrf', {
+            method: 'GET',
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.token) {
+                // Update all CSRF tokens in the page
+                document.querySelectorAll('meta[name="csrf-token"]').forEach(meta => {
+                    meta.setAttribute('content', data.token);
+                });
+                document.querySelectorAll('input[name="_token"]').forEach(input => {
+                    input.value = data.token;
+                });
+                console.log('CSRF token refreshed successfully');
+            }
+        })
+        .catch(error => {
+            console.error('Error refreshing CSRF token:', error);
+            // If we can't refresh the token, reload the page
+            window.location.reload();
+        });
+    };
+    
+    // Try to refresh the token when starting the application
+    DailyTransactions.refreshCSRFToken();
+}
 </script>
 
 
