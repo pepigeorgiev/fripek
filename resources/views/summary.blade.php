@@ -162,7 +162,7 @@
             @endphp
             <tr>
                 <td class="border px-2 md:px-4 py-1 md:py-2 text-sm md:text-lg font-bold col-name">
-                    {{ Str::limit($breadType, 20) }}
+                    {{ Str::limit($breadType, 30) }}
                 </td>
                 <td class="border px-2 md:px-4 py-1 md:py-2 text-sm md:text-lg font-bold number-cell col-number">
                     {{ $counts['sent'] }}
