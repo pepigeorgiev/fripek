@@ -25,37 +25,64 @@
     }
     
     
-    /* Mobile responsive table styles */
-    @media (max-width: 768px) {
+     /* Mobile responsive table styles with controlled widths */
+     @media (max-width: 768px) {
         .bread-table th,
         .bread-table td {
-            padding: 0.35rem 0.2rem !important;
-            font-size: 0.8rem !important;
+            padding: 0.35rem 0.15rem !important;
+            font-size: 0.75rem !important;
         }
         
+        /* Column width control */
+        .bread-table .col-name {
+            width: 30% !important; /* Reduce name column width */
+        }
+        
+        .bread-table .col-number {
+            width: 17.5% !important; /* Equal width for number columns */
+        }
+        
+        /* Explicitly hide desktop labels on mobile */
         .bread-table .desktop-name {
-            display: none;
+            display: none !important;
         }
         
+        /* Explicitly show mobile labels on mobile */
         .bread-table .mobile-name {
-            display: inline;
+            display: inline !important;
         }
         
         .bread-table input[type=number] {
             padding: 0.2rem !important;
             width: 100%;
-            min-width: 40px;
+            min-width: 30px; /* Smaller minimum width */
         }
     }
     
     @media (min-width: 769px) {
+        /* Column width control for desktop */
+        .bread-table .col-name {
+            width: 40%;
+        }
+        
+        .bread-table .col-number {
+            width: 15%;
+        }
+        
+        /* Show/hide labels appropriately */
         .bread-table .desktop-name {
-            display: inline;
+            display: inline !important;
         }
         
         .bread-table .mobile-name {
-            display: none;
+            display: none !important;
         }
+    }
+    
+    /* Better number cell display */
+    .bread-table .number-cell {
+        text-align: center;
+        font-variant-numeric: tabular-nums; /* Better alignment of numbers */
     }
 </style>
     </style>
@@ -102,26 +129,26 @@
             @if($currentUser->isAdmin() || $currentUser->role === 'super_admin')
                 <input type="hidden" name="selected_user_id" value="{{ $selectedUserId }}">
             @endif
-            <table class="w-full bg-white shadow-md rounded bread-table">
+            <table class="w-full bg-white shadow-md rounded bread-table table-fixed">
     <thead>
         <tr>
-            <th class="px-2 md:px-4 py-2 text-xs md:text-lg font-bold text-left">
+            <th class="px-2 md:px-4 py-2 text-xs md:text-lg font-bold text-left col-name">
                 <span class="desktop-name">Име на лебот</span>
                 <span class="mobile-name">Име</span>
             </th>
-            <th class="px-2 md:px-4 py-2 text-xs md:text-lg font-bold text-center">
+            <th class="px-2 md:px-4 py-2 text-xs md:text-lg font-bold text-center col-number">
                 <span class="desktop-name">Продаден</span>
                 <span class="mobile-name">Про</span>
             </th>
-            <th class="px-2 md:px-4 py-2 text-xs md:text-lg font-bold text-center">
+            <th class="px-2 md:px-4 py-2 text-xs md:text-lg font-bold text-center col-number">
                 <span class="desktop-name">Задолжен</span>
                 <span class="mobile-name">Зад</span>
             </th>
-            <th class="px-2 md:px-4 py-2 text-xs md:text-lg font-bold text-center">
+            <th class="px-2 md:px-4 py-2 text-xs md:text-lg font-bold text-center col-number">
                 <span class="desktop-name">Разлика</span>
                 <span class="mobile-name">Раз</span>
             </th>
-            <th class="px-2 md:px-4 py-2 text-xs md:text-lg font-bold text-center">
+            <th class="px-2 md:px-4 py-2 text-xs md:text-lg font-bold text-center col-number">
                 <span class="desktop-name">Цена</span>
                 <span class="mobile-name">Ден</span>
             </th>
@@ -134,10 +161,14 @@
                 $breadSale = $breadSales->flatten()->where('bread_type_id', $breadTypeObj->id)->first();
             @endphp
             <tr>
-                <td class="border px-2 md:px-4 py-1 md:py-2 text-sm md:text-lg font-bold text-left">{{ $breadType }}</td>
-                <td class="border px-2 md:px-4 py-1 md:py-2 text-sm md:text-lg font-bold text-center">{{ $counts['sent'] }}</td>
+                <td class="border px-2 md:px-4 py-1 md:py-2 text-sm md:text-lg font-bold col-name">
+                    {{ Str::limit($breadType, 20) }}
+                </td>
+                <td class="border px-2 md:px-4 py-1 md:py-2 text-sm md:text-lg font-bold number-cell col-number">
+                    {{ $counts['sent'] }}
+                </td>
                 
-                <td class="border px-2 md:px-4 py-1 md:py-2 text-sm md:text-lg font-bold text-center">
+                <td class="border px-2 md:px-4 py-1 md:py-2 text-sm md:text-lg font-bold number-cell col-number">
                     @if(auth()->user()->role === 'user')
                         <div class="text-sm md:text-lg font-bold">
                             {{ $breadSale->returned_amount ?? $counts['returned'] ?? 0 }}
@@ -155,7 +186,7 @@
                     @endif
                 </td>
                 
-                <td class="border px-2 md:px-4 py-1 md:py-2 text-sm md:text-lg font-bold text-center">
+                <td class="border px-2 md:px-4 py-1 md:py-2 text-sm md:text-lg font-bold number-cell col-number">
                     @php
                         $firstDifference = $counts['sent'] - ($breadSale->returned_amount ?? $counts['returned'] ?? 0);
                     @endphp
@@ -167,14 +198,16 @@
                        name="old_bread_sold[{{ $breadType }}]" 
                        value="{{ old('old_bread_sold['.$breadType.']', $data['sold'] ?? 0) }}">
                 
-                <td class="border px-2 md:px-4 py-1 md:py-2 text-sm md:text-lg font-bold text-center">{{ $counts['price'] }}</td>
+                <td class="border px-2 md:px-4 py-1 md:py-2 text-sm md:text-lg font-bold number-cell col-number">
+                    {{ $counts['price'] }}
+                </td>
             </tr>
         @endforeach
     </tbody>
     <tfoot>
         <tr>
             <td colspan="3" class="border px-2 md:px-4 py-1 md:py-2 font-bold text-right text-sm md:text-lg">Вкупно:</td>
-            <td class="border px-2 md:px-4 py-1 md:py-2 text-sm md:text-lg font-bold text-center">
+            <td class="border px-2 md:px-4 py-1 md:py-2 text-sm md:text-lg font-bold number-cell">
                 @php
                     $totalDifference = 0;
                     foreach($breadCounts as $breadType => $counts) {
@@ -187,7 +220,7 @@
                 @endphp
                 {{ $totalDifference }}
             </td>
-            <td class="border px-2 md:px-4 py-1 md:py-2 text-sm md:text-lg font-bold text-center"></td>
+            <td class="border px-2 md:px-4 py-1 md:py-2 text-sm md:text-lg font-bold number-cell"></td>
         </tr>
     </tfoot>
 </table>
