@@ -13,6 +13,51 @@
         input[type=number] {
             -moz-appearance: textfield; /* Firefox */
         }
+         /* Hide the spinners in number inputs */
+    input[type=number]::-webkit-inner-spin-button, 
+    input[type=number]::-webkit-outer-spin-button { 
+        -webkit-appearance: none; 
+        margin: 0; 
+    }
+
+    input[type=number] {
+        -moz-appearance: textfield; /* Firefox */
+    }
+    
+    <style>
+    /* Mobile responsive table styles */
+    @media (max-width: 768px) {
+        .bread-table th,
+        .bread-table td {
+            padding: 0.35rem 0.2rem !important;
+            font-size: 0.8rem !important;
+        }
+        
+        .bread-table .desktop-name {
+            display: none;
+        }
+        
+        .bread-table .mobile-name {
+            display: inline;
+        }
+        
+        .bread-table input[type=number] {
+            padding: 0.2rem !important;
+            width: 100%;
+            min-width: 40px;
+        }
+    }
+    
+    @media (min-width: 769px) {
+        .bread-table .desktop-name {
+            display: inline;
+        }
+        
+        .bread-table .mobile-name {
+            display: none;
+        }
+    }
+</style>
     </style>
 <div class="container mx-auto">
     <h1 class="text-2xl font-bold mb-4">Денешен преглед - Сите компании</h1>
@@ -57,16 +102,29 @@
             @if($currentUser->isAdmin() || $currentUser->role === 'super_admin')
                 <input type="hidden" name="selected_user_id" value="{{ $selectedUserId }}">
             @endif
-            <table class="w-full bg-white shadow-md rounded">
+            <table class="w-full bg-white shadow-md rounded bread-table">
     <thead>
         <tr>
-            <th class="px-4 py-2 text-lg font-bold text-center-desktop">Име на лебот</th>
-            <th class="px-4 py-2 text-lg font-bold text-center-desktop">Продаден</th>
-            <th class="px-4 py-2 text-lg font-bold text-center-desktop">Задолжен</th>
-            <th class="px-4 py-2 text-lg font-bold text-center-desktop">Разлика</th>
-            <!-- Removed the "Продаден" and "Разлика" columns -->
-            <th class="px-4 py-2 text-lg font-bold text-center-desktop">Цена</th>
-            <!-- <th class="px-4 py-2 text-lg font-bold text-center-desktop">Вкупно</th> -->
+            <th class="px-2 md:px-4 py-2 text-xs md:text-lg font-bold text-left">
+                <span class="desktop-name">Име на лебот</span>
+                <span class="mobile-name">Име</span>
+            </th>
+            <th class="px-2 md:px-4 py-2 text-xs md:text-lg font-bold text-center">
+                <span class="desktop-name">Продаден</span>
+                <span class="mobile-name">Про</span>
+            </th>
+            <th class="px-2 md:px-4 py-2 text-xs md:text-lg font-bold text-center">
+                <span class="desktop-name">Задолжен</span>
+                <span class="mobile-name">Зад</span>
+            </th>
+            <th class="px-2 md:px-4 py-2 text-xs md:text-lg font-bold text-center">
+                <span class="desktop-name">Разлика</span>
+                <span class="mobile-name">Раз</span>
+            </th>
+            <th class="px-2 md:px-4 py-2 text-xs md:text-lg font-bold text-center">
+                <span class="desktop-name">Цена</span>
+                <span class="mobile-name">Ден</span>
+            </th>
         </tr>
     </thead>
     <tbody>
@@ -76,12 +134,12 @@
                 $breadSale = $breadSales->flatten()->where('bread_type_id', $breadTypeObj->id)->first();
             @endphp
             <tr>
-                <td class="border px-4 py-2 text-lg font-bold text-center-desktop">{{ $breadType }}</td>
-                <td class="border px-4 py-2 text-lg font-bold text-center-desktop">{{ $counts['sent'] }}</td>
+                <td class="border px-2 md:px-4 py-1 md:py-2 text-sm md:text-lg font-bold text-left">{{ $breadType }}</td>
+                <td class="border px-2 md:px-4 py-1 md:py-2 text-sm md:text-lg font-bold text-center">{{ $counts['sent'] }}</td>
                 
-                <td class="border px-4 py-2 text-lg font-bold text-center-desktop">
+                <td class="border px-2 md:px-4 py-1 md:py-2 text-sm md:text-lg font-bold text-center">
                     @if(auth()->user()->role === 'user')
-                        <div class="text-lg font-bold">
+                        <div class="text-sm md:text-lg font-bold">
                             {{ $breadSale->returned_amount ?? $counts['returned'] ?? 0 }}
                             <input type="hidden" 
                                 name="returned[{{ $breadType }}]" 
@@ -91,13 +149,13 @@
                         <input type="number" 
                             name="returned[{{ $breadType }}]" 
                             value="{{ $breadSale->returned_amount ?? $counts['returned'] ?? 0 }}" 
-                            class="w-full px-2 py-1 border rounded text-center-desktop accumulating-input"
+                            class="w-full px-1 md:px-2 py-1 border rounded text-center accumulating-input"
                             data-original-value="{{ $breadSale->returned_amount ?? $counts['returned'] ?? 0 }}"
                             min="0">
                     @endif
                 </td>
                 
-                <td class="border px-4 py-2 text-lg font-bold text-center-desktop">
+                <td class="border px-2 md:px-4 py-1 md:py-2 text-sm md:text-lg font-bold text-center">
                     @php
                         $firstDifference = $counts['sent'] - ($breadSale->returned_amount ?? $counts['returned'] ?? 0);
                     @endphp
@@ -109,41 +167,29 @@
                        name="old_bread_sold[{{ $breadType }}]" 
                        value="{{ old('old_bread_sold['.$breadType.']', $data['sold'] ?? 0) }}">
                 
-                <td class="border px-4 py-2 text-lg font-bold text-center-desktop">{{ $counts['price'] }}</td>
-                <!-- <td class="border px-4 py-2 text-lg font-bold text-center-desktop">
-                    {{ ($breadSale->sold_amount ?? $counts['sold'] ?? 0) * $counts['price'] }}
-                </td> -->
+                <td class="border px-2 md:px-4 py-1 md:py-2 text-sm md:text-lg font-bold text-center">{{ $counts['price'] }}</td>
             </tr>
         @endforeach
     </tbody>
     <tfoot>
-    <tr>
-        <td colspan="3" class="border px-4 py-2 font-bold text-right text-lg font-bold ">Вкупно:</td>
-        <td class="border px-4 py-2 text-lg font-bold text-center-desktop">
-            @php
-                $totalDifference = 0;
-                foreach($breadCounts as $breadType => $counts) {
-                    $breadTypeObj = $breadTypes->firstWhere('name', $breadType);
-                    $breadSale = $breadSales->flatten()->where('bread_type_id', $breadTypeObj->id)->first();
-                    $returned = $breadSale->returned_amount ?? $counts['returned'] ?? 0;
-                    $difference = $counts['sent'] - $returned;
-                    $totalDifference += $difference;
-                }
-            @endphp
-            {{ $totalDifference }}
-        </td>
-        <td class="border px-4 py-2 text-lg font-bold text-center-desktop"></td>
-        <!-- <td class="border px-4 py-2 text-lg font-bold text-center-desktop">{{ number_format($totalInPrice, 2) }}</td> -->
-    </tr>
-</tfoot>
-    <!-- <tfoot>
         <tr>
-            <td colspan="3" class="border px-4 py-2 font-bold text-right text-lg font-bold ">Вкупно:</td>
-            <td class="border px-4 py-2 text-lg font-bold text-center-desktop">{{ $totalSold }}</td>
-            <td class="border px-4 py-2 text-lg font-bold text-center-desktop"></td>
-            <td class="border px-4 py-2 text-lg font-bold text-center-desktop">{{ number_format($totalInPrice, 2) }}</td>
+            <td colspan="3" class="border px-2 md:px-4 py-1 md:py-2 font-bold text-right text-sm md:text-lg">Вкупно:</td>
+            <td class="border px-2 md:px-4 py-1 md:py-2 text-sm md:text-lg font-bold text-center">
+                @php
+                    $totalDifference = 0;
+                    foreach($breadCounts as $breadType => $counts) {
+                        $breadTypeObj = $breadTypes->firstWhere('name', $breadType);
+                        $breadSale = $breadSales->flatten()->where('bread_type_id', $breadTypeObj->id)->first();
+                        $returned = $breadSale->returned_amount ?? $counts['returned'] ?? 0;
+                        $difference = $counts['sent'] - $returned;
+                        $totalDifference += $difference;
+                    }
+                @endphp
+                {{ $totalDifference }}
+            </td>
+            <td class="border px-2 md:px-4 py-1 md:py-2 text-sm md:text-lg font-bold text-center"></td>
         </tr>
-    </tfoot> -->
+    </tfoot>
 </table>
             <!-- <table class="w-full bg-white shadow-md rounded">
                 <thead>
