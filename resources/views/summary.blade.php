@@ -24,7 +24,7 @@
         -moz-appearance: textfield; /* Firefox */
     }
     
-    <style>
+    
     /* Mobile responsive table styles */
     @media (max-width: 768px) {
         .bread-table th,
