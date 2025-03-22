@@ -58,6 +58,94 @@
                 <input type="hidden" name="selected_user_id" value="{{ $selectedUserId }}">
             @endif
             <table class="w-full bg-white shadow-md rounded">
+    <thead>
+        <tr>
+            <th class="px-4 py-2 text-lg font-bold text-center-desktop">Име на лебот</th>
+            <th class="px-4 py-2 text-lg font-bold text-center-desktop">Продаден</th>
+            <th class="px-4 py-2 text-lg font-bold text-center-desktop">Задолжен</th>
+            <th class="px-4 py-2 text-lg font-bold text-center-desktop">Разлика</th>
+            <!-- Removed the "Продаден" and "Разлика" columns -->
+            <th class="px-4 py-2 text-lg font-bold text-center-desktop">Цена</th>
+            <!-- <th class="px-4 py-2 text-lg font-bold text-center-desktop">Вкупно</th> -->
+        </tr>
+    </thead>
+    <tbody>
+        @foreach($breadCounts as $breadType => $counts)
+            @php
+                $breadTypeObj = $breadTypes->firstWhere('name', $breadType);
+                $breadSale = $breadSales->flatten()->where('bread_type_id', $breadTypeObj->id)->first();
+            @endphp
+            <tr>
+                <td class="border px-4 py-2 text-lg font-bold text-center-desktop">{{ $breadType }}</td>
+                <td class="border px-4 py-2 text-lg font-bold text-center-desktop">{{ $counts['sent'] }}</td>
+                
+                <td class="border px-4 py-2 text-lg font-bold text-center-desktop">
+                    @if(auth()->user()->role === 'user')
+                        <div class="text-lg font-bold">
+                            {{ $breadSale->returned_amount ?? $counts['returned'] ?? 0 }}
+                            <input type="hidden" 
+                                name="returned[{{ $breadType }}]" 
+                                value="{{ $breadSale->returned_amount ?? $counts['returned'] ?? 0 }}">
+                        </div>
+                    @else
+                        <input type="number" 
+                            name="returned[{{ $breadType }}]" 
+                            value="{{ $breadSale->returned_amount ?? $counts['returned'] ?? 0 }}" 
+                            class="w-full px-2 py-1 border rounded text-center-desktop accumulating-input"
+                            data-original-value="{{ $breadSale->returned_amount ?? $counts['returned'] ?? 0 }}"
+                            min="0">
+                    @endif
+                </td>
+                
+                <td class="border px-4 py-2 text-lg font-bold text-center-desktop">
+                    @php
+                        $firstDifference = $counts['sent'] - ($breadSale->returned_amount ?? $counts['returned'] ?? 0);
+                    @endphp
+                    {{ $firstDifference }}
+                </td>
+                
+                <!-- Hidden input for old_bread_sold that might be needed for the form data -->
+                <input type="hidden" 
+                       name="old_bread_sold[{{ $breadType }}]" 
+                       value="{{ old('old_bread_sold['.$breadType.']', $data['sold'] ?? 0) }}">
+                
+                <td class="border px-4 py-2 text-lg font-bold text-center-desktop">{{ $counts['price'] }}</td>
+                <!-- <td class="border px-4 py-2 text-lg font-bold text-center-desktop">
+                    {{ ($breadSale->sold_amount ?? $counts['sold'] ?? 0) * $counts['price'] }}
+                </td> -->
+            </tr>
+        @endforeach
+    </tbody>
+    <tfoot>
+    <tr>
+        <td colspan="3" class="border px-4 py-2 font-bold text-right text-lg font-bold ">Вкупно:</td>
+        <td class="border px-4 py-2 text-lg font-bold text-center-desktop">
+            @php
+                $totalDifference = 0;
+                foreach($breadCounts as $breadType => $counts) {
+                    $breadTypeObj = $breadTypes->firstWhere('name', $breadType);
+                    $breadSale = $breadSales->flatten()->where('bread_type_id', $breadTypeObj->id)->first();
+                    $returned = $breadSale->returned_amount ?? $counts['returned'] ?? 0;
+                    $difference = $counts['sent'] - $returned;
+                    $totalDifference += $difference;
+                }
+            @endphp
+            {{ $totalDifference }}
+        </td>
+        <td class="border px-4 py-2 text-lg font-bold text-center-desktop"></td>
+        <!-- <td class="border px-4 py-2 text-lg font-bold text-center-desktop">{{ number_format($totalInPrice, 2) }}</td> -->
+    </tr>
+</tfoot>
+    <!-- <tfoot>
+        <tr>
+            <td colspan="3" class="border px-4 py-2 font-bold text-right text-lg font-bold ">Вкупно:</td>
+            <td class="border px-4 py-2 text-lg font-bold text-center-desktop">{{ $totalSold }}</td>
+            <td class="border px-4 py-2 text-lg font-bold text-center-desktop"></td>
+            <td class="border px-4 py-2 text-lg font-bold text-center-desktop">{{ number_format($totalInPrice, 2) }}</td>
+        </tr>
+    </tfoot> -->
+</table>
+            <!-- <table class="w-full bg-white shadow-md rounded">
                 <thead>
                     <tr>
                         <th class="px-4 py-2 text-lg font-bold text-center-desktop">Име на лебот</th>
@@ -138,7 +226,7 @@
                         <td class="border px-4 py-2 text-lg font-bold text-center-desktop">{{ number_format($totalInPrice, 2) }}</td>
                     </tr>
                 </tfoot>
-            </table>
+            </table> -->
             <div class="mt-4">
                 <button type="submit" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
                     Ажурирај ја табелата
