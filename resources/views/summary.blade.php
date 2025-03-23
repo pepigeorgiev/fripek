@@ -224,88 +224,7 @@
         </tr>
     </tfoot>
 </table>
-            <!-- <table class="w-full bg-white shadow-md rounded">
-                <thead>
-                    <tr>
-                        <th class="px-4 py-2 text-lg font-bold text-center-desktop">Име на лебот</th>
-                        <th class="px-4 py-2 text-lg font-bold text-center-desktop">Продаден</th>
-                        <th class="px-4 py-2 text-lg font-bold text-center-desktop">Задолжен</th>
-                        <th class="px-4 py-2 text-lg font-bold text-center-desktop">Разлика</th>
-                        <th class="px-4 py-2 text-lg font-bold text-center-desktop">Продаден</th>
-                        <th class="px-4 py-2 text-lg font-bold text-center-desktop">Разлика</th>
-                        <th class="px-4 py-2 text-lg font-bold text-center-desktop">Цена</th>
-                        <th class="px-4 py-2 text-lg font-bold text-center-desktop">Вкупно</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach($breadCounts as $breadType => $counts)
-                        @php
-                            $breadTypeObj = $breadTypes->firstWhere('name', $breadType);
-                            $breadSale = $breadSales->flatten()->where('bread_type_id', $breadTypeObj->id)->first();
-                        @endphp
-                        <tr>
-                            <td class="border px-4 py-2 text-lg font-bold text-center-desktop">{{ $breadType }}</td>
-                            <td class="border px-4 py-2 text-lg font-bold text-center-desktop">{{ $counts['sent'] }}</td>
-                            
-                            <td class="border px-4 py-2 text-lg font-bold text-center-desktop">
-    @if(auth()->user()->role === 'user')
-        <div class="text-lg font-bold">
-            {{ $breadSale->returned_amount ?? $counts['returned'] ?? 0 }}
-            <input type="hidden" 
-                   name="returned[{{ $breadType }}]" 
-                   value="{{ $breadSale->returned_amount ?? $counts['returned'] ?? 0 }}">
-        </div>
-    @else
-        <input type="number" 
-               name="returned[{{ $breadType }}]" 
-               value="{{ $breadSale->returned_amount ?? $counts['returned'] ?? 0 }}" 
-               class="w-full px-2 py-1 border rounded text-center-desktop accumulating-input"
-               data-original-value="{{ $breadSale->returned_amount ?? $counts['returned'] ?? 0 }}"
-               min="0">
-    @endif
-</td>
-                           
-                            <td class="border px-4 py-2 text-lg font-bold text-center-desktop">
-                                @php
-                                    $firstDifference = $counts['sent'] - ($breadSale->returned_amount ?? $counts['returned'] ?? 0);
-                                @endphp
-                                {{ $firstDifference }}
-                            </td>
-                            <td class="border px-4 py-2 text-lg font-bold text-center-desktop">
-                                <input type="number" 
-                                       name="old_bread_sold[{{ $breadType }}]" 
-                                       value="{{ old('old_bread_sold['.$breadType.']', $data['sold'] ?? 0) }}" 
-                                       class="w-full px-2 py-1 border rounded text-center-desktop">
-                            </td>
-                            <td class="border px-4 py-2 text-lg font-bold text-center-desktop">
-                                @php
-                                    $soldAmount = $breadSale->sold_amount ?? $counts['sold'] ?? 0;
-                                    
-                                    if ($firstDifference < 0) {
-                                        $finalDifference = $firstDifference + $soldAmount;
-                                    } else {
-                                        $finalDifference = $firstDifference - $soldAmount;
-                                    }
-                                @endphp
-                                {{ $finalDifference }}
-                            </td>
-                            <td class="border px-4 py-2 text-lg font-bold text-center-desktop">{{ $counts['price'] }}</td>
-                            <td class="border px-4 py-2 text-lg font-bold text-center-desktop">
-                                {{ ($breadSale->sold_amount ?? $counts['sold'] ?? 0) * $counts['price'] }}
-                            </td>
-                        </tr>
-                    @endforeach
-                </tbody>
-                <tfoot>
-                    <tr>
-                        <td colspan="4" class="border px-4 py-2 font-bold text-right text-lg font-bold ">Вкупно:</td>
-                        <td class="border px-4 py-2 text-lg font-bold text-center-desktop">{{ $totalSold }}</td>
-                        <td class="border px-4 py-2 text-lg font-bold text-center-desktop"></td>
-                        <td class="border px-4 py-2 text-lg font-bold text-center-desktop"></td>
-                        <td class="border px-4 py-2 text-lg font-bold text-center-desktop">{{ number_format($totalInPrice, 2) }}</td>
-                    </tr>
-                </tfoot>
-            </table> -->
+           
             <div class="mt-4">
                 <button type="submit" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
                     Ажурирај ја табелата
@@ -316,74 +235,116 @@
 
 
     {{-- Second Table: Yesterday's Returned Bread --}}
-
-    {{-- summary.blade.php --}}
 <div class="mb-8">
     <h2 class="text-xl font-semibold mb-2">Вчерашен леб вратен</h2>
-    <form method="POST" action="{{ route('summary.updateAdditional') }}">
+    <form method="POST" action="{{ route('summary.updateYesterday') }}" id="yesterdayBreadForm">
         @csrf
         <input type="hidden" name="date" value="{{ $date }}">
         @if($currentUser->isAdmin() || $currentUser->role === 'super_admin')
             <input type="hidden" name="selected_user_id" value="{{ $selectedUserId }}">
         @endif
         <div class="responsive-table">
-            <table class="w-full bg-white shadow-md rounded">
+            <table class="w-full bg-white shadow-md rounded bread-table table-fixed">
                 <thead>
                     <tr>
-                        <th class="px-4 py-2 text-lg font-bold text-center-desktop">Тип на лебот</th>
-                        <th class="px-4 py-2 text-lg font-bold text-center-desktop">Евидентиран</th>
-                        <th class="px-4 py-2 text-lg font-bold text-center-desktop">Продаден</th>
-                        <th class="px-4 py-2 text-lg font-bold text-center-desktop">Разлика</th>
-                        <th class="px-4 py-2 text-lg font-bold text-center-desktop">Вратен</th>
-                        <th class="px-4 py-2 text-lg font-bold text-center-desktop">Разлика повторно</th>
-                        <th class="px-4 py-2 text-lg font-bold text-center-desktop">Цена</th>
-                        <th class="px-4 py-2 text-lg font-bold text-center-desktop">Вкупно</th>
+                        <th class="px-2 md:px-4 py-2 text-xs md:text-lg font-bold text-left col-name">
+                            <span class="desktop-name">Тип на лебот</span>
+                            <span class="mobile-name">Тип</span>
+                        </th>
+                        <th class="px-2 md:px-4 py-2 text-xs md:text-lg font-bold text-center col-number">
+                            <span class="desktop-name">Евидентиран</span>
+                            <span class="mobile-name">Евид</span>
+                        </th>
+                        <th class="px-2 md:px-4 py-2 text-xs md:text-lg font-bold text-center col-number">
+                            <span class="desktop-name">Продаден</span>
+                            <span class="mobile-name">Прод</span>
+                        </th>
+                        <th class="px-2 md:px-4 py-2 text-xs md:text-lg font-bold text-center col-number">
+                            <span class="desktop-name">Разлика</span>
+                            <span class="mobile-name">Разл</span>
+                        </th>
+                        <th class="px-2 md:px-4 py-2 text-xs md:text-lg font-bold text-center col-number">
+                            <span class="desktop-name">Вратен</span>
+                            <span class="mobile-name">Врат</span>
+                        </th>
+                        <th class="px-2 md:px-4 py-2 text-xs md:text-lg font-bold text-center col-number">
+                            <span class="desktop-name">Разлика повторно</span>
+                            <span class="mobile-name">Разл2</span>
+                        </th>
+                        <th class="px-2 md:px-4 py-2 text-xs md:text-lg font-bold text-center col-number">
+                            <span class="desktop-name">Цена</span>
+                            <span class="mobile-name">Цена</span>
+                        </th>
+                        <th class="px-2 md:px-4 py-2 text-xs md:text-lg font-bold text-center col-number">
+                            <span class="desktop-name">Вкупно</span>
+                            <span class="mobile-name">Вкуп</span>
+                        </th>
                     </tr>
                 </thead>
                 <tbody>
                     @foreach($additionalTableData['data'] as $breadType => $data)
+                        @php
+                            $breadTypeObj = $breadTypes->firstWhere('name', $breadType);
+                            $canEdit = ($currentUser->role === 'user' && isset($data['user_id']) && $data['user_id'] === $currentUser->id) || 
+                                      ($currentUser->isAdmin() || $currentUser->role === 'super_admin');
+                        @endphp
                         <tr>
-                            <td class="border px-4 py-2 text-lg font-bold text-center-desktop">{{ $breadType }}</td>
-                            <td class="border px-4 py-2 text-lg font-bold text-center-desktop">{{ $data['returned'] ?? 0 }}</td>
-                        <td class="border px-4 py-2 text-lg font-bold text-center-desktop">
-    @php
-        $breadTypeObj = $breadTypes->firstWhere('name', $breadType);
-        $soldValue = isset($data['sold']) ? $data['sold'] : 0;
-        $canEdit = ($currentUser->role === 'user' && $data['user_id'] === $currentUser->id) || 
-                   (($currentUser->isAdmin() || $currentUser->role === 'super_admin') && !$selectedUserId);
-    @endphp
-    <form id="oldBreadSalesForm" action="{{ route('daily-transactions.store-old-bread') }}" method="POST">
-    @csrf
-    <input type="hidden" name="transaction_date" value="{{ $date }}">
-    <input type="hidden" 
-           name="old_bread_sold[{{ $breadTypeObj->id }}][bread_type_id]" 
-           value="{{ $breadTypeObj->id }}">
-    <input type="number" 
-           name="old_bread_sold[{{ $breadTypeObj->id }}][sold]" 
-           value="{{ $soldValue }}"
-           class="w-full px-2 py-1 border rounded text-center-desktop"
-           @unless($canEdit) readonly @endunless>
-</form>
-   
-</td>
+                            <td class="border px-2 md:px-4 py-1 md:py-2 text-sm md:text-lg font-bold col-name">
+                                {{ Str::limit($breadType, 30) }}
+                                <input type="hidden" name="yesterday_bread_type_ids[{{ $breadType }}]" value="{{ $data['bread_type_id'] ?? $breadTypeObj->id ?? 0 }}">
                             </td>
-                            <td class="border px-4 py-2 text-lg font-bold text-center-desktop">{{ $data['difference'] ?? 0 }}</td>
-                            <td class="border px-4 py-2 text-lg font-bold text-center-desktop">
-                                <input type="number" 
-                                       name="returned1[{{ $breadType }}]" 
-                                       value="{{ old('returned1.'.$breadType, $data['returned1'] ?? 0) }}" 
-                                       class="w-full px-2 py-1 border rounded text-center-desktop">
+                            <td class="border px-2 md:px-4 py-1 md:py-2 text-sm md:text-lg font-bold number-cell col-number">
+                                {{ $data['returned'] ?? 0 }}
+                                <input type="hidden" name="yesterday_returned_amount[{{ $breadType }}]" value="{{ $data['returned'] ?? 0 }}">
                             </td>
-                            <td class="border px-4 py-2 text-lg font-bold text-center-desktop">{{ $data['difference1'] ?? 0 }}</td>
-                            <td class="border px-4 py-2 text-lg font-bold text-center-desktop">{{ $data['price'] ?? 0 }}</td>
-                            <td class="border px-4 py-2 text-lg font-bold text-center-desktop">{{ number_format($data['total'] ?? 0, 2) }}</td>
+                            <td class="border px-2 md:px-4 py-1 md:py-2 text-sm md:text-lg font-bold number-cell col-number">
+                                @if($canEdit)
+                                    <input type="number" 
+                                           name="yesterday_old_bread_sold[{{ $breadType }}]" 
+                                           value="{{ old('yesterday_old_bread_sold.'.$breadType, $data['sold'] ?? 0) }}"
+                                           class="w-full px-1 md:px-2 py-1 border rounded text-center"
+                                           min="0">
+                                @else
+                                    {{ $data['sold'] ?? 0 }}
+                                    <input type="hidden" name="yesterday_old_bread_sold[{{ $breadType }}]" value="{{ $data['sold'] ?? 0 }}">
+                                @endif
+                            </td>
+                            <td class="border px-2 md:px-4 py-1 md:py-2 text-sm md:text-lg font-bold number-cell col-number">
+                                {{ $data['difference'] ?? 0 }}
+                            </td>
+                            <td class="border px-2 md:px-4 py-1 md:py-2 text-sm md:text-lg font-bold number-cell col-number">
+                                @if($canEdit)
+                                    <input type="number" 
+                                           name="yesterday_returned_amount_1[{{ $breadType }}]" 
+                                           value="{{ old('yesterday_returned_amount_1.'.$breadType, $data['returned1'] ?? 0) }}"
+                                           class="w-full px-1 md:px-2 py-1 border rounded text-center"
+                                           min="0">
+                                @else
+                                    {{ $data['returned1'] ?? 0 }}
+                                    <input type="hidden" name="yesterday_returned_amount_1[{{ $breadType }}]" value="{{ $data['returned1'] ?? 0 }}">
+                                @endif
+                            </td>
+                            <td class="border px-2 md:px-4 py-1 md:py-2 text-sm md:text-lg font-bold number-cell col-number">
+                                {{ $data['difference1'] ?? 0 }}
+                            </td>
+                            <td class="border px-2 md:px-4 py-1 md:py-2 text-sm md:text-lg font-bold number-cell col-number">
+                                {{ $data['price'] ?? 0 }}
+                                <input type="hidden" name="yesterday_price[{{ $breadType }}]" value="{{ $data['price'] ?? 0 }}">
+                            </td>
+                            <td class="border px-2 md:px-4 py-1 md:py-2 text-sm md:text-lg font-bold number-cell col-number">
+                                {{ number_format($data['total'] ?? 0, 2) }}
+                            </td>
                         </tr>
                     @endforeach
                 </tbody>
                 <tfoot>
                     <tr>
-                        <td colspan="7" class="border px-4 py-2 font-bold text-right text-lg">Вкупно:</td>
-                        <td class="border px-4 py-2 font-bold text-lg text-center-desktop">{{ number_format($additionalTableData['totalPrice'], 2) }}</td>
+                        <td colspan="7" class="border px-2 md:px-4 py-1 md:py-2 font-bold text-right text-sm md:text-lg">
+                            Вкупно:
+                        </td>
+                        <td class="border px-2 md:px-4 py-1 md:py-2 text-sm md:text-lg font-bold number-cell">
+                            {{ number_format($additionalTableData['totalPrice'], 2) }}
+                        </td>
                     </tr>
                 </tfoot>
             </table>
@@ -395,6 +356,9 @@
         </div>
     </form>
 </div>
+
+
+    
 
 
 
@@ -1400,6 +1364,28 @@ document.addEventListener('DOMContentLoaded', function() {
             localStorage.removeItem('scrollPosition');
         }
     });
+    document.addEventListener('DOMContentLoaded', function() {
+    // Save scroll position before form submissions
+    const yesterdayForm = document.getElementById('yesterdayBreadForm');
+    
+    if (yesterdayForm) {
+        yesterdayForm.addEventListener('submit', function() {
+            // Save the current scroll position to sessionStorage
+            sessionStorage.setItem('scrollPosition', window.scrollY);
+        });
+    }
+    
+    // Restore scroll position after page load if available
+    if (sessionStorage.getItem('scrollPosition')) {
+        const scrollPosition = parseInt(sessionStorage.getItem('scrollPosition'));
+        window.scrollTo(0, scrollPosition);
+        
+        // Clear the stored position after using it
+        setTimeout(function() {
+            sessionStorage.removeItem('scrollPosition');
+        }, 100);
+    }
+});
     </script>
 
 <style>

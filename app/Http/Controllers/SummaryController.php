@@ -666,6 +666,7 @@ private function getTransactionsForSummary($date)
     // Get old bread sold values, regardless of payment status
     $oldBreadSoldQuery = DailyTransaction::where('transaction_date', $date)
         ->whereNotNull('old_bread_sold');
+        
 
     if ($user->role === 'user') {
         $oldBreadSoldQuery->whereIn('company_id', $user->companies->pluck('id'));
@@ -680,6 +681,25 @@ private function getTransactionsForSummary($date)
         ->get()
         ->keyBy('bread_type_id');
 
+        // Get returned_amount_1 values from bread_sales table
+$breadSaleQuery = BreadSale::whereDate('transaction_date', $date);
+
+if ($user->role === 'user') {
+    $breadSaleQuery->whereIn('company_id', $user->companies->pluck('id'));
+} elseif (($user->isAdmin() || $user->role === 'super_admin') && $selectedUserId) {
+    $breadSaleQuery->whereIn('company_id', User::find($selectedUserId)->companies->pluck('id'));
+}  else if (($user->isAdmin() || $user->role === 'super_admin') && !$selectedUserId) {
+    // For All Users view - add this "else if" block
+    $breadSaleQuery = BreadSale::whereDate('transaction_date', $date)
+        ->select('bread_type_id')
+        ->selectRaw('SUM(returned_amount_1) as returned_amount_1')
+        ->groupBy('bread_type_id');
+}
+
+
+
+$breadSaleRecords = $breadSaleQuery->get()->keyBy('bread_type_id');
+
     foreach ($breadTypes as $breadType) {
         if (!$breadType->available_for_daily) {
             continue;
@@ -692,7 +712,10 @@ private function getTransactionsForSummary($date)
         $soldOldBread = $oldBreadSold->get($breadType->id)?->old_bread_sold ?? 0;
         
         $price = $breadType->old_price ?? 0;
-        $returned1 = 0;
+          // Get returned_amount_1 from bread_sales table - THIS IS THE FIX
+          $breadSaleRecord = $breadSaleRecords->get($breadType->id);
+          $returned1 = $breadSaleRecord ? $breadSaleRecord->returned_amount_1 : 0;
+        // $returned1 = 0;
 
         $difference = $returned - $soldOldBread;
         $difference1 = $difference - $returned1;
@@ -1237,6 +1260,107 @@ public function markMultipleAsPaid(Request $request)
         DB::rollBack();
         Log::error('Error marking multiple transactions as paid: ' . $e->getMessage());
         return back()->with('error', 'Се појави грешка при означување на трансакциите како платени.');
+    }
+}
+
+
+
+public function updateYesterday(Request $request)
+{
+    try {
+        $date = $request->input('date');
+        $oldBreadSoldData = $request->input('yesterday_old_bread_sold', []);
+        $returnedAmount1Data = $request->input('yesterday_returned_amount_1', []);
+        $breadTypeIds = $request->input('yesterday_bread_type_ids', []);
+        $selectedUserId = $request->input('selected_user_id');
+        
+        $user = Auth::user();
+        
+        // Determine which company to use based on user role
+        if ($user->isAdmin() || $user->role === 'super_admin') {
+            if ($selectedUserId) {
+                $selectedUser = User::find($selectedUserId);
+                if (!$selectedUser) {
+                    throw new \Exception('Selected user not found.');
+                }
+                $company = $selectedUser->companies()->first();
+            } else {
+                $company = Company::first();
+            }
+        } else {
+            $company = $user->companies()->first();
+        }
+
+        if (!$company) {
+            throw new \Exception('No company found for this user.');
+        }
+
+        DB::beginTransaction();
+        
+        // Create a separate collection to track updates
+        $updatedTransactions = [];
+        
+        foreach ($breadTypeIds as $breadName => $breadTypeId) {
+            if (!$breadTypeId) continue;
+            
+            $breadType = BreadType::find($breadTypeId);
+            if (!$breadType) continue;
+            
+            $oldBreadSold = isset($oldBreadSoldData[$breadName]) ? (int)$oldBreadSoldData[$breadName] : 0;
+            $returnedAmount1 = isset($returnedAmount1Data[$breadName]) ? (int)$returnedAmount1Data[$breadName] : 0;
+            
+            // CRITICAL: Use direct query to update only specific fields without loading the entire model
+            // This prevents interference with other fields in the BreadSale record
+            
+            // Update old_bread_sold directly in the database
+            DB::table('bread_sales')
+                ->where('bread_type_id', $breadTypeId)
+                ->where('transaction_date', $date)
+                ->where('company_id', $company->id)
+                ->update([
+                    'old_bread_sold' => $oldBreadSold,
+                    'returned_amount_1' => $returnedAmount1,
+                    'updated_at' => now()
+                ]);
+            
+            // Also update daily transaction if exists, but only the old_bread_sold field
+            $transaction = DailyTransaction::where('bread_type_id', $breadTypeId)
+                ->where('transaction_date', $date)
+                ->where('company_id', $company->id)
+                ->first();
+            
+            if ($transaction) {
+                // Update only the old_bread_sold field directly
+                DB::table('daily_transactions')
+                    ->where('id', $transaction->id)
+                    ->update([
+                        'old_bread_sold' => $oldBreadSold,
+                        'updated_at' => now()
+                    ]);
+                
+                $updatedTransactions[] = $transaction->id;
+            }
+        }
+        
+        DB::commit();
+        
+        Log::info('Yesterday\'s table updated successfully');
+
+        return redirect()
+            ->back()
+            ->with('success', 'Успешно ажурирање на табелата за вчерашен леб')
+            ->with('scrollTo', 'yesterdayBreadForm'); 
+
+            
+    } catch (\Exception $e) {
+        DB::rollBack();
+        Log::error('Error updating yesterday table: ' . $e->getMessage(), [
+            'trace' => $e->getTraceAsString()
+        ]);
+        
+        return redirect()
+            ->back()
+            ->with('error', 'Грешка при ажурирање на табелата за вчерашен леб: ' . $e->getMessage());
     }
 }
 

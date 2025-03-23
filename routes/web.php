@@ -144,6 +144,7 @@ Route::get('/api/check-session', function () {
         'timestamp' => now()->timestamp
     ]);
 });
+Route::post('/summary/update-yesterday', [SummaryController::class, 'updateYesterday'])->name('summary.updateYesterday');
 
 // Schema check for debugging
 Route::get('/check-schema', function() {
