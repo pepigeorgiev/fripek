@@ -28,7 +28,7 @@
                         <option value="">Сите компании</option>
                         @foreach($companies as $company)
                             <option value="{{ $company->id }}" 
-                                {{ (request('company_id') == $company->id || (isset($selectedCompany) && $selectedCompany->id == $company->id)) ? 'selected' : '' }}>
+                                {{ (request('company_id') == $company->id) ? 'selected' : '' }}>
                                 {{ $company->name }}
                             </option>
                         @endforeach
@@ -48,8 +48,10 @@
                 </div>
             </div>
 
-            <div class="mt-4 flex items-center">
-                <!-- Checkbox removed since we're always filtering zero changes -->
+            <div class="mt-4 flex flex-wrap items-center gap-4">
+               
+                </div>
+                
                 <button type="submit" class="ml-auto bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600">
                     Филтрирај
                 </button>
@@ -70,94 +72,66 @@
                 </tr>
             </thead>
             <tbody class="divide-y divide-gray-200">
-                @foreach($history as $record)
-                @php
-                    $hasSignificantChange = false;
-                    
-                    // Check if there are significant changes in delivered
-                    if (isset($record->old_values['delivered']) && isset($record->new_values['delivered'])) {
-                        $oldDelivered = (int)$record->old_values['delivered'];
-                        $newDelivered = (int)$record->new_values['delivered'];
-                        $deliveredDiff = abs($newDelivered - $oldDelivered);
-                        if ($deliveredDiff > 0) {
-                            $hasSignificantChange = true;
-                        }
-                    }
-                    
-                    // Check if there are significant changes in returned
-                    if (isset($record->old_values['returned']) && isset($record->new_values['returned'])) {
-                        $oldReturned = (int)$record->old_values['returned'];
-                        $newReturned = (int)$record->new_values['returned'];
-                        $returnedDiff = abs($newReturned - $oldReturned);
-                        if ($returnedDiff > 0) {
-                            $hasSignificantChange = true;
-                        }
-                    }
-                    
-                    // Check if there are significant changes in gratis
-                    if (isset($record->old_values['gratis']) && isset($record->new_values['gratis'])) {
-                        $oldGratis = (int)$record->old_values['gratis'];
-                        $newGratis = (int)$record->new_values['gratis'];
-                        $gratisDiff = abs($newGratis - $oldGratis);
-                        if ($gratisDiff > 0) {
-                            $hasSignificantChange = true;
-                        }
-                    }
-                    
-                    // Skip records without significant changes - always filter out zero changes regardless of checkbox
-                    if (!$hasSignificantChange) {
-                        continue;
-                    }
-                    
-                    $createdAt = \Carbon\Carbon::parse($record->created_at);
-                    // Flag changes made outside of working hours (5 AM to 11 AM)
-                    $isOutsideWorkingHours = !($createdAt->hour >= 5 && $createdAt->hour < 11);
-                    $isNotCurrentDate = $record->transaction && !$record->transaction->transaction_date->isToday();
-                @endphp
-                <tr class="hover:bg-gray-50">
-                    <td class="px-6 py-4">{{ $record->created_at->format('d.m.Y H:i:s') }}</td>
-                    <td class="px-6 py-4">{{ $record->user->name ?? 'N/A' }}</td>
-                    <td class="px-6 py-4">
-                        {{ optional($record->transaction->company)->name ?? 'Избришана компанија' }}
-                    </td>
-                    <td class="px-6 py-4">
-                        {{ optional($record->transaction->breadType)->name ?? 'N/A' }}
-                    </td>
-                    <td class="px-6 py-4">
-                        <div class="text-sm">
-                            @if($isOutsideWorkingHours)
-                                <span class="text-red-500 text-xs">Промена надвор од работни часови ({{ $record->created_at->format('H:i') }})</span>
-                            @endif
-                            
-                            @if($isNotCurrentDate)
-                                <span class="text-orange-500 text-xs">Промена на минат датум</span>
-                            @endif
-                            
-                            @if(isset($record->old_values['delivered']) || isset($record->new_values['delivered']))
-                                <div>
-                                    <span class="text-red-500">Старо испорачано: {{ $record->old_values['delivered'] ?? 'N/A' }}</span>
-                                    <span class="text-green-500">→ Ново: {{ $record->new_values['delivered'] ?? 'N/A' }}</span>
-                                </div>
-                            @endif
-                            
-                            @if(isset($record->old_values['returned']) || isset($record->new_values['returned']))
+                @if($history->isEmpty())
+                    <tr>
+                        <td colspan="6" class="px-6 py-10 text-center text-gray-500">
+                            Нема пронајдени записи за избраниот период. Обидете се да го проширите временскиот опсег.
+                        </td>
+                    </tr>
+                @else
+                    @foreach($history as $record)
+                        @php
+                            $createdAt = \Carbon\Carbon::parse($record->created_at);
+                            // Flag changes made outside of working hours (5 AM to 11 AM)
+                            $isOutsideWorkingHours = !($createdAt->hour >= 5 && $createdAt->hour < 11);
+                            $isNotCurrentDate = $record->transaction && !$record->transaction->transaction_date->isToday();
+                        @endphp
+                        
+                        <tr class="hover:bg-gray-50">
+                            <td class="px-6 py-4">{{ $record->created_at->format('d.m.Y H:i:s') }}</td>
+                            <td class="px-6 py-4">{{ $record->user->name ?? 'N/A' }}</td>
+                            <td class="px-6 py-4">
+                                {{ optional($record->transaction->company)->name ?? 'Избришана компанија' }}
+                            </td>
+                            <td class="px-6 py-4">
+                                {{ optional($record->transaction->breadType)->name ?? 'N/A' }}
+                            </td>
+                            <td class="px-6 py-4">
                                 <div class="text-sm">
-                                    <span class="text-red-500">Старо вратено: {{ $record->old_values['returned'] ?? 'N/A' }}</span>
-                                    <span class="text-green-500">→ Ново: {{ $record->new_values['returned'] ?? 'N/A' }}</span>
+                                    @if($isOutsideWorkingHours)
+                                        <span class="text-red-500 text-xs block mb-1">Промена надвор од работни часови ({{ $record->created_at->format('H:i') }})</span>
+                                    @endif
+                                    
+                                    @if($isNotCurrentDate)
+                                        <span class="text-orange-500 text-xs block mb-1">Промена на минат датум</span>
+                                    @endif
+                                    
+                                    @if(isset($record->old_values['delivered']) && isset($record->new_values['delivered']) && $record->old_values['delivered'] != $record->new_values['delivered'])
+                                        <div class="mb-1">
+                                            <span class="text-red-500">Испорачано: {{ $record->old_values['delivered'] }}</span>
+                                            <span class="text-green-500">→ {{ $record->new_values['delivered'] }}</span>
+                                        </div>
+                                    @endif
+                                    
+                                    @if(isset($record->old_values['returned']) && isset($record->new_values['returned']) && $record->old_values['returned'] != $record->new_values['returned'])
+                                        <div class="mb-1">
+                                            <span class="text-red-500">Вратено: {{ $record->old_values['returned'] }}</span>
+                                            <span class="text-green-500">→ {{ $record->new_values['returned'] }}</span>
+                                        </div>
+                                    @endif
+                                    
+                                    @if(isset($record->old_values['gratis']) && isset($record->new_values['gratis']) && $record->old_values['gratis'] != $record->new_values['gratis'])
+                                        <div class="mb-1">
+                                            <span class="text-red-500">Гратис: {{ $record->old_values['gratis'] }}</span>
+                                            <span class="text-green-500">→ {{ $record->new_values['gratis'] }}</span>
+                                        </div>
+                                    @endif
                                 </div>
-                            @endif
-                            
-                            @if(isset($record->old_values['gratis']) || isset($record->new_values['gratis']))
-                                <div class="text-sm">
-                                    <span class="text-red-500">Старо гратис: {{ $record->old_values['gratis'] ?? 'N/A' }}</span>
-                                    <span class="text-green-500">→ Ново: {{ $record->new_values['gratis'] ?? 'N/A' }}</span>
-                                </div>
-                            @endif
-                        </div>
-                    </td>
-                    <td class="px-6 py-4 text-sm">{{ $record->ip_address }}</td>
-                </tr>
-                @endforeach
+                            </td>
+                            <td class="px-6 py-4 text-sm">{{ $record->ip_address }}</td>
+                        </tr>
+                    @endforeach
+                @endif
             </tbody>
         </table>
     </div>

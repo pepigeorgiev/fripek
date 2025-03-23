@@ -38,13 +38,19 @@ class TransactionHistoryController extends Controller
             $query->where('user_id', $request->user_id);
         }
 
-        // Filter significant changes (>10 pieces)
-        if ($request->filled('significant_only')) {
+        // Always filter for changes in delivered, returned, or gratis
+        $query->where(function($q) {
+            $q->whereRaw("JSON_EXTRACT(new_values, '$.delivered') != JSON_EXTRACT(old_values, '$.delivered')")
+              ->orWhereRaw("JSON_EXTRACT(new_values, '$.returned') != JSON_EXTRACT(old_values, '$.returned')")
+              ->orWhereRaw("JSON_EXTRACT(new_values, '$.gratis') != JSON_EXTRACT(old_values, '$.gratis')");
+        });
+
+        // Filter for outside working hours if requested
+        if ($request->filled('outside_hours_only')) {
             $query->where(function($q) {
-                $q->whereRaw("ABS(CAST(JSON_EXTRACT(new_values, '$.delivered') AS SIGNED) - 
-                             CAST(JSON_EXTRACT(old_values, '$.delivered') AS SIGNED)) > 10")
-                  ->orWhereRaw("ABS(CAST(JSON_EXTRACT(new_values, '$.returned') AS SIGNED) - 
-                               CAST(JSON_EXTRACT(old_values, '$.returned') AS SIGNED)) > 10");
+                // Hours outside 5:00-11:00 (so 11:00-23:59 and 00:00-04:59)
+                $q->whereRaw('HOUR(created_at) >= 11')
+                  ->orWhereRaw('HOUR(created_at) < 5');
             });
         }
 
@@ -57,7 +63,11 @@ class TransactionHistoryController extends Controller
         $companies = Company::orderBy('name')->get();
         $users = User::orderBy('name')->get();
 
+     
+
         $history = $query->paginate(20);
+
+    
 
         return view('transactions.history', compact(
             'history',
@@ -67,4 +77,4 @@ class TransactionHistoryController extends Controller
             'date_to'
         ));
     }
-} 
+}
