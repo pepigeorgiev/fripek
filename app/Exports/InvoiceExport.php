@@ -62,7 +62,8 @@ SELECT
     SUM(dt.delivered - dt.returned - dt.gratis) as quantity,
     COALESCE(lp.price, bt.price) as price,
     c.mygpm_business_unit,
-    cu.user_id
+    cu.user_id,
+    COALESCE(bto.display_order, 999) as display_order
 FROM daily_transactions dt
 JOIN companies c ON dt.company_id = c.id
 JOIN bread_types bt ON dt.bread_type_id = bt.id
@@ -80,13 +81,14 @@ GROUP BY
     bt.name,
     COALESCE(lp.price, bt.price),
     c.mygpm_business_unit,
-    cu.user_id
+    cu.user_id,
+    COALESCE(bto.display_order, 999)
 HAVING SUM(dt.delivered - dt.returned - dt.gratis) > 0
 ORDER BY 
     cu.user_id,
     c.code,
     c.name,
-    COALESCE(bto.display_order, 999),
+    display_order,
     bt.code
 ";
 
