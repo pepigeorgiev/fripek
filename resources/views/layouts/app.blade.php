@@ -383,6 +383,15 @@
     </a>
 @endif
 
+@if(auth()->user()->role === 'admin-user' || auth()->user()->role === 'admin-admin')
+<a href="{{ route('bread-types.order.index') }}" 
+   @click="isOpen = false"
+   class="block px-4 py-2 text-gray-600 hover:bg-gray-100 {{ request()->routeIs('bread-types.order.*') ? 'bg-gray-200' : '' }}">
+    <i class="fas fa-sort mr-2"></i>Редослед на типови леб
+</a>
+@endif
+
+
                 <div class="mt-5 pt-4 border-t">
                     <form method="POST" action="{{ route('logout') }}">
                         @csrf

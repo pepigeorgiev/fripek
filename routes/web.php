@@ -14,6 +14,7 @@ use App\Http\Controllers\SummaryController;
 use App\Http\Controllers\UsersController;
 use App\Http\Controllers\TransactionHistoryController;
 use App\Http\Controllers\InstallController;
+use App\Http\Controllers\BreadTypeOrderController;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -88,6 +89,12 @@ Route::put('/companies/{company}/update-bread-types', [CompanyController::class,
         ->name('summary.updateAdditional');
     
     // Bread Types
+    // Add admin middleware to bread-type-order routes
+// Change this in your routes/web.php file
+Route::middleware(['auth'])->group(function () {
+    Route::get('/bread-types/order', [BreadTypeOrderController::class, 'index'])->name('bread-types.order.index');
+    Route::post('/bread-types/order', [BreadTypeOrderController::class, 'update'])->name('bread-types.order.update');
+});
     Route::resource('bread-types', BreadTypeController::class);
     Route::get('bread-types/{breadType}/company-prices', [BreadTypeController::class, 'showCompanyPrices'])
         ->name('bread-types.companyPrices');
@@ -130,7 +137,6 @@ Route::get('/api/refresh-csrf', function () {
     ]);
 });
 
-// Add these routes to your routes/web.php file
 
 Route::get('/api/refresh-csrf', function () {
     return response()->json([
@@ -144,6 +150,12 @@ Route::get('/api/check-session', function () {
         'timestamp' => now()->timestamp
     ]);
 });
+
+
+
+
+
+
 Route::post('/summary/update-yesterday', [SummaryController::class, 'updateYesterday'])->name('summary.updateYesterday');
 
 // Schema check for debugging
