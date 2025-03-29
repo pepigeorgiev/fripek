@@ -289,10 +289,14 @@
                                       ($currentUser->isAdmin() || $currentUser->role === 'super_admin');
                         @endphp
                         <tr>
-                            <td class="border px-2 md:px-4 py-1 md:py-2 text-sm md:text-lg font-bold col-name">
+                        <td class="border px-2 md:px-4 py-1 md:py-2 text-sm md:text-lg font-bold col-name">
+    {{ Str::limit($breadType, 30) }}-{{ $data['price'] ?? 0 }}
+    <input type="hidden" name="yesterday_bread_type_ids[{{ $breadType }}]" value="{{ $data['bread_type_id'] ?? $breadTypeObj->id ?? 0 }}">
+</td>
+                            <!-- <td class="border px-2 md:px-4 py-1 md:py-2 text-sm md:text-lg font-bold col-name">
                                 {{ Str::limit($breadType, 30) }}
                                 <input type="hidden" name="yesterday_bread_type_ids[{{ $breadType }}]" value="{{ $data['bread_type_id'] ?? $breadTypeObj->id ?? 0 }}">
-                            </td>
+                            </td> -->
                             <td class="border px-2 md:px-4 py-1 md:py-2 text-sm md:text-lg font-bold number-cell col-number">
                                 {{ $data['returned'] ?? 0 }}
                                 <input type="hidden" name="yesterday_returned_amount[{{ $breadType }}]" value="{{ $data['returned'] ?? 0 }}">
