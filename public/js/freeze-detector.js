@@ -1,17 +1,18 @@
-/**
- * Simple Freeze Detector and Recovery
- * Detects freezes and provides a reliable reset button
- */
+
 (function() {
     // Configuration
     const HEARTBEAT_INTERVAL = 2000; // 2 seconds
     const FREEZE_THRESHOLD = 6000;   // 6 seconds without heartbeat = frozen
+    const SERVER_LOG_ENDPOINT = '/api/log/app-freeze'; // Endpoint to log freezes
+    const MAX_TRACKED_ITEMS = 10; // Maximum number of actions/requests to store
     
     // State variables
     let lastHeartbeat = Date.now();
     let heartbeatInterval = null;
     let checkFrozenInterval = null;
     let recoveryButton = null;
+    let lastUserActions = [];
+    let lastNetworkRequests = [];
     
     // Initialize the detector
     function init() {
@@ -25,6 +26,136 @@
         
         // Add the always-available recovery button (initially hidden)
         addRecoveryButton();
+        
+        // Start monitoring user actions and network requests
+        startMonitoring();
+    }
+    
+    // Start monitoring user actions and network
+    function startMonitoring() {
+        // Track user interactions
+        trackUserActions();
+        
+        // Monitor network requests
+        monitorNetworkRequests();
+    }
+    
+    // Track user interactions
+    function trackUserActions() {
+        const trackEvent = (eventType, target) => {
+            try {
+                // Get a readable identifier for the element
+                let elementId = target.id || '';
+                let elementClass = target.className || '';
+                let elementTag = target.tagName || '';
+                let elementText = target.innerText ? target.innerText.substring(0, 20) : '';
+                
+                lastUserActions.push({
+                    timestamp: Date.now(),
+                    type: eventType,
+                    element: {
+                        id: elementId,
+                        class: elementClass,
+                        tag: elementTag,
+                        text: elementText
+                    },
+                    path: window.location.pathname
+                });
+                
+                // Keep history limited
+                if (lastUserActions.length > MAX_TRACKED_ITEMS) {
+                    lastUserActions.shift();
+                }
+            } catch (error) {
+                console.error('Error tracking user interaction:', error);
+            }
+        };
+        
+        // Add listeners for common interactions
+        document.addEventListener('click', e => trackEvent('click', e.target), true);
+        document.addEventListener('input', e => trackEvent('input', e.target), true);
+        document.addEventListener('submit', e => trackEvent('submit', e.target), true);
+    }
+    
+    // Monitor network requests
+    function monitorNetworkRequests() {
+        try {
+            // Intercept fetch
+            const originalFetch = window.fetch;
+            window.fetch = function(url, options) {
+                const startTime = Date.now();
+                lastNetworkRequests.push({
+                    timestamp: startTime,
+                    type: 'fetch',
+                    url: url.toString(),
+                    method: options?.method || 'GET',
+                    status: 'pending'
+                });
+                
+                // Keep history limited
+                if (lastNetworkRequests.length > MAX_TRACKED_ITEMS) {
+                    lastNetworkRequests.shift();
+                }
+                
+                const requestIndex = lastNetworkRequests.length - 1;
+                
+                return originalFetch.apply(this, arguments)
+                    .then(response => {
+                        if (requestIndex >= 0 && requestIndex < lastNetworkRequests.length) {
+                            lastNetworkRequests[requestIndex].status = response.status;
+                            lastNetworkRequests[requestIndex].duration = Date.now() - startTime;
+                        }
+                        return response;
+                    })
+                    .catch(error => {
+                        if (requestIndex >= 0 && requestIndex < lastNetworkRequests.length) {
+                            lastNetworkRequests[requestIndex].status = 'error';
+                            lastNetworkRequests[requestIndex].error = error.message;
+                            lastNetworkRequests[requestIndex].duration = Date.now() - startTime;
+                        }
+                        throw error;
+                    });
+            };
+            
+            // Intercept XMLHttpRequest
+            const originalXhrOpen = XMLHttpRequest.prototype.open;
+            const originalXhrSend = XMLHttpRequest.prototype.send;
+            
+            XMLHttpRequest.prototype.open = function(method, url) {
+                this._freezeMonitorMethod = method;
+                this._freezeMonitorUrl = url;
+                this._freezeMonitorStartTime = Date.now();
+                return originalXhrOpen.apply(this, arguments);
+            };
+            
+            XMLHttpRequest.prototype.send = function() {
+                lastNetworkRequests.push({
+                    timestamp: this._freezeMonitorStartTime || Date.now(),
+                    type: 'xhr',
+                    url: this._freezeMonitorUrl,
+                    method: this._freezeMonitorMethod || 'unknown',
+                    status: 'pending'
+                });
+                
+                // Keep history limited
+                if (lastNetworkRequests.length > MAX_TRACKED_ITEMS) {
+                    lastNetworkRequests.shift();
+                }
+                
+                const requestIndex = lastNetworkRequests.length - 1;
+                
+                this.addEventListener('loadend', () => {
+                    if (requestIndex >= 0 && requestIndex < lastNetworkRequests.length) {
+                        lastNetworkRequests[requestIndex].status = this.status;
+                        lastNetworkRequests[requestIndex].duration = Date.now() - (this._freezeMonitorStartTime || Date.now());
+                    }
+                });
+                
+                return originalXhrSend.apply(this, arguments);
+            };
+        } catch (error) {
+            console.error('Error setting up network monitoring:', error);
+        }
     }
     
     // Start the heartbeat system
@@ -61,7 +192,13 @@
             // If it's been too long since the last heartbeat, the app is frozen
             if (timeSinceHeartbeat > FREEZE_THRESHOLD) {
                 console.warn(`Freeze detected! No heartbeat for ${Math.round(timeSinceHeartbeat / 1000)} seconds`);
-                markAppAsFrozen();
+                
+                // Collect data and log to server before showing UI
+                const diagnosticData = collectDiagnosticData();
+                logFreezeToServer(diagnosticData);
+                
+                // Mark app as frozen and show recovery UI
+                markAppAsFrozen(diagnosticData);
                 showRecoveryUI();
             }
         } catch (error) {
@@ -69,12 +206,82 @@
         }
     }
     
+    // Collect diagnostic data
+    function collectDiagnosticData() {
+        try {
+            const diagnosticData = {
+                url: window.location.href,
+                timestamp: Date.now(),
+                userAgent: navigator.userAgent,
+                lastUserActions: lastUserActions,
+                lastNetworkRequests: lastNetworkRequests,
+                screenWidth: window.innerWidth,
+                screenHeight: window.innerHeight,
+                devicePixelRatio: window.devicePixelRatio || 1
+            };
+            
+            // Add memory info if available
+            if (window.performance?.memory) {
+                diagnosticData.memory = {
+                    usedJSHeapSize: window.performance.memory.usedJSHeapSize,
+                    totalJSHeapSize: window.performance.memory.totalJSHeapSize,
+                    jsHeapSizeLimit: window.performance.memory.jsHeapSizeLimit
+                };
+            }
+            
+            return diagnosticData;
+        } catch (error) {
+            console.error('Error collecting diagnostic data:', error);
+            return {
+                error: 'Failed to collect diagnostic data',
+                timestamp: Date.now(),
+                url: window.location.href
+            };
+        }
+    }
+    
+    // Log freeze to server
+    function logFreezeToServer(diagnosticData) {
+        try {
+            // Use sendBeacon if available (works during unload)
+            if (navigator.sendBeacon) {
+                const blob = new Blob(
+                    [JSON.stringify({
+                        event: 'app_freeze',
+                        data: diagnosticData
+                    })], 
+                    { type: 'application/json' }
+                );
+                navigator.sendBeacon(SERVER_LOG_ENDPOINT, blob);
+                console.log('Freeze logged to server via sendBeacon');
+            } else {
+                // Fallback to fetch with keepalive
+                fetch(SERVER_LOG_ENDPOINT, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        event: 'app_freeze',
+                        data: diagnosticData
+                    }),
+                    keepalive: true
+                })
+                .then(() => console.log('Freeze logged to server via fetch'))
+                .catch(err => console.error('Failed to log freeze to server:', err));
+            }
+        } catch (error) {
+            console.error('Error logging freeze to server:', error);
+        }
+    }
+    
     // Mark the app as frozen
-    function markAppAsFrozen() {
+    function markAppAsFrozen(diagnosticData) {
         try {
             localStorage.setItem('app_state', 'frozen');
             localStorage.setItem('app_frozen_at', Date.now().toString());
             localStorage.setItem('app_frozen_url', window.location.href);
+            localStorage.setItem('app_freeze_diagnostic', JSON.stringify(diagnosticData || {}));
         } catch (error) {
             console.error('Error marking app as frozen:', error);
         }
@@ -88,6 +295,10 @@
             if (appState === 'frozen') {
                 const frozenAt = parseInt(localStorage.getItem('app_frozen_at') || '0');
                 const timeSinceFrozen = Date.now() - frozenAt;
+                const diagnosticData = JSON.parse(localStorage.getItem('app_freeze_diagnostic') || '{}');
+                
+                // Report recovery to server
+                logRecoveryToServer(diagnosticData, timeSinceFrozen);
                 
                 // Only show recovery UI if it was frozen recently (within last 30 minutes)
                 if (timeSinceFrozen < 30 * 60 * 1000) {
@@ -103,12 +314,38 @@
         }
     }
     
+    // Log recovery to server
+    function logRecoveryToServer(diagnosticData, timeSinceFrozen) {
+        try {
+            fetch(SERVER_LOG_ENDPOINT, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    event: 'app_recovery',
+                    data: {
+                        ...diagnosticData,
+                        recoveryTimestamp: Date.now(),
+                        freezeDuration: timeSinceFrozen,
+                        recoveryUrl: window.location.href
+                    }
+                })
+            })
+            .then(() => console.log('Recovery reported to server'))
+            .catch(err => console.error('Failed to report recovery to server:', err));
+        } catch (error) {
+            console.error('Error reporting recovery to server:', error);
+        }
+    }
+    
     // Clear the frozen state
     function clearFrozenState() {
         try {
             localStorage.removeItem('app_state');
             localStorage.removeItem('app_frozen_at');
             localStorage.removeItem('app_frozen_url');
+            localStorage.removeItem('app_freeze_diagnostic');
         } catch (error) {
             console.error('Error clearing frozen state:', error);
         }
@@ -235,6 +472,9 @@
         try {
             console.log('Resetting app...');
             
+            // Log reset to server
+            logResetToServer();
+            
             // Show a simple loading message
             const loader = document.createElement('div');
             loader.style.cssText = `
@@ -311,6 +551,52 @@
             
             // Last resort
             window.location.reload(true);
+        }
+    }
+    
+    // Log reset to server
+    function logResetToServer() {
+        try {
+            if (navigator.sendBeacon) {
+                const blob = new Blob(
+                    [JSON.stringify({
+                        event: 'app_manual_reset',
+                        data: {
+                            timestamp: Date.now(),
+                            url: window.location.href,
+                            userAgent: navigator.userAgent,
+                            lastUserActions: lastUserActions,
+                            lastNetworkRequests: lastNetworkRequests
+                        }
+                    })], 
+                    { type: 'application/json' }
+                );
+                navigator.sendBeacon(SERVER_LOG_ENDPOINT, blob);
+                console.log('Reset logged to server via beacon');
+            } else {
+                // Fallback to fetch with keepalive
+                fetch(SERVER_LOG_ENDPOINT, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        event: 'app_manual_reset',
+                        data: {
+                            timestamp: Date.now(),
+                            url: window.location.href,
+                            userAgent: navigator.userAgent,
+                            lastUserActions: lastUserActions,
+                            lastNetworkRequests: lastNetworkRequests
+                        }
+                    }),
+                    keepalive: true
+                })
+                .then(() => console.log('Reset logged to server via fetch'))
+                .catch(err => console.error('Failed to log reset to server:', err));
+            }
+        } catch (error) {
+            console.error('Error logging reset to server:', error);
         }
     }
     

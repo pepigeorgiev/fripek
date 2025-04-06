@@ -151,6 +151,21 @@ Route::get('/api/check-session', function () {
     ]);
 });
 
+// Add to routes/api.php
+Route::post('/log/app-freeze', function (Illuminate\Http\Request $request) {
+    $event = $request->input('event', 'unknown');
+    $data = $request->input('data', []);
+    
+    \Illuminate\Support\Facades\Log::channel('freeze-logs')
+        ->info("App {$event}", [
+            'event' => $event,
+            'user_id' => auth()->id() ?? 'guest',
+            'data' => $data
+        ]);
+        
+    return response()->json(['status' => 'logged']);
+});
+
 
 
 
