@@ -435,32 +435,57 @@ private function recordHistory($transaction, $oldValues, $newValues, $action = '
         return null;
     }
     
-    // Skip recording for non-significant changes
-    if ($action === 'update') {
-        $hasSignificantChanges = false;
-        
-        $fieldsToCheck = ['delivered', 'returned', 'gratis'];
-        foreach ($fieldsToCheck as $field) {
-            // Check if the field exists in both old and new values
-            if (isset($newValues[$field]) && isset($oldValues[$field])) {
-                // Only record if there's an actual change (different values)
-                if ($newValues[$field] != $oldValues[$field]) {
-                    // Further filter out zero-to-zero changes
-                    if (!($newValues[$field] == 0 && $oldValues[$field] == 0)) {
-                        $hasSignificantChanges = true;
-                        break;
-                    }
-                }
-            } elseif (isset($newValues[$field]) && !isset($oldValues[$field]) && $newValues[$field] != 0) {
-                // If new field added with non-zero value
-                $hasSignificantChanges = true;
+    // Skip recording if values haven't actually changed
+    $hasChanges = false;
+    $fieldsToCheck = ['delivered', 'returned', 'gratis', 'is_paid'];
+    
+    foreach ($fieldsToCheck as $field) {
+        if (isset($newValues[$field]) && isset($oldValues[$field])) {
+            // Check for actual changes, accounting for type differences
+            if ((string)$newValues[$field] !== (string)$oldValues[$field]) {
+                $hasChanges = true;
                 break;
             }
         }
+    }
+    
+    if (!$hasChanges) {
+        return null;
+    
+// private function recordHistory($transaction, $oldValues, $newValues, $action = 'update')
+// {
+//     // Skip if not within tracking hours (12:00 PM to 5:00 AM)
+//     $currentHour = now()->hour;
+//     if (!(($currentHour >= 12) || ($currentHour < 5))) {
+//         return null;
+//     }
+    
+//     // Skip recording for non-significant changes
+//     if ($action === 'update') {
+//         $hasSignificantChanges = false;
         
-        if (!$hasSignificantChanges) {
-            return null;
-        }
+//         $fieldsToCheck = ['delivered', 'returned', 'gratis'];
+//         foreach ($fieldsToCheck as $field) {
+//             // Check if the field exists in both old and new values
+//             if (isset($newValues[$field]) && isset($oldValues[$field])) {
+//                 // Only record if there's an actual change (different values)
+//                 if ($newValues[$field] != $oldValues[$field]) {
+//                     // Further filter out zero-to-zero changes
+//                     if (!($newValues[$field] == 0 && $oldValues[$field] == 0)) {
+//                         $hasSignificantChanges = true;
+//                         break;
+//                     }
+//                 }
+//             } elseif (isset($newValues[$field]) && !isset($oldValues[$field]) && $newValues[$field] != 0) {
+//                 // If new field added with non-zero value
+//                 $hasSignificantChanges = true;
+//                 break;
+//             }
+//         }
+        
+//         if (!$hasSignificantChanges) {
+//             return null;
+//         }
     }
 
     // Create filtered new_values and old_values arrays that only contain the fields that actually changed

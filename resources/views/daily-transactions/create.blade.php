@@ -321,7 +321,7 @@ const DailyTransactions = {
         this.cacheElements();
         this.loadData();
         this.bindEvents();
-        this.initializeSelect2();
+        // this.initializeSelect2();
         this.setupKeyboardNavigation();
         this.calculateAllTotals();
         this.syncOfflineTransactions();
@@ -530,87 +530,87 @@ const DailyTransactions = {
     },
     
     // Set up Select2 for company dropdown
-    initializeSelect2: function() {
-        const self = this;
-        const el = this.elements;
+    // initializeSelect2: function() {
+    //     const self = this;
+    //     const el = this.elements;
         
-        if (!el.companySelect || !window.jQuery) return;
+    //     if (!el.companySelect || !window.jQuery) return;
         
-        try {
-            // Wait for jQuery to be fully loaded
-            function waitForJQuery(callback) {
-                if (window.jQuery && window.jQuery.fn.select2) {
-                    callback();
-                } else {
-                    setTimeout(function() { waitForJQuery(callback); }, 100);
-                }
-            }
+    //     try {
+    //         // Wait for jQuery to be fully loaded
+    //         function waitForJQuery(callback) {
+    //             if (window.jQuery && window.jQuery.fn.select2) {
+    //                 callback();
+    //             } else {
+    //                 setTimeout(function() { waitForJQuery(callback); }, 100);
+    //             }
+    //         }
             
-            waitForJQuery(function() {
-                try {
-                    if ($('#company_id').length) {
-                        $('#company_id').select2({
-                            placeholder: 'Изберете компанија',
-                            allowClear: true,
-                            width: '100%',
-                            dropdownParent: $('body')
-                        }).on('select2:open', function() {
-                            $('.select2-dropdown').css('z-index', '9999');
-                        });
+    //         waitForJQuery(function() {
+    //             try {
+    //                 if ($('#company_id').length) {
+    //                     $('#company_id').select2({
+    //                         placeholder: 'Изберете компанија',
+    //                         allowClear: true,
+    //                         width: '100%',
+    //                         dropdownParent: $('body')
+    //                     }).on('select2:open', function() {
+    //                         $('.select2-dropdown').css('z-index', '9999');
+    //                     });
                         
-                        // We don't need the change handler here as we've already set it up in bindEvents
-                    }
-                } catch (e) {
-                    console.error('Error initializing Select2:', e);
-                    self.fallbackToRegularSelect();
-                }
+    //                     // We don't need the change handler here as we've already set it up in bindEvents
+    //                 }
+    //             } catch (e) {
+    //                 console.error('Error initializing Select2:', e);
+    //                 self.fallbackToRegularSelect();
+    //             }
                 
-                // Add refresh button
-                setTimeout(self.addRefreshButton, 300);
-            });
+    //             // Add refresh button
+    //             setTimeout(self.addRefreshButton, 300);
+    //         });
             
-            // Timeout fallback
-            setTimeout(function() {
-                if (!window.jQuery.fn.select2) {
-                    console.warn('Select2 initialization timeout');
-                    self.fallbackToRegularSelect();
-                }
-            }, 2000);
-        } catch (e) {
-            console.error('Error in Select2 initialization:', e);
-            self.fallbackToRegularSelect();
-        }
-    },
+    //         // Timeout fallback
+    //         setTimeout(function() {
+    //             if (!window.jQuery.fn.select2) {
+    //                 console.warn('Select2 initialization timeout');
+    //                 self.fallbackToRegularSelect();
+    //             }
+    //         }, 2000);
+    //     } catch (e) {
+    //         console.error('Error in Select2 initialization:', e);
+    //         self.fallbackToRegularSelect();
+    //     }
+    // },
     
-    // Fallback to regular select if Select2 fails
-    fallbackToRegularSelect: function() {
-        const el = this.elements;
-        if (!el.companySelect) return;
+    // // Fallback to regular select if Select2 fails
+    // fallbackToRegularSelect: function() {
+    //     const el = this.elements;
+    //     if (!el.companySelect) return;
         
-        el.companySelect.classList.add('form-control');
-        el.companySelect.removeAttribute('disabled');
-    },
+    //     el.companySelect.classList.add('form-control');
+    //     el.companySelect.removeAttribute('disabled');
+    // },
     
-    // Add refresh button to company select
-    addRefreshButton: function() {
-        const companySelectContainer = document.querySelector('#company_id').parentNode;
-        if (!companySelectContainer) return;
+    // // Add refresh button to company select
+    // addRefreshButton: function() {
+    //     const companySelectContainer = document.querySelector('#company_id').parentNode;
+    //     if (!companySelectContainer) return;
         
-        // Check if button already exists to prevent duplicates
-        if (companySelectContainer.querySelector('button[type="button"]')) return;
+    //     // Check if button already exists to prevent duplicates
+    //     if (companySelectContainer.querySelector('button[type="button"]')) return;
         
-        companySelectContainer.style.position = 'relative';
+    //     companySelectContainer.style.position = 'relative';
         
-        const refreshButton = document.createElement('button');
-        refreshButton.type = 'button';
-        refreshButton.className = 'absolute right-0 top-0 mt-7 mr-2 text-blue-500';
-        refreshButton.innerHTML = '<i class="fas fa-sync-alt"></i>';
-        refreshButton.onclick = function() {
-            window.location.reload();
-        };
+    //     const refreshButton = document.createElement('button');
+    //     refreshButton.type = 'button';
+    //     refreshButton.className = 'absolute right-0 top-0 mt-7 mr-2 text-blue-500';
+    //     refreshButton.innerHTML = '<i class="fas fa-sync-alt"></i>';
+    //     refreshButton.onclick = function() {
+    //         window.location.reload();
+    //     };
         
-        companySelectContainer.appendChild(refreshButton);
-    },
+    //     companySelectContainer.appendChild(refreshButton);
+    // },
     
     // Set up clickable bread names
     setupBreadNameClicks: function() {
@@ -1312,187 +1312,146 @@ restoreFormState: function() {
 document.addEventListener('DOMContentLoaded', function() {
     DailyTransactions.init();
 })
+
+
+// Optimized Select2 Implementation
 document.addEventListener('DOMContentLoaded', function() {
-    // Check if jQuery and Select2 are available
-    function waitForJQuery(callback) {
-        if (window.jQuery && window.jQuery.fn.select2) {
-            callback();
-        } else {
-            setTimeout(function() { waitForJQuery(callback); }, 100);
-        }
-    }
-    
-    // Initialize Select2 with proper event handling
-    waitForJQuery(function() {
-        try {
-            if ($('#company_id').length) {
-                // Initialize Select2
-                $('#company_id').select2({
-                    placeholder: 'Изберете компанија',
-                    allowClear: true,
-                    width: '100%',
-                    dropdownParent: $('body')
-                }).on('select2:select', function() {
-                    // Get the selected company ID and current date
-                    const selectedCompanyId = this.value;
-                    const currentDate = document.getElementById('transaction_date').value;
-                    
-                    // Update the hidden form field
-                    const formCompanyId = document.getElementById('form_company_id');
-                    if (formCompanyId) {
-                        formCompanyId.value = selectedCompanyId;
-                    }
-                    
-                    // Navigate to the URL with parameters
-                    if (selectedCompanyId) {
-                        window.location.href = `/daily-transactions/create?company_id=${selectedCompanyId}&date=${currentDate}`;
-                    }
-                });
-                
-                console.log('Select2 initialized successfully');
-            }
-        } catch (e) {
-            console.error('Error initializing Select2:', e);
-            
-            // Fallback to regular select
-            const companySelect = document.getElementById('company_id');
-            if (companySelect) {
-                companySelect.addEventListener('change', function() {
-                    const selectedCompanyId = this.value;
-                    const currentDate = document.getElementById('transaction_date').value;
-                    
-                    // Update hidden field
-                    const formCompanyId = document.getElementById('form_company_id');
-                    if (formCompanyId) {
-                        formCompanyId.value = selectedCompanyId;
-                    }
-                    
-                    // Navigate to refresh connected bread types
-                    if (selectedCompanyId) {
-                        window.location.href = `/daily-transactions/create?company_id=${selectedCompanyId}&date=${currentDate}`;
-                    }
-                });
-            }
-        }
-    });
+    // Only initialize Select2 once
+    initializeSelect2WithOptimizations();
 });
-// Transliteration maps
-const latinToCyrillicMap = {
-    'a': 'а', 'b': 'б', 'v': 'в', 'g': 'г', 'd': 'д', 'e': 'е', 'zh': 'ж', 'z': 'з', 
-    'i': 'и', 'j': 'ј', 'k': 'к', 'l': 'л', 'm': 'м', 'n': 'н', 'o': 'о', 'p': 'п', 
-    'r': 'р', 's': 'с', 't': 'т', 'u': 'у', 'f': 'ф', 'h': 'х', 'c': 'ц', 'ch': 'ч', 
-    'sh': 'ш', 'dj': 'џ', 'gj': 'ѓ', 'kj': 'ќ', 'lj': 'љ', 'nj': 'њ'
-};
 
-// Create reverse map (Cyrillic to Latin)
-const cyrillicToLatinMap = {};
-for (const [latin, cyrillic] of Object.entries(latinToCyrillicMap)) {
-    cyrillicToLatinMap[cyrillic] = latin;
-}
 
-// Function to transliterate Latin to Cyrillic
-function latinToCyrillic(input) {
-    if (!input) return '';
-    
-    let result = input.toLowerCase();
-    
-    // First replace two-character combinations
-    result = result.replace(/(ch|sh|zh|dj|gj|kj|lj|nj)/g, function(match) {
-        return latinToCyrillicMap[match] || match;
-    });
-    
-    // Then replace single characters
-    result = result.replace(/[a-z]/g, function(match) {
-        return latinToCyrillicMap[match] || match;
-    });
-    
-    return result;
-}
-
-// Function to transliterate Cyrillic to Latin
-function cyrillicToLatin(input) {
-    if (!input) return '';
-    
-    let result = input.toLowerCase();
-    
-    // Replace Cyrillic characters with Latin equivalents
-    result = result.replace(/[а-џљњѓќ]/g, function(match) {
-        return cyrillicToLatinMap[match] || match;
-    });
-    
-    return result;
-}
-
-// Custom matcher function for Select2
-function customMatcher(params, data) {
-    // If there are no search terms, return all of the data
-    if ($.trim(params.term) === '') {
-        return data;
+function initializeSelect2WithOptimizations() {
+    // Check if jQuery and Select2 are available
+    if (!window.jQuery || !window.jQuery.fn.select2) {
+        console.warn('Select2 or jQuery not available, falling back to regular select');
+        setupRegularSelect();
+        return;
     }
     
-    // Do not display the item if there is no 'text' property
-    if (typeof data.text === 'undefined') {
-        return null;
-    }
-    
-    const searchTerm = params.term.toLowerCase();
-    const originalText = data.text.toLowerCase();
-    
-    // Case 1: Direct match (case insensitive)
-    if (originalText.indexOf(searchTerm) > -1) {
-        return data;
-    }
-    
-    // Case 2: If search term is Latin, convert to Cyrillic and search
-    const latinToCyrillicTerm = latinToCyrillic(searchTerm);
-    if (originalText.indexOf(latinToCyrillicTerm) > -1) {
-        return data;
-    }
-    
-    // Case 3: If search term is Cyrillic, convert to Latin and search in potentially Latin text
-    const cyrillicToLatinTerm = cyrillicToLatin(searchTerm);
-    if (originalText.indexOf(cyrillicToLatinTerm) > -1) {
-        return data;
-    }
-    
-    // Case 4: If company name is Cyrillic, convert to Latin and check if it contains the Latin search term
-    const companyNameInLatin = cyrillicToLatin(originalText);
-    if (companyNameInLatin.indexOf(searchTerm) > -1) {
-        return data;
-    }
-    
-    // Case 5: If company name is Latin, convert to Cyrillic and check if it contains the Cyrillic search term
-    const companyNameInCyrillic = latinToCyrillic(originalText);
-    if (companyNameInCyrillic.indexOf(searchTerm) > -1) {
-        return data;
-    }
-    
-    // If all checks fail, don't return anything
-    return null;
-}
-
-// Initialize Select2 when DOM is ready
-document.addEventListener('DOMContentLoaded', function() {
-    // Wait for jQuery and Select2 to be loaded
-    function waitForJQuery(callback) {
-        if (window.jQuery && window.jQuery.fn.select2) {
-            callback();
-        } else {
-            setTimeout(function() { waitForJQuery(callback); }, 100);
-        }
-    }
-    
-    waitForJQuery(function() {
-        try {
-            if ($('#company_id').length) {
-                $('#company_id').select2({
-                    placeholder: 'Изберете компанија',
-                    allowClear: true,
-                    width: '100%',
-                    dropdownParent: $('body'),
-                    matcher: customMatcher // Use our custom matcher
-                }).on('select2:select', function() {
-                    // Handle company selection
+    try {
+        const companySelect = $('#company_id');
+        
+        // Only initialize if not already initialized and element exists
+        if (companySelect.length && !companySelect.hasClass('select2-initialized')) {
+            // Add an initialization flag to prevent multiple initializations
+            companySelect.addClass('select2-initialized');
+            
+            // Cache for previously processed search results to improve performance
+            const searchCache = {};
+            
+            // Initialize Select2 with optimized options
+            companySelect.select2({
+                placeholder: 'Изберете компанија',
+                allowClear: true,
+                width: '100%',
+                dropdownParent: $('body'),
+                // No minimum input length - show all options by default
+                delay: 250,             // Add debounce delay (milliseconds)
+                // Use a simplified matcher that supports partial words
+                matcher: function(params, data) {
+                    // If no search term, return all data
+                    if (!params.term || $.trim(params.term) === '') {
+                        return data;
+                    }
+                    
+                    // If there's no 'text' property, this data object can't be matched
+                    if (typeof data.text === 'undefined') {
+                        return null;
+                    }
+                    
+                    const searchTerm = params.term.toLowerCase();
+                    const originalText = data.text.toLowerCase();
+                    
+                    // Check for direct match first (most efficient)
+                    if (originalText.indexOf(searchTerm) > -1) {
+                        return data;
+                    }
+                    
+                    // Simple character-by-character transliteration
+                    // This approach works better for partial words
+                    
+                    // Check if the search term contains Cyrillic characters
+                    const macedonianCyrillicChars = 'абвгдѓежзѕијклљмнњопрстќуфхцчџш';
+                    const hasCyrillic = searchTerm.split('').some(char => macedonianCyrillicChars.includes(char));
+                    
+                    if (hasCyrillic) {
+                        // Convert Cyrillic search term to Latin to match against potential Latin text
+                        let latinSearchTerm = '';
+                        for (let i = 0; i < searchTerm.length; i++) {
+                            const char = searchTerm[i];
+                            latinSearchTerm += {
+                                'а': 'a', 'б': 'b', 'в': 'v', 'г': 'g', 'д': 'd', 'ѓ': 'gj', 'е': 'e',
+                                'ж': 'zh', 'з': 'z', 'ѕ': 'dz', 'и': 'i', 'ј': 'j', 'к': 'k', 'л': 'l',
+                                'љ': 'lj', 'м': 'm', 'н': 'n', 'њ': 'nj', 'о': 'o', 'п': 'p', 'р': 'r',
+                                'с': 's', 'т': 't', 'ќ': 'kj', 'у': 'u', 'ф': 'f', 'х': 'h', 'ц': 'c',
+                                'ч': 'ch', 'џ': 'dzh', 'ш': 'sh'
+                            }[char] || char;
+                        }
+                        
+                        // Convert the company name to Latin for comparison (if it contains Cyrillic)
+                        if (originalText.split('').some(char => macedonianCyrillicChars.includes(char))) {
+                            let latinText = '';
+                            for (let i = 0; i < originalText.length; i++) {
+                                const char = originalText[i];
+                                latinText += {
+                                    'а': 'a', 'б': 'b', 'в': 'v', 'г': 'g', 'д': 'd', 'ѓ': 'gj', 'е': 'e',
+                                    'ж': 'zh', 'з': 'z', 'ѕ': 'dz', 'и': 'i', 'ј': 'j', 'к': 'k', 'л': 'l',
+                                    'љ': 'lj', 'м': 'm', 'н': 'n', 'њ': 'nj', 'о': 'o', 'п': 'p', 'р': 'r',
+                                    'с': 's', 'т': 't', 'ќ': 'kj', 'у': 'u', 'ф': 'f', 'х': 'h', 'ц': 'c',
+                                    'ч': 'ch', 'џ': 'dzh', 'ш': 'sh'
+                                }[char] || char;
+                            }
+                            
+                            if (latinText.indexOf(latinSearchTerm) > -1) {
+                                return data;
+                            }
+                        }
+                    } else {
+                        // Latin search term - try to match against Cyrillic text
+                        // Convert the company name from Cyrillic to Latin for comparison
+                        if (originalText.split('').some(char => macedonianCyrillicChars.includes(char))) {
+                            let latinText = '';
+                            for (let i = 0; i < originalText.length; i++) {
+                                const char = originalText[i];
+                                latinText += {
+                                    'а': 'a', 'б': 'b', 'в': 'v', 'г': 'g', 'д': 'd', 'ѓ': 'gj', 'е': 'e',
+                                    'ж': 'zh', 'з': 'z', 'ѕ': 'dz', 'и': 'i', 'ј': 'j', 'к': 'k', 'л': 'l',
+                                    'љ': 'lj', 'м': 'm', 'н': 'n', 'њ': 'nj', 'о': 'o', 'п': 'p', 'р': 'r',
+                                    'с': 's', 'т': 't', 'ќ': 'kj', 'у': 'u', 'ф': 'f', 'х': 'h', 'ц': 'c',
+                                    'ч': 'ch', 'џ': 'dzh', 'ш': 'sh'
+                                }[char] || char;
+                            }
+                            
+                            if (latinText.indexOf(searchTerm) > -1) {
+                                return data;
+                            }
+                        }
+                        
+                        // Also try to convert the search term to Cyrillic for matching
+                        // This is a simple character-by-character conversion for single letters only
+                        let cyrillicSearchTerm = '';
+                        for (let i = 0; i < searchTerm.length; i++) {
+                            const char = searchTerm[i];
+                            cyrillicSearchTerm += {
+                                'a': 'а', 'b': 'б', 'v': 'в', 'g': 'г', 'd': 'д', 'e': 'е',
+                                'z': 'з', 'i': 'и', 'j': 'ј', 'k': 'к', 'l': 'л', 'm': 'м', 
+                                'n': 'н', 'o': 'о', 'p': 'п', 'r': 'р', 's': 'с', 't': 'т',
+                                'u': 'у', 'f': 'ф', 'h': 'х', 'c': 'ц'
+                            }[char] || char;
+                        }
+                        
+                        if (originalText.indexOf(cyrillicSearchTerm) > -1) {
+                            return data;
+                        }
+                    }
+                    
+                    // No match found
+                    return null;
+                }
+            }).on('select2:select', function() {
+                try {
+                    // Get selected values
                     const selectedCompanyId = this.value;
                     const currentDate = document.getElementById('transaction_date').value;
                     
@@ -1502,42 +1461,512 @@ document.addEventListener('DOMContentLoaded', function() {
                         formCompanyId.value = selectedCompanyId;
                     }
                     
-                    // Navigate to the URL with parameters
-                    if (selectedCompanyId) {
-                        // Use full URL to avoid any path issues
-                        const baseUrl = window.location.origin;
-                        window.location.href = `${baseUrl}/daily-transactions/create?company_id=${selectedCompanyId}&date=${currentDate}`;
+                    // Save date to localStorage for persistence
+                    if (currentDate) {
+                        localStorage.setItem('lastTransactionDate', currentDate);
                     }
-                });
+                    
+                    // Only navigate if company is selected
+                    if (selectedCompanyId) {
+                        // Use full URL to avoid path issues
+                        const baseUrl = window.location.origin;
+                        const url = `${baseUrl}/daily-transactions/create?company_id=${selectedCompanyId}&date=${currentDate}`;
+                        
+                        // Show loading indicator
+                        showLoadingOverlay('');
+                        
+                        // Navigate with small delay to allow loading indicator to appear
+                        setTimeout(() => {
+                            window.location.href = url;
+                        }, 100);
+                    }
+                } catch (e) {
+                    console.error('Error in Select2 select handler:', e);
+                    hideLoadingOverlay();
+                }
+            }).on('select2:open', function() {
+                // Ensure dropdown is above other elements
+                $('.select2-dropdown').css('z-index', '9999');
                 
-                console.log('Select2 initialized with transliteration support');
+                // Focus the search field when opened
+                setTimeout(function() {
+                    $('.select2-search__field').focus();
+                }, 10);
+            });
+            
+            console.log('[PWA] Select2 initialized with improved partial matching');
+            
+            // Add refresh button with proper positioning
+            addRefreshButton();
+        }
+    } catch (e) {
+        console.error('[PWA] Error initializing optimized Select2:', e);
+        setupRegularSelect();
+    }
+}
+// function initializeSelect2WithOptimizations() {
+//     // Check if jQuery and Select2 are available
+//     if (!window.jQuery || !window.jQuery.fn.select2) {
+//         console.warn('Select2 or jQuery not available, falling back to regular select');
+//         setupRegularSelect();
+//         return;
+//     }
+    
+//     try {
+//         const companySelect = $('#company_id');
+        
+//         // Only initialize if not already initialized and element exists
+//         if (companySelect.length && !companySelect.hasClass('select2-initialized')) {
+//             // Add an initialization flag to prevent multiple initializations
+//             companySelect.addClass('select2-initialized');
+            
+//             // Cache for previously processed search results to improve performance
+//             const searchCache = {};
+            
+//             // Initialize Select2 with optimized options
+//             companySelect.select2({
+//                 placeholder: 'Изберете компанија',
+//                 allowClear: true,
+//                 width: '100%',
+//                 dropdownParent: $('body'),
+//                 minimumInputLength: 1,  // Only trigger search after at least 1 character
+//                 delay: 250,             // Add debounce delay (milliseconds)
+//                 // Use a more efficient matcher with caching
+//                 matcher: function(params, data) {
+//                     // If no search term, return all data
+//                     if ($.trim(params.term) === '') {
+//                         return data;
+//                     }
+                    
+//                     // Create a cache key from the search term and data text
+//                     const cacheKey = params.term.toLowerCase() + '_' + data.text.toLowerCase();
+                    
+//                     // Check if we have a cached result
+//                     if (searchCache[cacheKey] !== undefined) {
+//                         return searchCache[cacheKey];
+//                     }
+                    
+//                     // If there's no 'text' property, this data object can't be matched
+//                     if (typeof data.text === 'undefined') {
+//                         searchCache[cacheKey] = null;
+//                         return null;
+//                     }
+                    
+//                     const searchTerm = params.term.toLowerCase();
+//                     const originalText = data.text.toLowerCase();
+                    
+//                     // Check for direct match first (most efficient)
+//                     if (originalText.indexOf(searchTerm) > -1) {
+//                         searchCache[cacheKey] = data;
+//                         return data;
+//                     }
+                    
+//                     // Simplified transliteration check - only convert the search term once
+//                     const cyrillicChars = 'абвгдеёжзийклмнопрстуфхцчшщъыьэюя';
+//                     const isCyrillic = searchTerm.split('').some(char => cyrillicChars.includes(char));
+                    
+//                     // Only do the heavy transliteration if we need to
+//                     if (isCyrillic) {
+//                         // Simple character mapping for basic Cyrillic to Latin
+//                         // This is much more efficient than the full transliteration
+//                         const text = originalText.replace(/[а-я]/g, char => {
+//                             return {
+//                                 'а': 'a', 'б': 'b', 'в': 'v', 'г': 'g', 'д': 'd', 'е': 'e',
+//                                 'ж': 'zh', 'з': 'z', 'и': 'i', 'й': 'y', 'к': 'k', 'л': 'l',
+//                                 'м': 'm', 'н': 'n', 'о': 'o', 'п': 'p', 'р': 'r', 'с': 's',
+//                                 'т': 't', 'у': 'u', 'ф': 'f', 'х': 'h', 'ц': 'ts', 'ч': 'ch',
+//                                 'ш': 'sh', 'щ': 'sch', 'ъ': '', 'ы': 'y', 'ь': '', 'э': 'e',
+//                                 'ю': 'yu', 'я': 'ya'
+//                             }[char] || char;
+//                         });
+                        
+//                         if (text.indexOf(searchTerm) > -1) {
+//                             searchCache[cacheKey] = data;
+//                             return data;
+//                         }
+//                     }
+                    
+//                     // No match found
+//                     searchCache[cacheKey] = null;
+//                     return null;
+//                 }
+//             }).on('select2:select', function() {
+//                 try {
+//                     // Get selected values
+//                     const selectedCompanyId = this.value;
+//                     const currentDate = document.getElementById('transaction_date').value;
+                    
+//                     // Update hidden form field
+//                     const formCompanyId = document.getElementById('form_company_id');
+//                     if (formCompanyId) {
+//                         formCompanyId.value = selectedCompanyId;
+//                     }
+                    
+//                     // Save date to localStorage for persistence
+//                     if (currentDate) {
+//                         localStorage.setItem('lastTransactionDate', currentDate);
+//                     }
+                    
+//                     // Only navigate if company is selected
+//                     if (selectedCompanyId) {
+//                         // Use full URL to avoid path issues
+//                         const baseUrl = window.location.origin;
+//                         const url = `${baseUrl}/daily-transactions/create?company_id=${selectedCompanyId}&date=${currentDate}`;
+                        
+//                         // Show loading indicator
+//                         showLoadingOverlay('Учитувам податоци...');
+                        
+//                         // Navigate with small delay to allow loading indicator to appear
+//                         setTimeout(() => {
+//                             window.location.href = url;
+//                         }, 100);
+//                     }
+//                 } catch (e) {
+//                     console.error('Error in Select2 select handler:', e);
+//                     hideLoadingOverlay();
+//                 }
+//             }).on('select2:open', function() {
+//                 // Ensure dropdown is above other elements
+//                 $('.select2-dropdown').css('z-index', '9999');
+                
+//                 // Focus the search field when opened
+//                 setTimeout(function() {
+//                     $('.select2-search__field').focus();
+//                 }, 10);
+//             });
+            
+//             console.log('[PWA] Select2 initialized with optimizations');
+            
+//             // Add refresh button with proper positioning
+//             addRefreshButton();
+//         }
+//     } catch (e) {
+//         console.error('[PWA] Error initializing optimized Select2:', e);
+//         setupRegularSelect();
+//     }
+// }
+
+// Fallback to regular select if Select2 fails
+function setupRegularSelect() {
+    const companySelect = document.getElementById('company_id');
+    if (!companySelect) return;
+    
+    companySelect.classList.add('form-control');
+    companySelect.classList.remove('select2-hidden-accessible');
+    
+    // Remove any Select2 containers
+    const select2Container = companySelect.nextElementSibling;
+    if (select2Container && select2Container.classList.contains('select2-container')) {
+        select2Container.remove();
+    }
+    
+    // Add direct event handler
+    companySelect.addEventListener('change', function() {
+        try {
+            const selectedCompanyId = this.value;
+            const currentDate = document.getElementById('transaction_date').value;
+            
+            // Update hidden field
+            const formCompanyId = document.getElementById('form_company_id');
+            if (formCompanyId) {
+                formCompanyId.value = selectedCompanyId;
+            }
+            
+            // Navigate to refresh connected bread types
+            if (selectedCompanyId) {
+                showLoadingOverlay('');
+                const baseUrl = window.location.origin;
+                setTimeout(() => {
+                    window.location.href = `${baseUrl}/daily-transactions/create?company_id=${selectedCompanyId}&date=${currentDate}`;
+                }, 100);
             }
         } catch (e) {
-            console.error('Error initializing Select2 with transliteration:', e);
-            
-            // Fallback to regular select
-            const companySelect = document.getElementById('company_id');
-            if (companySelect) {
-                companySelect.addEventListener('change', function() {
-                    const selectedCompanyId = this.value;
-                    const currentDate = document.getElementById('transaction_date').value;
-                    
-                    // Update hidden field
-                    const formCompanyId = document.getElementById('form_company_id');
-                    if (formCompanyId) {
-                        formCompanyId.value = selectedCompanyId;
-                    }
-                    
-                    // Navigate to refresh page
-                    if (selectedCompanyId) {
-                        const baseUrl = window.location.origin;
-                        window.location.href = `${baseUrl}/daily-transactions/create?company_id=${selectedCompanyId}&date=${currentDate}`;
-                    }
-                });
-            }
+            console.error('Error in regular select handler:', e);
+            hideLoadingOverlay();
         }
     });
-});
+    
+    console.log('[PWA] Regular select initialized as fallback');
+}
+
+// Add refresh button with proper positioning
+function addRefreshButton() {
+    const companySelectContainer = document.querySelector('.select2-container').parentNode;
+    if (!companySelectContainer) return;
+    
+    // Check if button already exists to prevent duplicates
+    if (companySelectContainer.querySelector('.refresh-button')) return;
+    
+    companySelectContainer.style.position = 'relative';
+    
+    const refreshButton = document.createElement('button');
+    refreshButton.type = 'button';
+    refreshButton.className = 'absolute right-8 top-0 mt-7 mr-2 text-blue-500 refresh-button';
+    refreshButton.innerHTML = '<i class="fas fa-sync-alt"></i>';
+    refreshButton.onclick = function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        showLoadingOverlay('Освежувам страна...');
+        setTimeout(() => {
+            window.location.reload();
+        }, 100);
+    };
+    
+    companySelectContainer.appendChild(refreshButton);
+}
+
+// Show loading overlay
+function showLoadingOverlay(message = 'Учитувам...') {
+    // Remove any existing overlay first
+    hideLoadingOverlay();
+    
+    const overlay = document.createElement('div');
+    overlay.id = 'loading-overlay';
+    overlay.className = 'fixed inset-0 bg-gray-600 bg-opacity-75 flex items-center justify-center z-50';
+    overlay.innerHTML = `
+        <div class="bg-white p-5 rounded-lg shadow-xl flex items-center space-x-4">
+            <div class="w-8 h-8 border-t-4 border-b-4 border-blue-500 rounded-full animate-spin"></div>
+            <p class="text-lg font-medium text-gray-700">${message}</p>
+        </div>
+    `;
+    
+    document.body.appendChild(overlay);
+}
+
+// Hide loading overlay
+function hideLoadingOverlay() {
+    const existingOverlay = document.getElementById('loading-overlay');
+    if (existingOverlay) {
+        existingOverlay.remove();
+    }
+}
+
+// document.addEventListener('DOMContentLoaded', function() {
+//     // Check if jQuery and Select2 are available
+//     function waitForJQuery(callback) {
+//         if (window.jQuery && window.jQuery.fn.select2) {
+//             callback();
+//         } else {
+//             setTimeout(function() { waitForJQuery(callback); }, 100);
+//         }
+//     }
+    
+//     // Initialize Select2 with proper event handling
+//     waitForJQuery(function() {
+//         try {
+//             if ($('#company_id').length) {
+//                 // Initialize Select2
+//                 $('#company_id').select2({
+//                     placeholder: 'Изберете компанија',
+//                     allowClear: true,
+//                     width: '100%',
+//                     dropdownParent: $('body')
+//                 }).on('select2:select', function() {
+//                     // Get the selected company ID and current date
+//                     const selectedCompanyId = this.value;
+//                     const currentDate = document.getElementById('transaction_date').value;
+                    
+//                     // Update the hidden form field
+//                     const formCompanyId = document.getElementById('form_company_id');
+//                     if (formCompanyId) {
+//                         formCompanyId.value = selectedCompanyId;
+//                     }
+                    
+//                     // Navigate to the URL with parameters
+//                     if (selectedCompanyId) {
+//                         window.location.href = `/daily-transactions/create?company_id=${selectedCompanyId}&date=${currentDate}`;
+//                     }
+//                 });
+                
+//                 console.log('Select2 initialized successfully');
+//             }
+//         } catch (e) {
+//             console.error('Error initializing Select2:', e);
+            
+//             // Fallback to regular select
+//             const companySelect = document.getElementById('company_id');
+//             if (companySelect) {
+//                 companySelect.addEventListener('change', function() {
+//                     const selectedCompanyId = this.value;
+//                     const currentDate = document.getElementById('transaction_date').value;
+                    
+//                     // Update hidden field
+//                     const formCompanyId = document.getElementById('form_company_id');
+//                     if (formCompanyId) {
+//                         formCompanyId.value = selectedCompanyId;
+//                     }
+                    
+//                     // Navigate to refresh connected bread types
+//                     if (selectedCompanyId) {
+//                         window.location.href = `/daily-transactions/create?company_id=${selectedCompanyId}&date=${currentDate}`;
+//                     }
+//                 });
+//             }
+//         }
+//     });
+// });
+// // Transliteration maps
+// const latinToCyrillicMap = {
+//     'a': 'а', 'b': 'б', 'v': 'в', 'g': 'г', 'd': 'д', 'e': 'е', 'zh': 'ж', 'z': 'з', 
+//     'i': 'и', 'j': 'ј', 'k': 'к', 'l': 'л', 'm': 'м', 'n': 'н', 'o': 'о', 'p': 'п', 
+//     'r': 'р', 's': 'с', 't': 'т', 'u': 'у', 'f': 'ф', 'h': 'х', 'c': 'ц', 'ch': 'ч', 
+//     'sh': 'ш', 'dj': 'џ', 'gj': 'ѓ', 'kj': 'ќ', 'lj': 'љ', 'nj': 'њ'
+// };
+
+// // Create reverse map (Cyrillic to Latin)
+// const cyrillicToLatinMap = {};
+// for (const [latin, cyrillic] of Object.entries(latinToCyrillicMap)) {
+//     cyrillicToLatinMap[cyrillic] = latin;
+// }
+
+// // Function to transliterate Latin to Cyrillic
+// function latinToCyrillic(input) {
+//     if (!input) return '';
+    
+//     let result = input.toLowerCase();
+    
+//     // First replace two-character combinations
+//     result = result.replace(/(ch|sh|zh|dj|gj|kj|lj|nj)/g, function(match) {
+//         return latinToCyrillicMap[match] || match;
+//     });
+    
+//     // Then replace single characters
+//     result = result.replace(/[a-z]/g, function(match) {
+//         return latinToCyrillicMap[match] || match;
+//     });
+    
+//     return result;
+// }
+
+// // Function to transliterate Cyrillic to Latin
+// function cyrillicToLatin(input) {
+//     if (!input) return '';
+    
+//     let result = input.toLowerCase();
+    
+//     // Replace Cyrillic characters with Latin equivalents
+//     result = result.replace(/[а-џљњѓќ]/g, function(match) {
+//         return cyrillicToLatinMap[match] || match;
+//     });
+    
+//     return result;
+// }
+
+// // Custom matcher function for Select2
+// function customMatcher(params, data) {
+//     // If there are no search terms, return all of the data
+//     if ($.trim(params.term) === '') {
+//         return data;
+//     }
+    
+//     // Do not display the item if there is no 'text' property
+//     if (typeof data.text === 'undefined') {
+//         return null;
+//     }
+    
+//     const searchTerm = params.term.toLowerCase();
+//     const originalText = data.text.toLowerCase();
+    
+//     // Case 1: Direct match (case insensitive)
+//     if (originalText.indexOf(searchTerm) > -1) {
+//         return data;
+//     }
+    
+//     // Case 2: If search term is Latin, convert to Cyrillic and search
+//     const latinToCyrillicTerm = latinToCyrillic(searchTerm);
+//     if (originalText.indexOf(latinToCyrillicTerm) > -1) {
+//         return data;
+//     }
+    
+//     // Case 3: If search term is Cyrillic, convert to Latin and search in potentially Latin text
+//     const cyrillicToLatinTerm = cyrillicToLatin(searchTerm);
+//     if (originalText.indexOf(cyrillicToLatinTerm) > -1) {
+//         return data;
+//     }
+    
+//     // Case 4: If company name is Cyrillic, convert to Latin and check if it contains the Latin search term
+//     const companyNameInLatin = cyrillicToLatin(originalText);
+//     if (companyNameInLatin.indexOf(searchTerm) > -1) {
+//         return data;
+//     }
+    
+//     // Case 5: If company name is Latin, convert to Cyrillic and check if it contains the Cyrillic search term
+//     const companyNameInCyrillic = latinToCyrillic(originalText);
+//     if (companyNameInCyrillic.indexOf(searchTerm) > -1) {
+//         return data;
+//     }
+    
+//     // If all checks fail, don't return anything
+//     return null;
+// }
+
+// // Initialize Select2 when DOM is ready
+// document.addEventListener('DOMContentLoaded', function() {
+//     // Wait for jQuery and Select2 to be loaded
+//     function waitForJQuery(callback) {
+//         if (window.jQuery && window.jQuery.fn.select2) {
+//             callback();
+//         } else {
+//             setTimeout(function() { waitForJQuery(callback); }, 100);
+//         }
+//     }
+    
+//     waitForJQuery(function() {
+//         try {
+//             if ($('#company_id').length) {
+//                 $('#company_id').select2({
+//                     placeholder: 'Изберете компанија',
+//                     allowClear: true,
+//                     width: '100%',
+//                     dropdownParent: $('body'),
+//                     matcher: customMatcher // Use our custom matcher
+//                 }).on('select2:select', function() {
+//                     // Handle company selection
+//                     const selectedCompanyId = this.value;
+//                     const currentDate = document.getElementById('transaction_date').value;
+                    
+//                     // Update hidden form field
+//                     const formCompanyId = document.getElementById('form_company_id');
+//                     if (formCompanyId) {
+//                         formCompanyId.value = selectedCompanyId;
+//                     }
+                    
+//                     // Navigate to the URL with parameters
+//                     if (selectedCompanyId) {
+//                         // Use full URL to avoid any path issues
+//                         const baseUrl = window.location.origin;
+//                         window.location.href = `${baseUrl}/daily-transactions/create?company_id=${selectedCompanyId}&date=${currentDate}`;
+//                     }
+//                 });
+                
+//                 console.log('Select2 initialized with transliteration support');
+//             }
+//         } catch (e) {
+//             console.error('Error initializing Select2 with transliteration:', e);
+            
+//             // Fallback to regular select
+//             const companySelect = document.getElementById('company_id');
+//             if (companySelect) {
+//                 companySelect.addEventListener('change', function() {
+//                     const selectedCompanyId = this.value;
+//                     const currentDate = document.getElementById('transaction_date').value;
+                    
+//                     // Update hidden field
+//                     const formCompanyId = document.getElementById('form_company_id');
+//                     if (formCompanyId) {
+//                         formCompanyId.value = selectedCompanyId;
+//                     }
+                    
+//                     // Navigate to refresh page
+//                     if (selectedCompanyId) {
+//                         const baseUrl = window.location.origin;
+//                         window.location.href = `${baseUrl}/daily-transactions/create?company_id=${selectedCompanyId}&date=${currentDate}`;
+//                     }
+//                 });
+//             }
+//         }
+//     });
+// });
 // Global CSRF token error handler
 document.addEventListener('DOMContentLoaded', function() {
     // Intercept all fetch requests
