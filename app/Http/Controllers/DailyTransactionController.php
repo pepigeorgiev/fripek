@@ -423,7 +423,6 @@ private function getTransactionsForDate($date)
 }
 
 
-// New method to record payment history
 /**
  * Record history of transaction changes
  */
@@ -435,69 +434,57 @@ private function recordHistory($transaction, $oldValues, $newValues, $action = '
         return null;
     }
     
-    // Skip recording if values haven't actually changed
-    $hasChanges = false;
-    $fieldsToCheck = ['delivered', 'returned', 'gratis', 'is_paid'];
-    
-    foreach ($fieldsToCheck as $field) {
-        if (isset($newValues[$field]) && isset($oldValues[$field])) {
-            // Check for actual changes, accounting for type differences
-            if ((string)$newValues[$field] !== (string)$oldValues[$field]) {
+    // Skip recording for non-significant changes
+    if ($action === 'update') {
+        $hasChanges = false;
+        
+        $fieldsToCheck = ['delivered', 'returned', 'gratis', 'is_paid'];
+        foreach ($fieldsToCheck as $field) {
+            // Check if the field exists in both old and new values
+            if (isset($newValues[$field]) && isset($oldValues[$field])) {
+                // Convert to string to ensure consistent comparison
+                $oldValue = (string)$oldValues[$field];
+                $newValue = (string)$newValues[$field];
+                
+                // Only count as a change if the values are actually different
+                if ($oldValue !== $newValue) {
+                    $hasChanges = true;
+                    break;
+                }
+            } elseif (isset($newValues[$field]) && !isset($oldValues[$field]) && $newValues[$field] != 0) {
+                // If new field added with non-zero value
                 $hasChanges = true;
                 break;
             }
         }
-    }
-    
-    if (!$hasChanges) {
-        return null;
-    
-// private function recordHistory($transaction, $oldValues, $newValues, $action = 'update')
-// {
-//     // Skip if not within tracking hours (12:00 PM to 5:00 AM)
-//     $currentHour = now()->hour;
-//     if (!(($currentHour >= 12) || ($currentHour < 5))) {
-//         return null;
-//     }
-    
-//     // Skip recording for non-significant changes
-//     if ($action === 'update') {
-//         $hasSignificantChanges = false;
         
-//         $fieldsToCheck = ['delivered', 'returned', 'gratis'];
-//         foreach ($fieldsToCheck as $field) {
-//             // Check if the field exists in both old and new values
-//             if (isset($newValues[$field]) && isset($oldValues[$field])) {
-//                 // Only record if there's an actual change (different values)
-//                 if ($newValues[$field] != $oldValues[$field]) {
-//                     // Further filter out zero-to-zero changes
-//                     if (!($newValues[$field] == 0 && $oldValues[$field] == 0)) {
-//                         $hasSignificantChanges = true;
-//                         break;
-//                     }
-//                 }
-//             } elseif (isset($newValues[$field]) && !isset($oldValues[$field]) && $newValues[$field] != 0) {
-//                 // If new field added with non-zero value
-//                 $hasSignificantChanges = true;
-//                 break;
-//             }
-//         }
-        
-//         if (!$hasSignificantChanges) {
-//             return null;
-//         }
+        if (!$hasChanges) {
+            return null;
+        }
     }
 
     // Create filtered new_values and old_values arrays that only contain the fields that actually changed
     $filteredNewValues = [];
     $filteredOldValues = [];
     
-    $fieldsToCheck = ['delivered', 'returned', 'gratis'];
+    $fieldsToCheck = ['delivered', 'returned', 'gratis', 'is_paid'];
     foreach ($fieldsToCheck as $field) {
-        if (isset($newValues[$field]) && isset($oldValues[$field]) && $newValues[$field] != $oldValues[$field]) {
+        if (isset($newValues[$field]) && isset($oldValues[$field])) {
+            $oldValue = (string)$oldValues[$field];
+            $newValue = (string)$newValues[$field];
+            
+            if ($oldValue !== $newValue) {
+                $filteredNewValues[$field] = $newValues[$field];
+                $filteredOldValues[$field] = $oldValues[$field];
+            }
+        } elseif (isset($newValues[$field]) && !isset($oldValues[$field])) {
             $filteredNewValues[$field] = $newValues[$field];
-            $filteredOldValues[$field] = $oldValues[$field];
         }
+    }
+    
+    // Skip if no actual changes after filtering
+    if (empty($filteredNewValues)) {
+        return null;
     }
 
     // Use create with only the needed fields to reduce query size
@@ -510,6 +497,94 @@ private function recordHistory($transaction, $oldValues, $newValues, $action = '
         'ip_address' => request()->ip()
     ]);
 }
+
+// New method to record payment history
+/**
+ * Record history of transaction changes
+ */
+// private function recordHistory($transaction, $oldValues, $newValues, $action = 'update')
+// {
+//     // Skip if not within tracking hours (12:00 PM to 5:00 AM)
+//     $currentHour = now()->hour;
+//     if (!(($currentHour >= 12) || ($currentHour < 5))) {
+//         return null;
+//     }
+    
+//     // Skip recording if values haven't actually changed
+//     $hasChanges = false;
+//     $fieldsToCheck = ['delivered', 'returned', 'gratis', 'is_paid'];
+    
+//     foreach ($fieldsToCheck as $field) {
+//         if (isset($newValues[$field]) && isset($oldValues[$field])) {
+//             // Check for actual changes, accounting for type differences
+//             if ((string)$newValues[$field] !== (string)$oldValues[$field]) {
+//                 $hasChanges = true;
+//                 break;
+//             }
+//         }
+//     }
+    
+//     if (!$hasChanges) {
+//         return null;
+    
+// // private function recordHistory($transaction, $oldValues, $newValues, $action = 'update')
+// // {
+// //     // Skip if not within tracking hours (12:00 PM to 5:00 AM)
+// //     $currentHour = now()->hour;
+// //     if (!(($currentHour >= 12) || ($currentHour < 5))) {
+// //         return null;
+// //     }
+    
+// //     // Skip recording for non-significant changes
+// //     if ($action === 'update') {
+// //         $hasSignificantChanges = false;
+        
+// //         $fieldsToCheck = ['delivered', 'returned', 'gratis'];
+// //         foreach ($fieldsToCheck as $field) {
+// //             // Check if the field exists in both old and new values
+// //             if (isset($newValues[$field]) && isset($oldValues[$field])) {
+// //                 // Only record if there's an actual change (different values)
+// //                 if ($newValues[$field] != $oldValues[$field]) {
+// //                     // Further filter out zero-to-zero changes
+// //                     if (!($newValues[$field] == 0 && $oldValues[$field] == 0)) {
+// //                         $hasSignificantChanges = true;
+// //                         break;
+// //                     }
+// //                 }
+// //             } elseif (isset($newValues[$field]) && !isset($oldValues[$field]) && $newValues[$field] != 0) {
+// //                 // If new field added with non-zero value
+// //                 $hasSignificantChanges = true;
+// //                 break;
+// //             }
+// //         }
+        
+// //         if (!$hasSignificantChanges) {
+// //             return null;
+// //         }
+//     }
+
+//     // Create filtered new_values and old_values arrays that only contain the fields that actually changed
+//     $filteredNewValues = [];
+//     $filteredOldValues = [];
+    
+//     $fieldsToCheck = ['delivered', 'returned', 'gratis'];
+//     foreach ($fieldsToCheck as $field) {
+//         if (isset($newValues[$field]) && isset($oldValues[$field]) && $newValues[$field] != $oldValues[$field]) {
+//             $filteredNewValues[$field] = $newValues[$field];
+//             $filteredOldValues[$field] = $oldValues[$field];
+//         }
+//     }
+
+//     // Use create with only the needed fields to reduce query size
+//     return \App\Models\TransactionHistory::create([
+//         'transaction_id' => $transaction->id,
+//         'user_id' => auth()->id(),
+//         'action' => $action,
+//         'old_values' => $filteredOldValues,
+//         'new_values' => $filteredNewValues,
+//         'ip_address' => request()->ip()
+//     ]);
+// }
 
 /**
  * Record payment history
