@@ -16,61 +16,194 @@ use Maatwebsite\Excel\Facades\Excel;
 class MonthlySummaryController extends Controller
 {
 
-
-    
     public function show(Company $company)
-    {
-        $user = Auth::user();
-        
-        if (!$user->isAdmin() && !$user->companies->contains($company->id)) {
-            abort(403, 'Unauthorized access to company data.');
-        }
+{
+    $user = Auth::user();
     
-        $month = request('month', now()->format('Y-m'));
-        
-        try {
-            $startDate = Carbon::createFromFormat('Y-m', $month)->startOfMonth();
-            $endDate = Carbon::createFromFormat('Y-m', $month)->endOfMonth();
-        } catch (\Carbon\Exceptions\InvalidFormatException $e) {
-            $startDate = now()->startOfMonth();
-            $endDate = now()->endOfMonth();
-            $month = now()->format('Y-m');
-        }
-    
-        $dailySummaries = $this->generateDailySummaries($company, $startDate, $endDate);
-        $monthlyTotals = $this->calculateMonthlyTotals($dailySummaries);
-
-        // Fetch all bread types and their company-specific prices
-        $breadTypes = BreadType::all()->mapWithKeys(function ($breadType) use ($company, $startDate) {
-            $prices = $breadType->getPriceForCompany($company->id, $startDate->format('Y-m-d'));
-            return [$breadType->id => [
-                'name' => $breadType->name,
-                'company_price' => $prices['price']
-            ]];
-        });
-
-        // Add the company-specific prices to monthly totals
-        foreach ($monthlyTotals as $breadTypeId => &$totals) {
-            if (isset($breadTypes[$breadTypeId])) {
-                $totals['company_price'] = $breadTypes[$breadTypeId]['company_price'];
-            }
-        }
-
-        if (request()->has('export')) {
-            $exportStartDate = request('export_start_date') ? Carbon::parse(request('export_start_date')) : $startDate;
-            $exportEndDate = request('export_end_date') ? Carbon::parse(request('export_end_date')) : $endDate;
-            return $this->export(request('export'), $company, $exportStartDate, $exportEndDate);
-        }
-    
-        return view('monthly-summaries.show', compact(
-            'company',
-            'dailySummaries',
-            'monthlyTotals',
-            'month',
-            'startDate',
-            'endDate'
-        ));
+    if (!$user->isAdmin() && !$user->companies->contains($company->id)) {
+        abort(403, 'Unauthorized access to company data.');
     }
+
+    $month = request('month', now()->format('Y-m'));
+    $dateRange = request('date_range', 'full');
+    
+    try {
+        $monthDate = Carbon::createFromFormat('Y-m', $month);
+        
+        // Set date range based on selection
+        if ($dateRange === 'first_half') {
+            $startDate = $monthDate->copy()->startOfMonth();
+            $endDate = $monthDate->copy()->startOfMonth()->addDays(14);
+        } elseif ($dateRange === 'second_half') {
+            $startDate = $monthDate->copy()->startOfMonth()->addDays(15);
+            $endDate = $monthDate->copy()->endOfMonth();
+        } else {
+            // Default to full month
+            $startDate = $monthDate->copy()->startOfMonth();
+            $endDate = $monthDate->copy()->endOfMonth();
+        }
+    } catch (\Carbon\Exceptions\InvalidFormatException $e) {
+        $startDate = now()->startOfMonth();
+        $endDate = now()->endOfMonth();
+        $month = now()->format('Y-m');
+        $dateRange = 'full';
+    }
+
+    // Get all data first
+    $dailySummaries = $this->generateDailySummaries($company, $startDate, $endDate);
+    $monthlyTotals = $this->calculateMonthlyTotals($dailySummaries);
+
+    // Now filter to only include bread types that have any activity
+    $filteredMonthlyTotals = [];
+    foreach ($monthlyTotals as $breadTypeId => $totals) {
+        // Only include bread types with any activity (delivered > 0 OR returned > 0 OR gratis > 0)
+        if ($totals['delivered'] > 0 || $totals['returned'] > 0 || $totals['gratis'] > 0) {
+            $filteredMonthlyTotals[$breadTypeId] = $totals;
+        }
+    }
+
+    // Use the filtered totals instead of the full list
+    $monthlyTotals = $filteredMonthlyTotals;
+
+    if (request()->has('export')) {
+        $exportStartDate = request('export_start_date') ? Carbon::parse(request('export_start_date')) : $startDate;
+        $exportEndDate = request('export_end_date') ? Carbon::parse(request('export_end_date')) : $endDate;
+        return $this->export(request('export'), $company, $exportStartDate, $exportEndDate);
+    }
+
+    return view('monthly-summaries.show', compact(
+        'company',
+        'dailySummaries',
+        'monthlyTotals',
+        'month',
+        'startDate',
+        'endDate',
+        'dateRange'
+    ));
+}
+
+    // public function show(Company $company)
+    // {
+    //     $user = Auth::user();
+        
+    //     if (!$user->isAdmin() && !$user->companies->contains($company->id)) {
+    //         abort(403, 'Unauthorized access to company data.');
+    //     }
+    
+    //     $month = request('month', now()->format('Y-m'));
+    //     $dateRange = request('date_range', 'full');
+        
+    //     try {
+    //         $monthDate = Carbon::createFromFormat('Y-m', $month);
+            
+    //         // Set date range based on selection
+    //         if ($dateRange === 'first_half') {
+    //             $startDate = $monthDate->copy()->startOfMonth();
+    //             $endDate = $monthDate->copy()->startOfMonth()->addDays(14);
+    //         } elseif ($dateRange === 'second_half') {
+    //             $startDate = $monthDate->copy()->startOfMonth()->addDays(15);
+    //             $endDate = $monthDate->copy()->endOfMonth();
+    //         } else {
+    //             // Default to full month
+    //             $startDate = $monthDate->copy()->startOfMonth();
+    //             $endDate = $monthDate->copy()->endOfMonth();
+    //         }
+    //     } catch (\Carbon\Exceptions\InvalidFormatException $e) {
+    //         $startDate = now()->startOfMonth();
+    //         $endDate = now()->endOfMonth();
+    //         $month = now()->format('Y-m');
+    //         $dateRange = 'full';
+    //     }
+    
+    //     $dailySummaries = $this->generateDailySummaries($company, $startDate, $endDate);
+    //     $monthlyTotals = $this->calculateMonthlyTotals($dailySummaries);
+    
+    //     // Fetch all bread types and their company-specific prices
+    //     $breadTypes = BreadType::all()->mapWithKeys(function ($breadType) use ($company, $startDate) {
+    //         $prices = $breadType->getPriceForCompany($company->id, $startDate->format('Y-m-d'));
+    //         return [$breadType->id => [
+    //             'name' => $breadType->name,
+    //             'company_price' => $prices['price']
+    //         ]];
+    //     });
+    
+    //     // Add the company-specific prices to monthly totals
+    //     foreach ($monthlyTotals as $breadTypeId => &$totals) {
+    //         if (isset($breadTypes[$breadTypeId])) {
+    //             $totals['company_price'] = $breadTypes[$breadTypeId]['company_price'];
+    //         }
+    //     }
+    
+    //     if (request()->has('export')) {
+    //         $exportStartDate = request('export_start_date') ? Carbon::parse(request('export_start_date')) : $startDate;
+    //         $exportEndDate = request('export_end_date') ? Carbon::parse(request('export_end_date')) : $endDate;
+    //         return $this->export(request('export'), $company, $exportStartDate, $exportEndDate);
+    //     }
+    
+    //     return view('monthly-summaries.show', compact(
+    //         'company',
+    //         'dailySummaries',
+    //         'monthlyTotals',
+    //         'month',
+    //         'startDate',
+    //         'endDate',
+    //         'dateRange'
+    //     ));
+    // }
+    
+    // public function show(Company $company)
+    // {
+    //     $user = Auth::user();
+        
+    //     if (!$user->isAdmin() && !$user->companies->contains($company->id)) {
+    //         abort(403, 'Unauthorized access to company data.');
+    //     }
+    
+    //     $month = request('month', now()->format('Y-m'));
+        
+    //     try {
+    //         $startDate = Carbon::createFromFormat('Y-m', $month)->startOfMonth();
+    //         $endDate = Carbon::createFromFormat('Y-m', $month)->endOfMonth();
+    //     } catch (\Carbon\Exceptions\InvalidFormatException $e) {
+    //         $startDate = now()->startOfMonth();
+    //         $endDate = now()->endOfMonth();
+    //         $month = now()->format('Y-m');
+    //     }
+    
+    //     $dailySummaries = $this->generateDailySummaries($company, $startDate, $endDate);
+    //     $monthlyTotals = $this->calculateMonthlyTotals($dailySummaries);
+
+    //     // Fetch all bread types and their company-specific prices
+    //     $breadTypes = BreadType::all()->mapWithKeys(function ($breadType) use ($company, $startDate) {
+    //         $prices = $breadType->getPriceForCompany($company->id, $startDate->format('Y-m-d'));
+    //         return [$breadType->id => [
+    //             'name' => $breadType->name,
+    //             'company_price' => $prices['price']
+    //         ]];
+    //     });
+
+    //     // Add the company-specific prices to monthly totals
+    //     foreach ($monthlyTotals as $breadTypeId => &$totals) {
+    //         if (isset($breadTypes[$breadTypeId])) {
+    //             $totals['company_price'] = $breadTypes[$breadTypeId]['company_price'];
+    //         }
+    //     }
+
+    //     if (request()->has('export')) {
+    //         $exportStartDate = request('export_start_date') ? Carbon::parse(request('export_start_date')) : $startDate;
+    //         $exportEndDate = request('export_end_date') ? Carbon::parse(request('export_end_date')) : $endDate;
+    //         return $this->export(request('export'), $company, $exportStartDate, $exportEndDate);
+    //     }
+    
+    //     return view('monthly-summaries.show', compact(
+    //         'company',
+    //         'dailySummaries',
+    //         'monthlyTotals',
+    //         'month',
+    //         'startDate',
+    //         'endDate'
+    //     ));
+    // }
 
     
     
