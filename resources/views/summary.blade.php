@@ -116,7 +116,82 @@
             </div>
         </div>
 
+        {{-- Add this right after your date and user selection in summary.blade.php --}}
 
+@if($currentUser->isAdmin() || $currentUser->role === 'super_admin')
+    <div class="ml-4 flex items-center">
+        @if(isset($isGloballyLocked) && $isGloballyLocked)
+            {{-- Day is locked for all users --}}
+            <div class="flex items-center bg-red-100 border-l-4 border-red-500 text-red-700 p-2 mr-2">
+                <svg class="h-5 w-5 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clip-rule="evenodd"></path>
+                </svg>
+                <span>Денот е заклучен за <strong>СИТЕ КОРИСНИЦИ</strong></span>
+            </div>
+            
+            <form action="{{ route('summary.unlockDay') }}" method="POST">
+                @csrf
+                <input type="hidden" name="date" value="{{ $date }}">
+                <button type="submit" class="flex items-center bg-green-500 hover:bg-green-600 text-white px-3 py-2 rounded">
+                    <svg class="h-4 w-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 11V7a4 4 0 118 0m-4 8v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z"></path>
+                    </svg>
+                    Отклучи за сите
+                </button>
+            </form>
+        @elseif(isset($isUserLocked) && $isUserLocked && $selectedUserId)
+            {{-- Day is locked for specific user --}}
+            <div class="flex items-center bg-red-100 border-l-4 border-red-500 text-red-700 p-2 mr-2">
+                <svg class="h-5 w-5 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clip-rule="evenodd"></path>
+                </svg>
+                <span>Денот е заклучен за овој корисник</span>
+            </div>
+            
+            <form action="{{ route('summary.unlockDay') }}" method="POST">
+                @csrf
+                <input type="hidden" name="date" value="{{ $date }}">
+                <input type="hidden" name="user_id" value="{{ $selectedUserId }}">
+                <button type="submit" class="flex items-center bg-green-500 hover:bg-green-600 text-white px-3 py-2 rounded">
+                    <svg class="h-4 w-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 11V7a4 4 0 118 0m-4 8v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z"></path>
+                    </svg>
+                    Отклучи
+                </button>
+            </form>
+        @else
+            {{-- Day is not locked - show lock buttons --}}
+            <div class="flex space-x-2">
+                @if($selectedUserId)
+                    {{-- Lock for specific user --}}
+                    <form action="{{ route('summary.lockDay') }}" method="POST">
+                        @csrf
+                        <input type="hidden" name="date" value="{{ $date }}">
+                        <input type="hidden" name="user_id" value="{{ $selectedUserId }}">
+                        <button type="submit" class="flex items-center bg-red-500 hover:bg-red-600 text-white px-3 py-2 rounded">
+                            <svg class="h-4 w-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path>
+                            </svg>
+                            Заклучи ден за овој корисник
+                        </button>
+                    </form>
+                @endif
+                
+                {{-- Lock for all users --}}
+                <form action="{{ route('summary.lockDay') }}" method="POST">
+                    @csrf
+                    <input type="hidden" name="date" value="{{ $date }}">
+                    <button type="submit" class="flex items-center bg-red-500 hover:bg-red-600 text-white px-3 py-2 rounded">
+                        <svg class="h-4 w-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path>
+                        </svg>
+                        Заклучи ден за СИТЕ корисници
+                    </button>
+                </form>
+            </div>
+        @endif
+    </div>
+@endif
         
 
     
@@ -1320,76 +1395,115 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 });
 </script>
+@if(isset($isLocked) && $isLocked || isset($isGloballyLocked) && $isGloballyLocked || isset($isUserLocked) && $isUserLocked)
 <script>
-    document.addEventListener('DOMContentLoaded', function() {
-        // Handle bulk payment functionality
-        const selectAllCheckbox = document.getElementById('selectAll');
-        const transactionCheckboxes = document.querySelectorAll('.transaction-checkbox');
-        const bulkPaymentButton = document.getElementById('bulkPaymentButton');
-        const bulkPaymentForm = document.getElementById('bulkPaymentForm');
-
-        // Function to update the bulk payment button state
-        function updateBulkPaymentButton() {
-            const checkedBoxes = document.querySelectorAll('.transaction-checkbox:checked');
-            bulkPaymentButton.disabled = checkedBoxes.length === 0;
-        }
-
-        // Handle "Select All" checkbox
-        if (selectAllCheckbox) {
-            selectAllCheckbox.addEventListener('change', function() {
-                transactionCheckboxes.forEach(checkbox => {
-                    checkbox.checked = this.checked;
-                });
-                updateBulkPaymentButton();
-            });
-        }
-
-        // Handle individual checkboxes
-        transactionCheckboxes.forEach(checkbox => {
-            checkbox.addEventListener('change', function() {
-                const allChecked = Array.from(transactionCheckboxes).every(cb => cb.checked);
-                if (selectAllCheckbox) {
-                    selectAllCheckbox.checked = allChecked;
-                }
-                updateBulkPaymentButton();
-            });
-        });
-
-        // Store scroll position before form submission
-        if (bulkPaymentForm) {
-            bulkPaymentForm.addEventListener('submit', function() {
-                localStorage.setItem('scrollPosition', window.scrollY);
-            });
-        }
-
-        // Restore scroll position if exists
-        if (localStorage.getItem('scrollPosition')) {
-            window.scrollTo(0, localStorage.getItem('scrollPosition'));
-            localStorage.removeItem('scrollPosition');
-        }
-    });
-    document.addEventListener('DOMContentLoaded', function() {
-    // Save scroll position before form submissions
-    const yesterdayForm = document.getElementById('yesterdayBreadForm');
+document.addEventListener('DOMContentLoaded', function() {
+    console.log("Applying day lock restrictions");
     
-    if (yesterdayForm) {
-        yesterdayForm.addEventListener('submit', function() {
-            // Save the current scroll position to sessionStorage
-            sessionStorage.setItem('scrollPosition', window.scrollY);
-        });
-    }
+    // Check admin status
+    const isAdmin = {{ isset($currentUser) && ($currentUser->isAdmin() || $currentUser->role === 'super_admin') ? 'true' : 'false' }};
     
-    // Restore scroll position after page load if available
-    if (sessionStorage.getItem('scrollPosition')) {
-        const scrollPosition = parseInt(sessionStorage.getItem('scrollPosition'));
-        window.scrollTo(0, scrollPosition);
+    // Only apply restrictions if not admin
+    if (!isAdmin) {
+        // Target forms by their IDs - this works in both views
+        const formIds = ['transactionForm', 'oldBreadSalesForm', 'yesterdayBreadForm'];
         
-        // Clear the stored position after using it
-        setTimeout(function() {
-            sessionStorage.removeItem('scrollPosition');
-        }, 100);
+        formIds.forEach(formId => {
+            const form = document.getElementById(formId);
+            if (form) {
+                // Prevent form submission
+                form.onsubmit = function(e) {
+                    e.preventDefault();
+                    alert('Овој ден е заклучен и не може да се модифицира.');
+                    return false;
+                };
+                
+                // Disable inputs in this form
+                const inputs = form.querySelectorAll('input, select, textarea, button');
+                inputs.forEach(input => {
+                    if (input.type !== 'hidden') {
+                        input.disabled = true;
+                        input.classList.add('bg-gray-100', 'cursor-not-allowed');
+                        
+                        // Special styling for buttons
+                        if (input.tagName === 'BUTTON' || input.type === 'submit') {
+                            input.classList.add('opacity-50');
+                        }
+                    }
+                });
+            }
+        });
+        
+        // Also target forms that don't have IDs but match specific selectors
+        // For summary view
+        document.querySelectorAll('form[action*="summary.update"], form[action*="summary.updateYesterday"]')
+            .forEach(form => {
+                form.onsubmit = function(e) {
+                    e.preventDefault();
+                    alert('Овој ден е заклучен и не може да се модифицира.');
+                    return false;
+                };
+                
+                const inputs = form.querySelectorAll('input, select, textarea, button');
+                inputs.forEach(input => {
+                    if (input.type !== 'hidden') {
+                        input.disabled = true;
+                        input.classList.add('bg-gray-100', 'cursor-not-allowed');
+                    }
+                });
+            });
+        
+        // Disable specific buttons in each view
+        const buttonSelectors = [
+            '#dailyTransactionsButton', 
+            '#oldBreadSalesButton',
+            'button[form="transactionForm"]',
+            'button[form="oldBreadSalesForm"]',
+            'button[form="yesterdayBreadForm"]',
+            // Add any other specific buttons from summary view
+            'button[type="submit"]:not([form="filterForm"]):not([form="dateSelectionForm"]):not([form="logoutForm"])'
+        ];
+        
+        buttonSelectors.forEach(selector => {
+            document.querySelectorAll(selector).forEach(button => {
+                // Skip any logout-related buttons
+                if (!button.closest('form[action*="logout"]')) {
+                    button.disabled = true;
+                    button.classList.add('opacity-50', 'cursor-not-allowed');
+                }
+            });
+        });
+        
+        // Block AJAX requests to transaction endpoints
+        const originalFetch = window.fetch;
+        window.fetch = function(url, options = {}) {
+            const urlStr = String(url);
+            // Very specific endpoint matching
+            if (
+                urlStr.includes('/daily-transactions/store') || 
+                urlStr.includes('/daily-transactions.store') || 
+                urlStr.includes('/update-daily-transaction') || 
+                urlStr.includes('/store-old-bread') ||
+                urlStr.includes('/summary.update') ||
+                urlStr.includes('/summary.updateYesterday') ||
+                urlStr.includes('/summary.updateAdditional') ||
+                urlStr.includes('/mark-as-paid')
+            ) {
+                console.log('Blocked transaction on locked day:', urlStr);
+                alert('Овој ден е заклучен и не може да се модифицира.');
+                return Promise.reject(new Error('Day is locked'));
+            }
+            
+            // All other endpoints work normally
+            return originalFetch(url, options);
+        };
+        
+        console.log("Day lock restrictions applied to transaction forms only");
     }
 });
+</script>
+@endif
+
     </script>
 
 <style>

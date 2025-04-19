@@ -99,6 +99,61 @@ input[type=number] {
         </form>
     </div>
 
+    @if(isset($isLocked) && $isLocked)
+    <div class="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mt-4 mb-4 rounded shadow">
+        <div class="flex items-center">
+            <svg class="h-6 w-6 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clip-rule="evenodd"></path>
+            </svg>
+            <div>
+                <p class="font-bold">Овој ден е заклучен!</p>
+                <p>Контактирајте го Администраторот доколку сакате да правете измени за овој ден!</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Disable all form inputs
+        const forms = document.querySelectorAll('form');
+        forms.forEach(form => {
+            // Skip the filter form for selecting dates/companies
+            if (form.id === 'filterForm') return;
+            
+            const inputs = form.querySelectorAll('input, select, textarea, button');
+            inputs.forEach(input => {
+                input.disabled = true;
+                
+                // Add visual indication
+                if (input.tagName === 'BUTTON') {
+                    input.classList.add('opacity-50', 'cursor-not-allowed');
+                } else {
+                    input.classList.add('bg-gray-100', 'cursor-not-allowed');
+                }
+            });
+        });
+        
+        // Disable other buttons that might not be in forms
+        const otherButtons = document.querySelectorAll('button:not([form])');
+        otherButtons.forEach(button => {
+            if (!button.closest('form[id="filterForm"]')) {
+                button.disabled = true;
+                button.classList.add('opacity-50', 'cursor-not-allowed');
+            }
+        });
+        
+        // Show message on any form submission attempt
+        document.body.addEventListener('click', function(e) {
+            if (e.target.type === 'submit' || e.target.tagName === 'BUTTON') {
+                e.preventDefault();
+                alert('Денот е заклучен. Не можете да правите промени.');
+                return false;
+            }
+        }, true);
+    });
+    </script>
+@endif
+
     <!-- Toggle buttons -->
     <div class="mt-4 px-2 md:px-0 flex space-x-4">
         <button type="button" id="dailyTransactionsButton" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 text-sm md:text-base">
@@ -2142,7 +2197,248 @@ document.addEventListener('DOMContentLoaded', function() {
     // Call the refresh function with a slight delay to ensure the page is fully loaded
     setTimeout(refreshCSRFTokenOnLoad, 500);
 });
+
 </script>
+<!-- @if(isset($isLocked) && $isLocked)
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    console.log("Applying day lock restrictions");
+    
+    // Debug - log what forms are found
+    const allForms = document.querySelectorAll('form');
+    console.log(`Found ${allForms.length} forms on the page`);
+    allForms.forEach((form, index) => {
+        console.log(`Form ${index} id: "${form.id}", action: "${form.action}"`);
+    });
+    
+    // 1. Disable the daily transactions form using multiple selectors
+    const transactionForm = document.getElementById('transactionForm') || 
+                          document.querySelector('form[action*="daily-transactions"]');
+    
+    if (transactionForm) {
+        console.log("Found and disabling transaction form:", transactionForm);
+        
+        // Disable the form
+        transactionForm.onsubmit = function(e) {
+            e.preventDefault();
+            alert('Овој ден е заклучен и не може да се модифицира.');
+            return false;
+        };
+        
+        // Disable inputs within this specific form
+        const inputs = transactionForm.querySelectorAll('input, select, textarea, button');
+        console.log(`Disabling ${inputs.length} inputs in transaction form`);
+        
+        inputs.forEach(input => {
+            if (input.type !== 'hidden') {
+                input.disabled = true;
+                input.classList.add('bg-gray-100', 'cursor-not-allowed');
+            }
+        });
+    } else {
+        console.log("Transaction form not found!");
+    }
+    
+    // 2. Disable the old bread sales form using multiple selectors
+    const oldBreadForm = document.getElementById('oldBreadSalesForm') || 
+                        document.querySelector('form[action*="store-old-bread"]');
+    
+    if (oldBreadForm) {
+        console.log("Found and disabling old bread form:", oldBreadForm);
+        
+        // Disable the form
+        oldBreadForm.onsubmit = function(e) {
+            e.preventDefault();
+            alert('Овој ден е заклучен и не може да се модифицира.');
+            return false;
+        };
+        
+        // Disable inputs within this specific form
+        const inputs = oldBreadForm.querySelectorAll('input, select, textarea, button');
+        console.log(`Disabling ${inputs.length} inputs in old bread form`);
+        
+        inputs.forEach(input => {
+            if (input.type !== 'hidden') {
+                input.disabled = true;
+                input.classList.add('bg-gray-100', 'cursor-not-allowed');
+            }
+        });
+    } else {
+        console.log("Old bread form not found!");
+        
+        // Try to find by form content instead
+        const potentialOldBreadForms = document.querySelectorAll('form');
+        potentialOldBreadForms.forEach(form => {
+            if (form.innerHTML.includes('old_bread_sold')) {
+                console.log("Found old bread form by content:", form);
+                form.onsubmit = function(e) {
+                    e.preventDefault();
+                    alert('Овој ден е заклучен и не може да се модифицира.');
+                    return false;
+                };
+                
+                const inputs = form.querySelectorAll('input, select, textarea, button');
+                inputs.forEach(input => {
+                    if (input.type !== 'hidden') {
+                        input.disabled = true;
+                        input.classList.add('bg-gray-100', 'cursor-not-allowed');
+                    }
+                });
+            }
+        });
+    }
+    
+    // 3. Disable the toggle buttons between transactions and old bread
+    const toggleButtons = document.querySelectorAll('#dailyTransactionsButton, #oldBreadSalesButton');
+    console.log(`Found ${toggleButtons.length} toggle buttons`);
+    
+    toggleButtons.forEach(button => {
+        button.disabled = true;
+        button.classList.add('opacity-50', 'cursor-not-allowed');
+    });
+    
+    // 4. Disable any form with action containing transaction-related keywords
+    const allTransactionForms = document.querySelectorAll(
+        'form[action*="daily-transactions"], form[action*="store-old-bread"], form[action*="update-daily-transaction"]'
+    );
+    
+    console.log(`Found ${allTransactionForms.length} transaction-related forms by action URL`);
+    
+    allTransactionForms.forEach(form => {
+        form.onsubmit = function(e) {
+            e.preventDefault();
+            alert('Овој ден е заклучен и не може да се модифицира.');
+            return false;
+        };
+        
+        const inputs = form.querySelectorAll('input, select, textarea, button');
+        inputs.forEach(input => {
+            if (input.type !== 'hidden') {
+                input.disabled = true;
+                input.classList.add('bg-gray-100', 'cursor-not-allowed');
+            }
+        });
+    });
+    
+    // 5. Block AJAX requests ONLY to transaction-specific endpoints
+    const originalFetch = window.fetch;
+    window.fetch = function(url, options = {}) {
+        const urlStr = String(url);
+        // Very specific endpoint matching
+        if (
+            urlStr.includes('/daily-transactions/store') || 
+            urlStr.includes('/daily-transactions.store') || 
+            urlStr.includes('/update-daily-transaction') || 
+            urlStr.includes('/store-old-bread')
+        ) {
+            console.log('Blocked fetch to locked endpoint:', urlStr);
+            alert('Овој ден е заклучен и не може да се модифицира.');
+            return Promise.reject(new Error('Day is locked'));
+        }
+        
+        // All other endpoints work normally
+        return originalFetch(url, options);
+    };
+    
+    // 6. Also block XMLHttpRequest for older code
+    const originalXHROpen = XMLHttpRequest.prototype.open;
+    XMLHttpRequest.prototype.open = function(method, url, ...args) {
+        if (typeof url === 'string' && (
+            url.includes('/daily-transactions/store') || 
+            url.includes('/daily-transactions.store') || 
+            url.includes('/update-daily-transaction') || 
+            url.includes('/store-old-bread')
+        )) {
+            console.log('Blocked XHR to locked endpoint:', url);
+            throw new Error('Day is locked');
+        }
+        return originalXHROpen.call(this, method, url, ...args);
+    };
+    
+    console.log("Day lock restrictions applied with enhanced targeting");
+});
+</script>
+@endif -->
+
+<!-- @if(isset($isLocked) && $isLocked)
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    console.log("Applying day lock restrictions");
+    
+    // ONLY target the transaction-specific forms and fields
+    // We'll use very specific selectors instead of broad ones
+    
+    // 1. Disable the daily transactions form and fields
+    const transactionForm = document.getElementById('transactionForm');
+    if (transactionForm) {
+        // Disable the form
+        transactionForm.onsubmit = function(e) {
+            e.preventDefault();
+            alert('Овој ден е заклучен и не може да се модифицира.');
+            return false;
+        };
+        
+        // Disable inputs within this specific form
+        const inputs = transactionForm.querySelectorAll('input, select, textarea, button');
+        inputs.forEach(input => {
+            if (input.type !== 'hidden') {
+                input.disabled = true;
+                input.classList.add('bg-gray-100', 'cursor-not-allowed');
+            }
+        });
+    }
+    
+    // 2. Disable the old bread sales form and fields
+    const oldBreadForm = document.getElementById('oldBreadSalesForm');
+    if (oldBreadForm) {
+        // Disable the form
+        oldBreadForm.onsubmit = function(e) {
+            e.preventDefault();
+            alert('Овој ден е заклучен и не може да се модифицира.');
+            return false;
+        };
+        
+        // Disable inputs within this specific form
+        const inputs = oldBreadForm.querySelectorAll('input, select, textarea, button');
+        inputs.forEach(input => {
+            if (input.type !== 'hidden') {
+                input.disabled = true;
+                input.classList.add('bg-gray-100', 'cursor-not-allowed');
+            }
+        });
+    }
+    
+    // 3. Disable the toggle buttons between transactions and old bread
+    const toggleButtons = document.querySelectorAll('#dailyTransactionsButton, #oldBreadSalesButton');
+    toggleButtons.forEach(button => {
+        button.disabled = true;
+        button.classList.add('opacity-50', 'cursor-not-allowed');
+    });
+    
+    // 4. Block AJAX requests ONLY to transaction-specific endpoints
+    const originalFetch = window.fetch;
+    window.fetch = function(url, options = {}) {
+        const urlStr = String(url);
+        // Very specific endpoint matching
+        if (
+            urlStr.includes('/daily-transactions/store') || 
+            urlStr.includes('/daily-transactions.store') || 
+            urlStr.includes('/update-daily-transaction') || 
+            urlStr.includes('/store-old-bread')
+        ) {
+            console.log('Blocked transaction on locked day:', urlStr);
+            alert('Овој ден е заклучен и не може да се модифицира.');
+            return Promise.reject(new Error('Day is locked'));
+        }
+        
+        // All other endpoints work normally
+        return originalFetch(url, options);
+    };
+    
+    console.log("Day lock restrictions applied to transaction forms only");
+});
+</script>
+@endif -->
 
 
 

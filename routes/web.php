@@ -69,24 +69,48 @@ Route::put('/companies/{company}/update-bread-types', [CompanyController::class,
     Route::get('/monthly-summary/{company}/export', [MonthlySummaryController::class, 'export'])
         ->name('monthly-summary.export');
     
+
+        Route::middleware(['auth'])->group(function () {
+
     // Daily Transactions
     Route::resource('daily-transactions', DailyTransactionController::class);
     Route::post('/daily-transactions/mark-as-paid', [DailyTransactionController::class, 'markAsPaid'])
-        ->name('daily-transactions.markAsPaid');
+        ->name('daily-transactions.markAsPaid')
+        // ->middleware('checkDayLock');
+        ->middleware(\App\Http\Middleware\CheckDayLock::class);
+
+
     Route::post('/daily-transactions/mark-multiple-as-paid', [SummaryController::class, 'markMultipleAsPaid'])
-        ->name('daily-transactions.markMultipleAsPaid');
+        ->name('daily-transactions.markMultipleAsPaid')
+        // ->middleware('checkDayLock');
+        ->middleware(\App\Http\Middleware\CheckDayLock::class);
+
+
     Route::get('/daily-transactions/unpaid', [DailyTransactionController::class, 'getUnpaidTransactions'])
-        ->name('daily-transactions.unpaid');
+        ->name('daily-transactions.unpaid')
+        ->middleware(\App\Http\Middleware\CheckDayLock::class);
+
     Route::post('/daily-transactions/store-old-bread', [DailyTransactionController::class, 'storeOldBreadSales'])
-        ->name('daily-transactions.store-old-bread');
+        ->name('daily-transactions.store-old-bread')
+        ->middleware(\App\Http\Middleware\CheckDayLock::class);
+
     Route::post('/update-daily-transaction', [DailyTransactionController::class, 'updateDailyTransaction'])
-        ->name('update-daily-transaction');
+        ->name('update-daily-transaction')
+        // ->middleware('checkDayLock');
+        ->middleware(\App\Http\Middleware\CheckDayLock::class);
+
+
+        
     
     // Summary
     Route::get('/summary', [SummaryController::class, 'index'])->name('summary.index');
     Route::post('/summary/update', [SummaryController::class, 'update'])->name('summary.update');
     Route::post('/summary/update-additional', [SummaryController::class, 'updateAdditional'])
         ->name('summary.updateAdditional');
+        
+
+    });
+
     
     // Bread Types
     // Add admin middleware to bread-type-order routes
@@ -167,6 +191,11 @@ Route::post('/log/app-freeze', function (Illuminate\Http\Request $request) {
 });
 
 
+// Day locking/unlocking routes (admin only)
+Route::middleware(['auth'])->group(function () {
+    Route::post('/summary/lock-day', [SummaryController::class, 'lockDay'])->name('summary.lockDay');
+    Route::post('/summary/unlock-day', [SummaryController::class, 'unlockDay'])->name('summary.unlockDay');
+});
 
 
 
@@ -178,4 +207,5 @@ Route::get('/check-schema', function() {
     $table = DB::select('DESCRIBE bread_types');
     dd($table);
 });
+
 

@@ -81,13 +81,26 @@ public function create()
         })
         ->get()
         ->groupBy('company_id');
+
+          // Add check for locked day - without modifying existing code
+    $isGloballyLocked = \App\Models\LockedDay::where('locked_date', $date)
+    ->whereNull('user_id')
+    ->exists();
+    
+$isUserLocked = \App\Models\LockedDay::where('locked_date', $date)
+    ->where('user_id', $user->id)
+    ->exists();
+    
+$isLocked = ($isGloballyLocked || $isUserLocked) && !$user->isAdmin() && $user->role !== 'super_admin';
         
     return view('daily-transactions.create', compact(
         'companies',
         'breadTypes',
         'date',
         'existingTransactions',
-        'selectedCompanyId'
+        'selectedCompanyId',
+        'isLocked'  
+
     ));
 }
     // public function create()
