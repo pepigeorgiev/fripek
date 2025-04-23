@@ -60,6 +60,7 @@ input[type=number] {
 <script src="https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.13/js/select2.min.js"></script>
 
 <!-- Remove container padding for mobile -->
+<!-- Remove container padding for mobile -->
 <div class="mx-auto md:p-0">
     <h1 class="text-xl md:text-2xl font-bold mb-2 md:mb-4 px-2 md:px-0">Дневни Трансакции</h1>
     
@@ -78,26 +79,30 @@ input[type=number] {
         @endforeach
     </select>
 </div>
-                <!-- <div>
-                    <label for="company_id" class="block text-sm font-medium text-gray-700">Компанија</label>
-                    <select id="company_id" name="company_id" class="company-select mt-1 block w-full text-sm md:text-base rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
-                        <option value="">Изберете компанија</option>
-                        @foreach($companies as $company)
-                            <option value="{{ $company->id }}" {{ $selectedCompanyId == $company->id ? 'selected' : '' }}>
-                                {{ $company->name }}
-                            </option>
-                        @endforeach
-                    </select>
-                </div> -->
+
+            
                 <div>
                     <label for="transaction_date" class="block text-sm font-medium text-gray-700">Дата</label>
                     <input type="date" id="transaction_date" name="transaction_date" 
                         class="mt-1 block w-full text-sm md:text-base rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
                         value="{{ $date }}">
                 </div>
-            </div>
-        </form>
+                <div class="flex justify-between items-center mb-1">
+    <div>
+    <div class="flex items-center">
+        <label class="inline-flex items-center mr-2 text-sm cursor-pointer">
+            <input type="checkbox" id="show_all_companies" class="mr-1 h-4 w-4 text-blue-600 border-gray-300 rounded text-left ">
+            <span>Дозволи повторен внес</span>
+        </label>
+        <span class="text-xs bg-gray-100 text-gray-500 rounded px-2 py-1" id="companies-counter">
+            {{ isset($companiesWithTransactions) ? count($companiesWithTransactions) : 0 }}/{{ $companies->count() }} внесени
+        </span>
     </div>
+</div>
+            </div>
+            
+        </form>
+    </div></div>
 
     @if(isset($isLocked) && $isLocked)
     <div class="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mt-4 mb-4 rounded shadow">
@@ -2196,6 +2201,77 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Call the refresh function with a slight delay to ensure the page is fully loaded
     setTimeout(refreshCSRFTokenOnLoad, 500);
+});
+
+// Add this code at the end of your script section
+document.addEventListener('DOMContentLoaded', function() {
+    // Companies with transactions tracker
+    const companiesWithTransactions = @json(isset($companiesWithTransactions) ? $companiesWithTransactions : []);
+    let showAllCompanies = false;
+    
+    // Check if the hidden form fields exist
+    const formCompanyId = document.getElementById('form_company_id');
+    const formTransactionDate = document.getElementById('form_transaction_date');
+    
+    // Set hidden fields when page loads
+    if (formCompanyId && document.getElementById('company_id')) {
+        formCompanyId.value = document.getElementById('company_id').value;
+    }
+    
+    if (formTransactionDate && document.getElementById('transaction_date')) {
+        formTransactionDate.value = document.getElementById('transaction_date').value;
+    }
+    
+    // Add show all companies toggle
+    const showAllCheckbox = document.getElementById('show_all_companies');
+    if (showAllCheckbox) {
+        showAllCheckbox.addEventListener('change', function() {
+            showAllCompanies = this.checked;
+            
+            // Wait for jQuery and Select2
+            if (window.jQuery && window.jQuery.fn.select2) {
+                // Using setTimeout to ensure Select2 is fully initialized
+                setTimeout(function() {
+                    // Get current selection
+                    const currentSelection = $('#company_id').val();
+                    
+                    // Mark all options with transactions
+                    $('#company_id option').each(function() {
+                        const companyId = parseInt($(this).val());
+                        if (companyId && companiesWithTransactions.includes(companyId)) {
+                            // Add visual marker
+                            if (!$(this).text().includes('✓')) {
+                                $(this).text($(this).text() + ' ✓');
+                            }
+                            
+                            // Show/hide based on checkbox
+                            if (!showAllCompanies) {
+                                $(this).prop('disabled', true);
+                            } else {
+                                $(this).prop('disabled', false);
+                            }
+                        }
+                    });
+                    
+                    // Re-initialize Select2
+                    $('#company_id').select2('destroy').select2({
+                        placeholder: 'Изберете компанија',
+                        allowClear: true,
+                        width: '100%',
+                        dropdownParent: $('body')
+                    });
+                    
+                    // Restore selection if possible
+                    if (currentSelection) {
+                        $('#company_id').val(currentSelection).trigger('change');
+                    }
+                }, 100);
+            }
+        });
+        
+        // Trigger the change event to initialize
+        showAllCheckbox.dispatchEvent(new Event('change'));
+    }
 });
 
 </script>

@@ -82,6 +82,9 @@ public function create()
         ->get()
         ->groupBy('company_id');
 
+        $companiesWithTransactions = $existingTransactions->keys()->toArray();
+
+
           // Add check for locked day - without modifying existing code
     $isGloballyLocked = \App\Models\LockedDay::where('locked_date', $date)
     ->whereNull('user_id')
@@ -99,7 +102,8 @@ $isLocked = ($isGloballyLocked || $isUserLocked) && !$user->isAdmin() && $user->
         'date',
         'existingTransactions',
         'selectedCompanyId',
-        'isLocked'  
+        'isLocked',
+        'companiesWithTransactions'   
 
     ));
 }
