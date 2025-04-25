@@ -2252,14 +2252,123 @@ document.addEventListener('DOMContentLoaded', function() {
                             }
                         }
                     });
+
+                    // Re-initialize Select2 WITH the custom matcher for transliteration
+$('#company_id').select2('destroy').select2({
+    placeholder: 'Изберете компанија',
+    allowClear: true,
+    width: '100%',
+    dropdownParent: $('body'),
+    // IMPORTANT: Keep the matcher function that handles transliteration
+    matcher: function(params, data) {
+        // If no search term, return all data
+        if (!params.term || $.trim(params.term) === '') {
+            return data;
+        }
+        
+        // If there's no 'text' property, this data object can't be matched
+        if (typeof data.text === 'undefined') {
+            return null;
+        }
+        
+        const searchTerm = params.term.toLowerCase();
+        const originalText = data.text.toLowerCase();
+        
+        // Check for direct match first (most efficient)
+        if (originalText.indexOf(searchTerm) > -1) {
+            return data;
+        }
+        
+        // Simple character-by-character transliteration
+        // This approach works better for partial words
+        
+        // Check if the search term contains Cyrillic characters
+        const macedonianCyrillicChars = 'абвгдѓежзѕијклљмнњопрстќуфхцчџш';
+        const hasCyrillic = searchTerm.split('').some(char => macedonianCyrillicChars.includes(char));
+        
+        if (hasCyrillic) {
+            // Convert Cyrillic search term to Latin to match against potential Latin text
+            let latinSearchTerm = '';
+            for (let i = 0; i < searchTerm.length; i++) {
+                const char = searchTerm[i];
+                latinSearchTerm += {
+                    'а': 'a', 'б': 'b', 'в': 'v', 'г': 'g', 'д': 'd', 'ѓ': 'gj', 'е': 'e',
+                    'ж': 'zh', 'з': 'z', 'ѕ': 'dz', 'и': 'i', 'ј': 'j', 'к': 'k', 'л': 'l',
+                    'љ': 'lj', 'м': 'm', 'н': 'n', 'њ': 'nj', 'о': 'o', 'п': 'p', 'р': 'r',
+                    'с': 's', 'т': 't', 'ќ': 'kj', 'у': 'u', 'ф': 'f', 'х': 'h', 'ц': 'c',
+                    'ч': 'ch', 'џ': 'dzh', 'ш': 'sh'
+                }[char] || char;
+            }
+            
+            // Convert the company name to Latin for comparison (if it contains Cyrillic)
+            if (originalText.split('').some(char => macedonianCyrillicChars.includes(char))) {
+                let latinText = '';
+                for (let i = 0; i < originalText.length; i++) {
+                    const char = originalText[i];
+                    latinText += {
+                        'а': 'a', 'б': 'b', 'в': 'v', 'г': 'g', 'д': 'd', 'ѓ': 'gj', 'е': 'e',
+                        'ж': 'zh', 'з': 'z', 'ѕ': 'dz', 'и': 'i', 'ј': 'j', 'к': 'k', 'л': 'l',
+                        'љ': 'lj', 'м': 'm', 'н': 'n', 'њ': 'nj', 'о': 'o', 'п': 'p', 'р': 'r',
+                        'с': 's', 'т': 't', 'ќ': 'kj', 'у': 'u', 'ф': 'f', 'х': 'h', 'ц': 'c',
+                        'ч': 'ch', 'џ': 'dzh', 'ш': 'sh'
+                    }[char] || char;
+                }
+                
+                if (latinText.indexOf(latinSearchTerm) > -1) {
+                    return data;
+                }
+            }
+        } else {
+            // Latin search term - try to match against Cyrillic text
+            // Convert the company name from Cyrillic to Latin for comparison
+            if (originalText.split('').some(char => macedonianCyrillicChars.includes(char))) {
+                let latinText = '';
+                for (let i = 0; i < originalText.length; i++) {
+                    const char = originalText[i];
+                    latinText += {
+                        'а': 'a', 'б': 'b', 'в': 'v', 'г': 'g', 'д': 'd', 'ѓ': 'gj', 'е': 'e',
+                        'ж': 'zh', 'з': 'z', 'ѕ': 'dz', 'и': 'i', 'ј': 'j', 'к': 'k', 'л': 'l',
+                        'љ': 'lj', 'м': 'm', 'н': 'n', 'њ': 'nj', 'о': 'o', 'п': 'p', 'р': 'r',
+                        'с': 's', 'т': 't', 'ќ': 'kj', 'у': 'u', 'ф': 'f', 'х': 'h', 'ц': 'c',
+                        'ч': 'ch', 'џ': 'dzh', 'ш': 'sh'
+                    }[char] || char;
+                }
+                
+                if (latinText.indexOf(searchTerm) > -1) {
+                    return data;
+                }
+            }
+            
+            // Also try to convert the search term to Cyrillic for matching
+            // This is a simple character-by-character conversion for single letters only
+            let cyrillicSearchTerm = '';
+            for (let i = 0; i < searchTerm.length; i++) {
+                const char = searchTerm[i];
+                cyrillicSearchTerm += {
+                    'a': 'а', 'b': 'б', 'v': 'в', 'g': 'г', 'd': 'д', 'e': 'е',
+                    'z': 'з', 'i': 'и', 'j': 'ј', 'k': 'к', 'l': 'л', 'm': 'м', 
+                    'n': 'н', 'o': 'о', 'p': 'п', 'r': 'р', 's': 'с', 't': 'т',
+                    'u': 'у', 'f': 'ф', 'h': 'х', 'c': 'ц'
+                }[char] || char;
+            }
+            
+            if (originalText.indexOf(cyrillicSearchTerm) > -1) {
+                return data;
+            }
+        }
+        
+        // No match found
+        return null;
+    }
+});
                     
-                    // Re-initialize Select2
-                    $('#company_id').select2('destroy').select2({
-                        placeholder: 'Изберете компанија',
-                        allowClear: true,
-                        width: '100%',
-                        dropdownParent: $('body')
-                    });
+                    // // Re-initialize Select2
+                    // $('#company_id').select2('destroy').select2({
+                    //     placeholder: 'Изберете компанија',
+                    //     allowClear: true,
+                    //     width: '100%',
+                    //     dropdownParent: $('body')
+                    // });
                     
                     // Restore selection if possible
                     if (currentSelection) {
@@ -2275,248 +2384,6 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 </script>
-<!-- @if(isset($isLocked) && $isLocked)
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    console.log("Applying day lock restrictions");
-    
-    // Debug - log what forms are found
-    const allForms = document.querySelectorAll('form');
-    console.log(`Found ${allForms.length} forms on the page`);
-    allForms.forEach((form, index) => {
-        console.log(`Form ${index} id: "${form.id}", action: "${form.action}"`);
-    });
-    
-    // 1. Disable the daily transactions form using multiple selectors
-    const transactionForm = document.getElementById('transactionForm') || 
-                          document.querySelector('form[action*="daily-transactions"]');
-    
-    if (transactionForm) {
-        console.log("Found and disabling transaction form:", transactionForm);
-        
-        // Disable the form
-        transactionForm.onsubmit = function(e) {
-            e.preventDefault();
-            alert('Овој ден е заклучен и не може да се модифицира.');
-            return false;
-        };
-        
-        // Disable inputs within this specific form
-        const inputs = transactionForm.querySelectorAll('input, select, textarea, button');
-        console.log(`Disabling ${inputs.length} inputs in transaction form`);
-        
-        inputs.forEach(input => {
-            if (input.type !== 'hidden') {
-                input.disabled = true;
-                input.classList.add('bg-gray-100', 'cursor-not-allowed');
-            }
-        });
-    } else {
-        console.log("Transaction form not found!");
-    }
-    
-    // 2. Disable the old bread sales form using multiple selectors
-    const oldBreadForm = document.getElementById('oldBreadSalesForm') || 
-                        document.querySelector('form[action*="store-old-bread"]');
-    
-    if (oldBreadForm) {
-        console.log("Found and disabling old bread form:", oldBreadForm);
-        
-        // Disable the form
-        oldBreadForm.onsubmit = function(e) {
-            e.preventDefault();
-            alert('Овој ден е заклучен и не може да се модифицира.');
-            return false;
-        };
-        
-        // Disable inputs within this specific form
-        const inputs = oldBreadForm.querySelectorAll('input, select, textarea, button');
-        console.log(`Disabling ${inputs.length} inputs in old bread form`);
-        
-        inputs.forEach(input => {
-            if (input.type !== 'hidden') {
-                input.disabled = true;
-                input.classList.add('bg-gray-100', 'cursor-not-allowed');
-            }
-        });
-    } else {
-        console.log("Old bread form not found!");
-        
-        // Try to find by form content instead
-        const potentialOldBreadForms = document.querySelectorAll('form');
-        potentialOldBreadForms.forEach(form => {
-            if (form.innerHTML.includes('old_bread_sold')) {
-                console.log("Found old bread form by content:", form);
-                form.onsubmit = function(e) {
-                    e.preventDefault();
-                    alert('Овој ден е заклучен и не може да се модифицира.');
-                    return false;
-                };
-                
-                const inputs = form.querySelectorAll('input, select, textarea, button');
-                inputs.forEach(input => {
-                    if (input.type !== 'hidden') {
-                        input.disabled = true;
-                        input.classList.add('bg-gray-100', 'cursor-not-allowed');
-                    }
-                });
-            }
-        });
-    }
-    
-    // 3. Disable the toggle buttons between transactions and old bread
-    const toggleButtons = document.querySelectorAll('#dailyTransactionsButton, #oldBreadSalesButton');
-    console.log(`Found ${toggleButtons.length} toggle buttons`);
-    
-    toggleButtons.forEach(button => {
-        button.disabled = true;
-        button.classList.add('opacity-50', 'cursor-not-allowed');
-    });
-    
-    // 4. Disable any form with action containing transaction-related keywords
-    const allTransactionForms = document.querySelectorAll(
-        'form[action*="daily-transactions"], form[action*="store-old-bread"], form[action*="update-daily-transaction"]'
-    );
-    
-    console.log(`Found ${allTransactionForms.length} transaction-related forms by action URL`);
-    
-    allTransactionForms.forEach(form => {
-        form.onsubmit = function(e) {
-            e.preventDefault();
-            alert('Овој ден е заклучен и не може да се модифицира.');
-            return false;
-        };
-        
-        const inputs = form.querySelectorAll('input, select, textarea, button');
-        inputs.forEach(input => {
-            if (input.type !== 'hidden') {
-                input.disabled = true;
-                input.classList.add('bg-gray-100', 'cursor-not-allowed');
-            }
-        });
-    });
-    
-    // 5. Block AJAX requests ONLY to transaction-specific endpoints
-    const originalFetch = window.fetch;
-    window.fetch = function(url, options = {}) {
-        const urlStr = String(url);
-        // Very specific endpoint matching
-        if (
-            urlStr.includes('/daily-transactions/store') || 
-            urlStr.includes('/daily-transactions.store') || 
-            urlStr.includes('/update-daily-transaction') || 
-            urlStr.includes('/store-old-bread')
-        ) {
-            console.log('Blocked fetch to locked endpoint:', urlStr);
-            alert('Овој ден е заклучен и не може да се модифицира.');
-            return Promise.reject(new Error('Day is locked'));
-        }
-        
-        // All other endpoints work normally
-        return originalFetch(url, options);
-    };
-    
-    // 6. Also block XMLHttpRequest for older code
-    const originalXHROpen = XMLHttpRequest.prototype.open;
-    XMLHttpRequest.prototype.open = function(method, url, ...args) {
-        if (typeof url === 'string' && (
-            url.includes('/daily-transactions/store') || 
-            url.includes('/daily-transactions.store') || 
-            url.includes('/update-daily-transaction') || 
-            url.includes('/store-old-bread')
-        )) {
-            console.log('Blocked XHR to locked endpoint:', url);
-            throw new Error('Day is locked');
-        }
-        return originalXHROpen.call(this, method, url, ...args);
-    };
-    
-    console.log("Day lock restrictions applied with enhanced targeting");
-});
-</script>
-@endif -->
-
-<!-- @if(isset($isLocked) && $isLocked)
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    console.log("Applying day lock restrictions");
-    
-    // ONLY target the transaction-specific forms and fields
-    // We'll use very specific selectors instead of broad ones
-    
-    // 1. Disable the daily transactions form and fields
-    const transactionForm = document.getElementById('transactionForm');
-    if (transactionForm) {
-        // Disable the form
-        transactionForm.onsubmit = function(e) {
-            e.preventDefault();
-            alert('Овој ден е заклучен и не може да се модифицира.');
-            return false;
-        };
-        
-        // Disable inputs within this specific form
-        const inputs = transactionForm.querySelectorAll('input, select, textarea, button');
-        inputs.forEach(input => {
-            if (input.type !== 'hidden') {
-                input.disabled = true;
-                input.classList.add('bg-gray-100', 'cursor-not-allowed');
-            }
-        });
-    }
-    
-    // 2. Disable the old bread sales form and fields
-    const oldBreadForm = document.getElementById('oldBreadSalesForm');
-    if (oldBreadForm) {
-        // Disable the form
-        oldBreadForm.onsubmit = function(e) {
-            e.preventDefault();
-            alert('Овој ден е заклучен и не може да се модифицира.');
-            return false;
-        };
-        
-        // Disable inputs within this specific form
-        const inputs = oldBreadForm.querySelectorAll('input, select, textarea, button');
-        inputs.forEach(input => {
-            if (input.type !== 'hidden') {
-                input.disabled = true;
-                input.classList.add('bg-gray-100', 'cursor-not-allowed');
-            }
-        });
-    }
-    
-    // 3. Disable the toggle buttons between transactions and old bread
-    const toggleButtons = document.querySelectorAll('#dailyTransactionsButton, #oldBreadSalesButton');
-    toggleButtons.forEach(button => {
-        button.disabled = true;
-        button.classList.add('opacity-50', 'cursor-not-allowed');
-    });
-    
-    // 4. Block AJAX requests ONLY to transaction-specific endpoints
-    const originalFetch = window.fetch;
-    window.fetch = function(url, options = {}) {
-        const urlStr = String(url);
-        // Very specific endpoint matching
-        if (
-            urlStr.includes('/daily-transactions/store') || 
-            urlStr.includes('/daily-transactions.store') || 
-            urlStr.includes('/update-daily-transaction') || 
-            urlStr.includes('/store-old-bread')
-        ) {
-            console.log('Blocked transaction on locked day:', urlStr);
-            alert('Овој ден е заклучен и не може да се модифицира.');
-            return Promise.reject(new Error('Day is locked'));
-        }
-        
-        // All other endpoints work normally
-        return originalFetch(url, options);
-    };
-    
-    console.log("Day lock restrictions applied to transaction forms only");
-});
-</script>
-@endif -->
-
-
 
 
 
