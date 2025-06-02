@@ -471,7 +471,7 @@
                         <th class="px-4 py-2 text-lg font-bold text-center border-b-2 border-gray-400 w-2/12">Име на компанија</th>
                         <th class="px-4 py-2 text-lg font-bold text-center border-b-2 border-gray-400 w-4/12">Видови на леб</th>
                         <th class="px-4 py-2 text-lg font-bold text-center border-b-2 border-gray-400 w-2/12">Вкупно</th>
-                        <th class="px-4 py-2 text-lg font-bold text-center border-b-2 border-gray-400 w-3/12">Акции</th>
+                        <th class="px-4 py-2 text-lg font-bold text-center border-b-2 border-gray-400 w-2/12">Акции</th>
                     </tr>
                 </thead>
                 <tbody>
