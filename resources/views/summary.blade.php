@@ -437,12 +437,113 @@
 </div>
 
 
+
+{{-- Updated Third Table: Cash Payments with Mark as Unpaid functionality --}}
+@if(!empty($cashPayments))
+    <div class="mb-8">
+        <h2 class="text-xl font-semibold mb-2 text-xl font-bold">Табела за дневен преглед на компании за плаќање во ќеш</h2>
+        
+        {{-- Add bulk actions for cash payments --}}
+        <form id="bulkCashUnpaidForm" action="{{ route('daily-transactions.markMultipleAsUnpaid') }}" method="POST">
+            @csrf
+            <input type="hidden" name="date" value="{{ $date }}">
+            
+            <div class="flex justify-between items-center mb-4">
+                <div class="flex items-center">
+                    <input type="checkbox" 
+                           id="selectAllCash" 
+                           class="form-checkbox h-5 w-5 text-blue-600 mr-2">
+                    <label for="selectAllCash" class="text-sm font-medium">Селектирај ги сите</label>
+                </div>
+                
+                <button type="submit" 
+                        id="bulkCashUnpaidButton"
+                        disabled
+                        class="bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-lg transition duration-150 ease-in-out disabled:opacity-50 disabled:cursor-not-allowed">
+                    Означи избрани како неплатени
+                </button>
+            </div>
+            
+            <table class="w-full bg-white shadow-md rounded text-lg font-bold">
+                <thead>
+                    <tr>
+                        <th class="px-4 py-2 text-lg font-bold text-center border-b-2 border-gray-400 w-1/12">Избери</th>
+                        <th class="px-4 py-2 text-lg font-bold text-center border-b-2 border-gray-400 w-2/12">Име на компанија</th>
+                        <th class="px-4 py-2 text-lg font-bold text-center border-b-2 border-gray-400 w-4/12">Видови на леб</th>
+                        <th class="px-4 py-2 text-lg font-bold text-center border-b-2 border-gray-400 w-2/12">Вкупно</th>
+                        <th class="px-4 py-2 text-lg font-bold text-center border-b-2 border-gray-400 w-3/12">Акции</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach($cashPayments as $payment)
+                    <tr class="border-t-2 border-gray-400">
+                        <td class="border px-4 py-2 text-center">
+                            <input type="checkbox" 
+                                   name="selected_cash_transactions[]" 
+                                   value="{{ $payment['company_id'] }}_{{ $date }}"
+                                   class="cash-transaction-checkbox form-checkbox h-5 w-5 text-blue-600">
+                        </td>
+                        <td class="border text-lg font-bold px-4 py-2 text-center align-center">{{ $payment['company'] }}</td>
+                        <td class="border px-4 py-2">
+                            <table class="w-full">
+                                <thead>
+                                    <tr>
+                                        <th class="w-1/2 text-left pb-2 border-b border-gray-400">Вид на леб</th>
+                                        <th class="w-1/2 text-right pb-2 border-b border-gray-400">Количина × Цена</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach($payment['breads'] as $breadName => $breadInfo)
+                                        <tr>
+                                            <td class="py-1 text-lg font-bold border-b border-gray-300">{{ $breadName }}:</td>
+                                            <td class="py-1 text-lg font-bold text-right border-b border-gray-300">{{ $breadInfo }}</td>
+                                        </tr>
+                                    @endforeach
+                                </tbody>
+                            </table>
+                        </td>
+                        <td class="border text-lg font-bold px-4 py-2 text-center align-center">
+                            {{ number_format($payment['total'], 2) }}
+                        </td>
+                        <td class="border px-4 py-2 text-center align-center">
+                            <form action="{{ route('daily-transactions.markAsUnpaid') }}" method="POST" class="inline">
+                                @csrf
+                                <input type="hidden" name="company_id" value="{{ $payment['company_id'] }}">
+                                    <input type="hidden" name="date" value="{{ $date }}">
+                                    <button type="submit" 
+                                            class="bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded-md text-sm font-medium transition-colors">
+                                <!-- <input type="hidden" name="company_id" value="{{ $payment['company_id'] }}">
+                                <input type="hidden" name="date" value="{{ $date }}">
+                                <button type="submit" 
+                                        class="bg-orange-500 hover:bg-orange-600 text-black px-3 py-1 rounded-md text-md font-medium transition-colors mr-2"> -->
+                                    Означи како неплатено
+                                </button>
+                            </form>
+                        </td>
+                    </tr>
+                    @endforeach
+                </tbody>
+                <tfoot>
+                    <tr>
+                        <td colspan="3" class="border px-4 py-2 font-bold text-right border-t-2 border-gray-400">
+                            Вкупно во кеш:
+                        </td>
+                        <td class="border px-4 py-2 font-bold text-center border-t-2 border-gray-400">
+                            {{ number_format($overallTotal, 2) }}
+                        </td>
+                        <td class="border px-4 py-2 border-t-2 border-gray-400"></td>
+                    </tr>
+                </tfoot>
+            </table>
+        </form>
+    </div>
+@endif
     
 
 
 
 
-{{-- Third Table: Cash Payments --}}
+<!-- {{-- Third Table: Cash Payments --}}
 @if(!empty($cashPayments))
     <div class="mb-8">
         <h2 class="text-xl font-semibold mb-2 text-xl font-bold">Табела за дневен преглед на компании за плаќање во ќеш</h2>
@@ -494,7 +595,7 @@
             </tfoot>
         </table>
     </div>
-@endif
+@endif -->
 
 {{-- Fourth Table: Invoice Payments --}}
 @if(!empty($invoicePayments))
@@ -1505,6 +1606,87 @@ document.addEventListener('DOMContentLoaded', function() {
 @endif
 
     </script>
+
+    // Add this JavaScript to your existing script section in the blade file
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // ========= CASH PAYMENTS MARK AS UNPAID FUNCTIONALITY =========
+    
+    // Cash payments checkbox functionality
+    const selectAllCashCheckbox = document.getElementById('selectAllCash');
+    const cashTransactionCheckboxes = document.querySelectorAll('.cash-transaction-checkbox');
+    const bulkCashUnpaidButton = document.getElementById('bulkCashUnpaidButton');
+    
+    // Function to update the bulk unpaid button state
+    function updateBulkCashUnpaidButton() {
+        if (bulkCashUnpaidButton) {
+            const checkedBoxes = document.querySelectorAll('.cash-transaction-checkbox:checked');
+            bulkCashUnpaidButton.disabled = checkedBoxes.length === 0;
+        }
+    }
+
+    // Handle "Select All" checkbox for cash payments
+    if (selectAllCashCheckbox) {
+        selectAllCashCheckbox.addEventListener('change', function() {
+            cashTransactionCheckboxes.forEach(checkbox => {
+                checkbox.checked = this.checked;
+            });
+            updateBulkCashUnpaidButton();
+        });
+    }
+
+    // Handle individual checkboxes for cash payments
+    cashTransactionCheckboxes.forEach(checkbox => {
+        checkbox.addEventListener('change', function() {
+            const allChecked = Array.from(cashTransactionCheckboxes).every(cb => cb.checked);
+            if (selectAllCashCheckbox) {
+                selectAllCashCheckbox.checked = allChecked;
+            }
+            updateBulkCashUnpaidButton();
+        });
+    });
+
+    // Add confirmation for individual mark as unpaid buttons
+    const individualUnpaidButtons = document.querySelectorAll('button[type="submit"]:not(#bulkCashUnpaidButton)');
+    individualUnpaidButtons.forEach(button => {
+        // Only add confirmation to buttons that have "Означи како неплатено" text
+        if (button.textContent.trim().includes('Означи како неплатено')) {
+            button.addEventListener('click', function(e) {
+                const companyName = this.closest('tr').querySelector('td:nth-child(2)').textContent.trim();
+                if (!confirm(`Дали сте сигурни дека сакате да ја означите трансакцијата за "${companyName}" како неплатена?`)) {
+                    e.preventDefault();
+                }
+            });
+        }
+    });
+
+    // Add confirmation for bulk mark as unpaid
+    if (bulkCashUnpaidButton) {
+        bulkCashUnpaidButton.addEventListener('click', function(e) {
+            const checkedBoxes = document.querySelectorAll('.cash-transaction-checkbox:checked');
+            if (checkedBoxes.length === 0) {
+                e.preventDefault();
+                return;
+            }
+            
+            const companyNames = Array.from(checkedBoxes).map(checkbox => {
+                return checkbox.closest('tr').querySelector('td:nth-child(2)').textContent.trim();
+            });
+            
+            const companiesList = companyNames.join(', ');
+            const message = `Дали сте сигурни дека сакате да ги означите следните трансакции како неплатени?\n\n${companiesList}`;
+            
+            if (!confirm(message)) {
+                e.preventDefault();
+            }
+        });
+    }
+
+    // Initialize button state on page load
+    updateBulkCashUnpaidButton();
+});
+</script>
 
 <style>
 /* Hide spinner buttons for number inputs */

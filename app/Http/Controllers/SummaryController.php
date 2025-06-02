@@ -1540,4 +1540,118 @@ public function updateYesterday(Request $request)
             'currentUser' => $currentUser
         ]);
     }
+
+    //  Mark a cash payment transaction as unpaid
+
+public function markAsUnpaid(Request $request)
+{
+    try {
+        $companyId = $request->input('company_id');
+        $date = $request->input('date');
+        
+        // Verify this is a cash company
+        $company = Company::find($companyId);
+        if (!$company || $company->type !== 'cash') {
+            return back()->with('error', 'Оваа функција е достапна само за компании кои плаќаат во кеш.');
+        }
+        
+        DB::beginTransaction();
+        
+        // Get all the paid transactions for this cash company and date
+        $paidTransactions = DailyTransaction::where('company_id', $companyId)
+            ->whereDate('transaction_date', $date)
+            ->where('is_paid', true)
+            ->where(DB::raw('delivered - returned - COALESCE(gratis, 0)'), '>', 0)
+            ->get();
+            
+        if ($paidTransactions->isEmpty()) {
+            DB::rollBack();
+            return back()->with('info', 'Нема платени трансакции за оваа компанија на избраниот ден.');
+        }
+            
+        // Mark the transactions as unpaid
+        foreach ($paidTransactions as $paidTransaction) {
+            if (!$paidTransaction->breadType) continue;
+            
+            $netQuantity = $paidTransaction->delivered - $paidTransaction->returned - ($paidTransaction->gratis ?? 0);
+            if ($netQuantity <= 0) continue;
+            
+            // Mark the transaction as unpaid
+            $paidTransaction->is_paid = false;
+            $paidTransaction->paid_date = null;
+            $paidTransaction->save();
+        }
+        
+        DB::commit();
+        
+        return back()->with('success', 'Трансакцијата е успешно означена како неплатена.');
+    } catch (\Exception $e) {
+        DB::rollBack();
+        Log::error('Error marking cash transaction as unpaid: ' . $e->getMessage());
+        return back()->with('error', 'Се појави грешка при означување на трансакцијата како неплатена.');
+    }
+}
+
+/**
+ * Mark multiple cash payment transactions as unpaid
+ */
+public function markMultipleAsUnpaid(Request $request)
+{
+    try {
+        $selectedTransactions = $request->input('selected_cash_transactions', []);
+        
+        if (empty($selectedTransactions)) {
+            return back()->with('error', 'Не се избрани трансакции.');
+        }
+        
+        DB::beginTransaction();
+        
+        $processedCount = 0;
+        
+        foreach ($selectedTransactions as $transaction) {
+            list($companyId, $date) = explode('_', $transaction);
+            
+            // Verify this is a cash company
+            $company = Company::find($companyId);
+            if (!$company || $company->type !== 'cash') {
+                continue; // Skip non-cash companies
+            }
+            
+            // Get all the paid transactions for this cash company and date
+            $paidTransactions = DailyTransaction::where('company_id', $companyId)
+                ->whereDate('transaction_date', $date)
+                ->where('is_paid', true)
+                ->where(DB::raw('delivered - returned - COALESCE(gratis, 0)'), '>', 0)
+                ->get();
+                
+            // Mark the transactions as unpaid
+            foreach ($paidTransactions as $paidTransaction) {
+                if (!$paidTransaction->breadType) continue;
+                
+                $netQuantity = $paidTransaction->delivered - $paidTransaction->returned - ($paidTransaction->gratis ?? 0);
+                if ($netQuantity <= 0) continue;
+                
+                // Mark the transaction as unpaid
+                $paidTransaction->is_paid = false;
+                $paidTransaction->paid_date = null;
+                $paidTransaction->save();
+                
+                $processedCount++;
+            }
+        }
+        
+        DB::commit();
+        
+        if ($processedCount > 0) {
+            return back()->with('success', "Трансакцијата е успешно означена како неплатена.");
+        } else {
+            return back()->with('info', 'Нема платени трансакции за означување како неплатени.');
+        }
+        
+    } catch (\Exception $e) {
+        DB::rollBack();
+        Log::error('Error marking multiple cash transactions as unpaid: ' . $e->getMessage());
+        return back()->with('error', 'Се појави грешка при означување на трансакциите како неплатени.');
+    }
+}
 }

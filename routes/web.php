@@ -111,6 +111,16 @@ Route::put('/companies/{company}/update-bread-types', [CompanyController::class,
 
     });
 
+    // Add these routes to your web.php file
+
+// Existing routes for marking as paid (keep these)
+Route::post('/daily-transactions/mark-as-paid', [SummaryController::class, 'markAsPaid'])->name('daily-transactions.markAsPaid');
+Route::post('/daily-transactions/mark-multiple-as-paid', [SummaryController::class, 'markMultipleAsPaid'])->name('daily-transactions.markMultipleAsPaid');
+
+// New routes for marking cash payments as unpaid
+Route::post('/daily-transactions/mark-as-unpaid', [SummaryController::class, 'markAsUnpaid'])->name('daily-transactions.markAsUnpaid');
+Route::post('/daily-transactions/mark-multiple-as-unpaid', [SummaryController::class, 'markMultipleAsUnpaid'])->name('daily-transactions.markMultipleAsUnpaid');
+
     
     // Bread Types
     // Add admin middleware to bread-type-order routes
