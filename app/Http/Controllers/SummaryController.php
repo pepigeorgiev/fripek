@@ -1542,7 +1542,11 @@ public function updateYesterday(Request $request)
     }
 
 
-    public function markAsUnpaid(Request $request)
+  /**
+ * Mark a cash payment transaction as unpaid
+ * Combines both approaches to handle both same-day and multi-day scenarios
+ */
+public function markAsUnpaid(Request $request)
 {
     try {
         $companyId = $request->input('company_id');
@@ -1556,20 +1560,32 @@ public function updateYesterday(Request $request)
         
         DB::beginTransaction();
         
-        // Get all transactions that were PAID on this date (not transactions that occurred on this date)
-        $paidTransactions = DailyTransaction::where('company_id', $companyId)
-            ->whereDate('paid_date', $date)  // CHANGED: Look for paid_date instead of transaction_date
+        // COMBINED APPROACH: Get transactions using BOTH methods
+        
+        // Method 1: Transactions that were PAID on this date (multi-day scenario)
+        $paidOnThisDate = DailyTransaction::where('company_id', $companyId)
+            ->whereDate('paid_date', $date)
             ->where('is_paid', true)
             ->where(DB::raw('delivered - returned - COALESCE(gratis, 0)'), '>', 0)
             ->get();
+        
+        // Method 2: Transactions that were CREATED on this date and are paid (same-day scenario)
+        $createdAndPaidSameDay = DailyTransaction::where('company_id', $companyId)
+            ->whereDate('transaction_date', $date)
+            ->where('is_paid', true)
+            ->where(DB::raw('delivered - returned - COALESCE(gratis, 0)'), '>', 0)
+            ->get();
+        
+        // Combine both collections and remove duplicates
+        $allPaidTransactions = $paidOnThisDate->merge($createdAndPaidSameDay)->unique('id');
             
-        if ($paidTransactions->isEmpty()) {
+        if ($allPaidTransactions->isEmpty()) {
             DB::rollBack();
-            return back()->with('info', 'Нема трансакции платени на овој ден за оваа компанија.');
+            return back()->with('info', 'Нема платени трансакции за оваа компанија на избраниот ден.');
         }
             
         // Mark the transactions as unpaid
-        foreach ($paidTransactions as $paidTransaction) {
+        foreach ($allPaidTransactions as $paidTransaction) {
             if (!$paidTransaction->breadType) continue;
             
             $netQuantity = $paidTransaction->delivered - $paidTransaction->returned - ($paidTransaction->gratis ?? 0);
@@ -1583,7 +1599,7 @@ public function updateYesterday(Request $request)
         
         DB::commit();
         
-        return back()->with('success', 'Сите трансакции платени на овој ден се успешно означени како неплатени.');
+        return back()->with('success', 'Трансакцијата е успешно означена како неплатена.');
     } catch (\Exception $e) {
         DB::rollBack();
         Log::error('Error marking cash transaction as unpaid: ' . $e->getMessage());
@@ -1593,6 +1609,7 @@ public function updateYesterday(Request $request)
 
 /**
  * Mark multiple cash payment transactions as unpaid
+ * Combines both approaches to handle both same-day and multi-day scenarios
  */
 public function markMultipleAsUnpaid(Request $request)
 {
@@ -1616,15 +1633,27 @@ public function markMultipleAsUnpaid(Request $request)
                 continue; // Skip non-cash companies
             }
             
-            // Get all transactions that were PAID on this date for this company
-            $paidTransactions = DailyTransaction::where('company_id', $companyId)
-                ->whereDate('paid_date', $date)  // CHANGED: Look for paid_date instead of transaction_date
+            // COMBINED APPROACH: Get transactions using BOTH methods
+            
+            // Method 1: Transactions that were PAID on this date (multi-day scenario)
+            $paidOnThisDate = DailyTransaction::where('company_id', $companyId)
+                ->whereDate('paid_date', $date)
                 ->where('is_paid', true)
                 ->where(DB::raw('delivered - returned - COALESCE(gratis, 0)'), '>', 0)
                 ->get();
+            
+            // Method 2: Transactions that were CREATED on this date and are paid (same-day scenario)
+            $createdAndPaidSameDay = DailyTransaction::where('company_id', $companyId)
+                ->whereDate('transaction_date', $date)
+                ->where('is_paid', true)
+                ->where(DB::raw('delivered - returned - COALESCE(gratis, 0)'), '>', 0)
+                ->get();
+            
+            // Combine both collections and remove duplicates
+            $allPaidTransactions = $paidOnThisDate->merge($createdAndPaidSameDay)->unique('id');
                 
             // Mark the transactions as unpaid
-            foreach ($paidTransactions as $paidTransaction) {
+            foreach ($allPaidTransactions as $paidTransaction) {
                 if (!$paidTransaction->breadType) continue;
                 
                 $netQuantity = $paidTransaction->delivered - $paidTransaction->returned - ($paidTransaction->gratis ?? 0);
@@ -1644,13 +1673,73 @@ public function markMultipleAsUnpaid(Request $request)
         if ($processedCount > 0) {
             return back()->with('success', "Успешно се означени {$processedCount} трансакции како неплатени.");
         } else {
-            return back()->with('info', 'Нема трансакции платени на избраните денови.');
+            return back()->with('info', 'Нема платени трансакции за означување како неплатени.');
         }
         
     } catch (\Exception $e) {
         DB::rollBack();
         Log::error('Error marking multiple cash transactions as unpaid: ' . $e->getMessage());
         return back()->with('error', 'Се појави грешка при означување на трансакциите како неплатени.');
+    }
+}
+
+/**
+ * Alternative single-query approach (more efficient)
+ */
+public function markAsUnpaidOptimized(Request $request)
+{
+    try {
+        $companyId = $request->input('company_id');
+        $date = $request->input('date');
+        
+        // Verify this is a cash company
+        $company = Company::find($companyId);
+        if (!$company || $company->type !== 'cash') {
+            return back()->with('error', 'Оваа функција е достапна само за компании кои плаќаат во кеш.');
+        }
+        
+        DB::beginTransaction();
+        
+        // Single query with OR condition to handle both scenarios
+        $paidTransactions = DailyTransaction::where('company_id', $companyId)
+            ->where('is_paid', true)
+            ->where(function($query) use ($date) {
+                // Case 1: Transaction was paid on this date (multi-day scenario)
+                $query->whereDate('paid_date', $date)
+                      // Case 2: OR transaction was created on this date and is paid (same-day scenario)
+                      ->orWhere(function($subQuery) use ($date) {
+                          $subQuery->whereDate('transaction_date', $date)
+                                   ->whereNotNull('paid_date');
+                      });
+            })
+            ->where(DB::raw('delivered - returned - COALESCE(gratis, 0)'), '>', 0)
+            ->get();
+            
+        if ($paidTransactions->isEmpty()) {
+            DB::rollBack();
+            return back()->with('info', 'Нема платени трансакции за оваа компанија на избраниот ден.');
+        }
+            
+        // Mark the transactions as unpaid
+        foreach ($paidTransactions as $paidTransaction) {
+            if (!$paidTransaction->breadType) continue;
+            
+            $netQuantity = $paidTransaction->delivered - $paidTransaction->returned - ($paidTransaction->gratis ?? 0);
+            if ($netQuantity <= 0) continue;
+            
+            // Mark the transaction as unpaid
+            $paidTransaction->is_paid = false;
+            $paidTransaction->paid_date = null;
+            $paidTransaction->save();
+        }
+        
+        DB::commit();
+        
+        return back()->with('success', 'Трансакцијата е успешно означена како неплатена.');
+    } catch (\Exception $e) {
+        DB::rollBack();
+        Log::error('Error marking cash transaction as unpaid: ' . $e->getMessage());
+        return back()->with('error', 'Се појави грешка при означување на трансакцијата како неплатена.');
     }
 }
 
