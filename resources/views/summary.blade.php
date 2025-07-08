@@ -1607,7 +1607,6 @@ document.addEventListener('DOMContentLoaded', function() {
 
     </script>
 
-    // Add this JavaScript to your existing script section in the blade file
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
