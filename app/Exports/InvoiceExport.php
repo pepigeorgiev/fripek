@@ -42,100 +42,81 @@ class InvoiceExport extends DefaultValueBinder implements FromCollection, WithHe
     {
         $result = new Collection();
 
-        // In your InvoiceExport class, modify the query:
-$query = "
-WITH latest_prices AS (
-    SELECT 
-        bread_type_id,
-        company_id,
-        price,
-        valid_from,
-        ROW_NUMBER() OVER (PARTITION BY bread_type_id, company_id ORDER BY valid_from DESC) as rn
-    FROM bread_type_company
-    WHERE valid_from <= ?
-)
-SELECT 
-    c.code as company_code,
-    c.name as company_name,
-    bt.code as bread_code,
-    bt.name as bread_name,
-    SUM(dt.delivered - dt.returned - dt.gratis) as quantity,
-    COALESCE(lp.price, bt.price) as price,
-    c.mygpm_business_unit,
-    cu.user_id,
-    COALESCE(bto.display_order, 999) as display_order
-FROM daily_transactions dt
-JOIN companies c ON dt.company_id = c.id
-JOIN bread_types bt ON dt.bread_type_id = bt.id
-LEFT JOIN latest_prices lp ON lp.bread_type_id = dt.bread_type_id 
-    AND lp.company_id = dt.company_id
-    AND lp.rn = 1
-LEFT JOIN company_user cu ON c.id = cu.company_id
-LEFT JOIN bread_type_order bto ON bt.id = bto.bread_type_id
-WHERE c.type = 'invoice'
-AND dt.transaction_date BETWEEN ? AND ?
-GROUP BY 
-    c.code,
-    c.name,
-    bt.code,
-    bt.name,
-    COALESCE(lp.price, bt.price),
-    c.mygpm_business_unit,
-    cu.user_id,
-    COALESCE(bto.display_order, 999)
-HAVING SUM(dt.delivered - dt.returned - dt.gratis) > 0
-ORDER BY 
-    cu.user_id,
-    c.code,
-    c.name,
-    display_order,
-    bt.code
-";
-
-        // $query = "
-        //     WITH latest_prices AS (
-        //         SELECT 
-        //             bread_type_id,
-        //             company_id,
-        //             price,
-        //             valid_from,
-        //             ROW_NUMBER() OVER (PARTITION BY bread_type_id, company_id ORDER BY valid_from DESC) as rn
-        //         FROM bread_type_company
-        //         WHERE valid_from <= ?
-        //     )
-        //     SELECT 
-        //         c.code as company_code,
-        //         c.name as company_name,
-        //         bt.code as bread_code,
-        //         bt.name as bread_name,
-        //         SUM(dt.delivered - dt.returned - dt.gratis) as quantity,
-        //         COALESCE(lp.price, bt.price) as price,
-        //         c.mygpm_business_unit,
-        //         cu.user_id
-        //     FROM daily_transactions dt
-        //     JOIN companies c ON dt.company_id = c.id
-        //     JOIN bread_types bt ON dt.bread_type_id = bt.id
-        //     LEFT JOIN latest_prices lp ON lp.bread_type_id = dt.bread_type_id 
-        //         AND lp.company_id = dt.company_id
-        //         AND lp.rn = 1
-        //     LEFT JOIN company_user cu ON c.id = cu.company_id
-        //     WHERE c.type = 'invoice'
-        //     AND dt.transaction_date BETWEEN ? AND ?
-        //     GROUP BY 
-        //         c.code,
-        //         c.name,
-        //         bt.code,
-        //         bt.name,
-        //         COALESCE(lp.price, bt.price),
-        //         c.mygpm_business_unit,
-        //         cu.user_id
-        //     HAVING SUM(dt.delivered - dt.returned - dt.gratis) > 0
-        //     ORDER BY 
-        //         cu.user_id,
-        //         c.code,
-        //         c.name,
-        //         bt.code
-        // ";
+        // Updated query to properly handle company-specific prices
+        $query = "
+        WITH latest_prices AS (
+            SELECT 
+                bread_type_id,
+                company_id,
+                price,
+                valid_from,
+                ROW_NUMBER() OVER (PARTITION BY bread_type_id, company_id ORDER BY valid_from DESC) as rn
+            FROM bread_type_company
+            WHERE valid_from <= ?
+        ),
+        company_prices AS (
+            SELECT 
+                dt.bread_type_id,
+                dt.company_id,
+                CASE 
+                    -- First priority: specific company-bread type price from bread_type_company table
+                    WHEN lp.price IS NOT NULL THEN lp.price
+                    -- Second priority: price group specific prices
+                    WHEN c.price_group = 1 AND bt.price_group_1 IS NOT NULL THEN bt.price_group_1
+                    WHEN c.price_group = 2 AND bt.price_group_2 IS NOT NULL THEN bt.price_group_2
+                    WHEN c.price_group = 3 AND bt.price_group_3 IS NOT NULL THEN bt.price_group_3
+                    WHEN c.price_group = 4 AND bt.price_group_4 IS NOT NULL THEN bt.price_group_4
+                    WHEN c.price_group = 5 AND bt.price_group_5 IS NOT NULL THEN bt.price_group_5
+                    -- Default: regular price for price_group = 0 or when group prices are null
+                    ELSE bt.price
+                END as final_price
+            FROM daily_transactions dt
+            JOIN companies c ON dt.company_id = c.id
+            JOIN bread_types bt ON dt.bread_type_id = bt.id
+            LEFT JOIN latest_prices lp ON lp.bread_type_id = dt.bread_type_id 
+                AND lp.company_id = dt.company_id
+                AND lp.rn = 1
+            WHERE c.type = 'invoice'
+            AND dt.transaction_date BETWEEN ? AND ?
+            GROUP BY dt.bread_type_id, dt.company_id, lp.price, c.price_group, 
+                     bt.price, bt.price_group_1, bt.price_group_2, bt.price_group_3, bt.price_group_4, bt.price_group_5
+        )
+        SELECT 
+            c.code as company_code,
+            c.name as company_name,
+            bt.code as bread_code,
+            bt.name as bread_name,
+            SUM(dt.delivered - dt.returned - dt.gratis) as quantity,
+            cp.final_price as price,
+            c.mygpm_business_unit,
+            cu.user_id,
+            COALESCE(bto.display_order, 999) as display_order
+        FROM daily_transactions dt
+        JOIN companies c ON dt.company_id = c.id
+        JOIN bread_types bt ON dt.bread_type_id = bt.id
+        JOIN company_prices cp ON cp.bread_type_id = dt.bread_type_id 
+            AND cp.company_id = dt.company_id
+        LEFT JOIN company_user cu ON c.id = cu.company_id
+        LEFT JOIN bread_type_order bto ON bt.id = bto.bread_type_id
+        WHERE c.type = 'invoice'
+        AND dt.transaction_date BETWEEN ? AND ?
+        GROUP BY 
+            c.code,
+            c.name,
+            bt.code,
+            bt.name,
+            cp.final_price,
+            c.mygpm_business_unit,
+            cu.user_id,
+            COALESCE(bto.display_order, 999)
+        HAVING SUM(dt.delivered - dt.returned - dt.gratis) > 0
+        ORDER BY 
+            cu.user_id,
+            c.code,
+            c.name,
+            display_order,
+            bt.code
+        ";
 
         // Log the query parameters
         \Log::info('Executing export query with params:', [
@@ -143,7 +124,13 @@ ORDER BY
             'start_date' => $this->startDate
         ]);
 
-        $transactions = \DB::select($query, [$this->endDate, $this->startDate, $this->endDate]);
+        $transactions = \DB::select($query, [
+            $this->endDate, 
+            $this->startDate, 
+            $this->endDate,
+            $this->startDate, 
+            $this->endDate
+        ]);
 
         \Log::info('Query results:', [
             'count' => count($transactions),
